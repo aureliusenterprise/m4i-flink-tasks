@@ -1,6 +1,4 @@
-from .parameters import * 
-
-
+from .parameters import *
 
 hierarchy_mapping = {
     data_entity: data_domain,

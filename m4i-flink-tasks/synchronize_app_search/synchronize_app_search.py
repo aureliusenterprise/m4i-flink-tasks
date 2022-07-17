@@ -3,8 +3,7 @@ import logging
 from typing import Callable, Dict, List, Optional, Union
 
 from m4i_atlas_core import (ConfigStore, Entity, EntityDef, get_type_def, get_keycloak_token)
-from m4i_atlas_core.entities.atlas.core.relationship.Relationship import \
-    Relationship
+from m4i_atlas_core.entities.atlas.core.relationship.Relationship import Relationship
 
 from .HierarchyMapping import hierarchy_mapping
 from .parameters import *
@@ -77,8 +76,8 @@ async def get_super_types(input_type: str) -> List[EntityDef]:
 async def get_super_types_names(input_type: str) -> List[str]:
     super_types = await get_super_types(input_type)
     return  [super_type.name for super_type in super_types]
-    
-    
+
+
 
 
 def get_source_type(super_types):
@@ -203,7 +202,7 @@ async def is_parent_child_relationship(doc, inserted_relationship):
 
 async def is_attribute_field_relationship(doc, inserted_relationship):
     """This function determines whether the relationship is an attribute field relationship."""
-    super_types = await get_super_types(inserted_relationship["typeName"]) 
+    super_types = await get_super_types(inserted_relationship["typeName"])
     target_entity_source_types = get_source_types(super_types + [inserted_relationship["typeName"]])
     if field in (target_entity_source_types) and data_attribute in doc["m4isourcetype"]:
         return True
@@ -632,7 +631,7 @@ def handle_deleted_attributes(entity_message, input_entity, deleted_attributes, 
 
 
 async def create_doc(entity_message, app_search) -> dict:
-    """This function creates a new app search document corresponding tp the entity belonging to the input entity message. 
+    """This function creates a new app search document corresponding tp the entity belonging to the input entity message.
     The output document has the standard fields that could be infered directly from the entity message filled in.
     The dq scores are all equal to zero"""
 

@@ -1,1 +1,1 @@
-from synchronize_app_search import *
+from .synchronize_app_search import *

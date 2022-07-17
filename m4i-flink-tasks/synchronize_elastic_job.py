@@ -28,7 +28,7 @@ from m4i_data_management import ConfigStore as m4i_ConfigStore
 
 from AtlasEntityChangeMessage import AtlasEntityChangeMessage, AtlasEntityChangeMessageBody, EntityMessage
 from DeadLetterBoxMessage import DeadLetterBoxMesage
-import time 
+import time
 from kafka import KafkaProducer
 from copy import copy
 import traceback
@@ -70,23 +70,23 @@ class SynchronizeAppsearch(MapFunction):
         global app_search
         config_store.load({**config, **credentials})
         app_search = get_app_search()
-        
-        
+
+
 
     def map(self, kafka_notification: str):
-        try: 
+        try:
             logging.warning(kafka_notification)
             entity_message = EntityMessage.from_json((kafka_notification))
-            
+
             updated_docs = []
             entity_doc = None
-            
+
             if entity_message.direct_change == False:
                 logging.warning("This message is a consequence of an indirect change. No further action is taken.")
-                return 
+                return
 
             logging.warning("handle kafka notification start.")
-            
+
             if entity_message.event_type=="EntityCreated":
                 logging.warning("New document will be created.")
                 entity_doc = asyncio.run(create_doc(entity_message, app_search))
@@ -107,7 +107,7 @@ class SynchronizeAppsearch(MapFunction):
                 updated_docs = handle_deleted_attributes(entity_message, entity_message.new_value,entity_message.deleted_attributes, app_search, entity_doc)
                 logging.warning("deleted attributes handled.")
 
-           
+
             if entity_message.inserted_relationships != {}:
                 logging.warning("handle inserted relationships.")
                 updated_docs = asyncio.run(handle_inserted_relationships(entity_message, entity_message.new_value, entity_message.inserted_relationships, app_search, entity_doc))
@@ -135,10 +135,10 @@ class SynchronizeAppsearch(MapFunction):
 
             logging.warning("The Kafka notification received could not be handled.")
 
-                       
+
             exc_info = sys.exc_info()
             e = (''.join(traceback.format_exception(*exc_info)))
-            
+
             event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="determine_change", description = (e))
             bootstrap_server_hostname, bootstrap_server_port =  config_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
             producer = KafkaProducer(
@@ -149,11 +149,11 @@ class SynchronizeAppsearch(MapFunction):
                 retries = 1,
                 linger_ms = 1000
             )
-            dead_lettter_box_topic = config_store.get("exception.events.topic.name") 
+            dead_lettter_box_topic = config_store.get("exception.events.topic.name")
             producer.send(topic=dead_lettter_box_topic, value=event.to_json())
-            
 
-    
+
+
 def synchronize_app_search():
 
     env = StreamExecutionEnvironment.get_execution_environment()
@@ -161,7 +161,7 @@ def synchronize_app_search():
     env.set_parallelism(1)
 
 
-    path = os.path.dirname(__file__) 
+    path = os.path.dirname(__file__)
 
     # download JARs
     kafka_jar = f"file:///" + path + "/flink_jars/flink-connector-kafka-1.15.0.jar"
@@ -198,6 +198,6 @@ if __name__ == '__main__':
                         level=logging.INFO, format="%(message)s")
 
 
-    
+
     synchronize_app_search()
 
