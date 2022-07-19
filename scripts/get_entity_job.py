@@ -14,7 +14,7 @@ from pyflink.datastream.functions import MapFunction, RuntimeContext
 from kafka import KafkaProducer
 import time
 import os
-from DeadLetterBoxMessage import DeadLetterBoxMesage
+from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 from config import config
 from credentials import credentials
 import traceback
