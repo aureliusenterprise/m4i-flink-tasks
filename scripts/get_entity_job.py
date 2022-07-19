@@ -93,7 +93,7 @@ def run_get_entity_job():
     path = os.path.dirname(__file__)
 
     # download JARs
-    kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.0.jar"
+    kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
     kafka_client = f"file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
 
     bootstrap_server_hostname = config.get("kafka.bootstrap.server.hostname")
