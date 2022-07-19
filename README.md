@@ -1,4 +1,4 @@
-# flink-tasks
+# m4i-flink-tasks
 
 Follow the instructions in Apache Flink Installation:
 
@@ -36,3 +36,9 @@ https://repo.maven.apache.org/maven2/org/apache/flink/flink-connector-kafka/1.15
 
 https://repo.maven.apache.org/maven2/org/apache/kafka/kafka-clients/2.2.1/
 
+
+
+Creating additional users in keycloak
+=====================================
+examples of using the keycloak part
+https://github.com/marcospereirampj/python-keycloak/blob/master/README.md

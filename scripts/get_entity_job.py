@@ -36,14 +36,14 @@ class GetEntity(MapFunction):
             kafka_notification = AtlasChangeMessage.from_json(kafka_notification)
             access_token = get_keycloak_token()
             logging.warning(access_token)
-            
+
             if kafka_notification.message.operation_type in [EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE, EntityAuditAction.ENTITY_DELETE]:
                 entity_guid = kafka_notification.message.entity.guid
                 await get_entity_by_guid.cache.clear()
                 event_entity = await get_entity_by_guid(guid=entity_guid, ignore_relationships=False, access_token=access_token)
                 # event_entity = await get_entity_by_guid(guid=entity_guid, ignore_relationships=False)
                 if not event_entity:
-                    raise Exception(f"No entity could be retreived from Atlas with guid {entity_guid}") 
+                    raise Exception(f"No entity could be retreived from Atlas with guid {entity_guid}")
 
                 logging.warning(repr(kafka_notification))
                 logging.warning(repr(event_entity))
@@ -55,13 +55,13 @@ class GetEntity(MapFunction):
                 return json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json})
 
         # END func
-        try: 
+        try:
             return asyncio.run(get_entity(kafka_notification))
 
         except ClientResponseError as e:
-            
+
             bootstrap_server_hostname, bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
-            
+
             exc_info = sys.exc_info()
             e = (''.join(traceback.format_exception(*exc_info)))
 
@@ -77,8 +77,8 @@ class GetEntity(MapFunction):
                 retries = 1,
                 linger_ms = 1000
             )
-            
-            dead_lettter_box_topic = store.get("exception.events.topic.name") 
+
+            dead_lettter_box_topic = store.get("exception.events.topic.name")
 
             producer.send(topic=dead_lettter_box_topic, value=event.to_json())
 
@@ -90,11 +90,11 @@ def run_get_entity_job():
     set_env(env)
     env.set_parallelism(1)
 
-    path = os.path.dirname(__file__) 
+    path = os.path.dirname(__file__)
 
     # download JARs
-    kafka_jar = f"file:///" + path + "/flink_jars/flink-connector-kafka-1.15.0.jar"
-    kafka_client = f"file:///" + path + "/flink_jars/kafka-clients-2.2.1.jar"
+    kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.0.jar"
+    kafka_client = f"file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
 
     bootstrap_server_hostname = config.get("kafka.bootstrap.server.hostname")
     bootstrap_server_port = config.get("kafka.bootstrap.server.port")
@@ -110,7 +110,7 @@ def run_get_entity_job():
                                                   "key.deserializer": "org.apache.kafka.common.serialization.StringDeserializer",
                                                   "value.deserializer": "org.apache.kafka.common.serialization.StringDeserializer"},
                                       deserialization_schema=SimpleStringSchema()).set_commit_offsets_on_checkpoints(True).set_start_from_latest()
-                                      
+
 
 
     data_stream = env.add_source(kafka_source).name(f"consuming atlas events")
