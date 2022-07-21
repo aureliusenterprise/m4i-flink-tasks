@@ -19,7 +19,7 @@ from config import config
 from credentials import credentials
 import traceback
 from  aiohttp.client_exceptions import ClientResponseError
-from set_environment import set_env
+#from set_environment import set_env
 
 store = ConfigStore.get_instance()
 
@@ -87,7 +87,7 @@ class GetEntity(MapFunction):
 def run_get_entity_job():
 
     env = StreamExecutionEnvironment.get_execution_environment()
-    set_env(env)
+    #set_env(env)
     env.set_parallelism(1)
 
     path = os.path.dirname(__file__)

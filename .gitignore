@@ -156,3 +156,7 @@ flink-1.13.6
 flink-1.15.0
 **/example.py
 
+
+flink_jars/flink-connector-kafka-1.15.1.jar
+
+flink_jars/kafka-clients-2.2.1.jar
