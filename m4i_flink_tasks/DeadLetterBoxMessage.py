@@ -1,12 +1,9 @@
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from tokenize import Double
-from dataclasses_json import (DataClassJsonMixin, LetterCase, config,
+from dataclasses_json import (DataClassJsonMixin, LetterCase,
                               dataclass_json)
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import List, Optional
-from m4i_atlas_core import AtlasChangeMessage, EntityAuditAction, get_entity_by_guid, Entity
+from dataclasses import dataclass
 
 '''
 This data class "DeadLetterBoxMessage" describes the structure of a message forwarded to the dead letter box. 
@@ -18,5 +15,5 @@ class DeadLetterBoxMesage(DataClassJsonMixin):
     timestamp: Double
     original_notification: str
     job: str
-    description: Exception
+    description: str
 

@@ -7,13 +7,12 @@ from enum import Enum
 from typing import List, Optional
 from pyflink.common.typeinfo import Types
 
-import requests
 from m4i_atlas_core import AtlasChangeMessage, ConfigStore as m4i_ConfigStore, EntityAuditAction, get_entity_by_guid, Entity
 from pyflink.common.serialization import SimpleStringSchema, JsonRowSerializationSchema
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
 from pyflink.datastream.functions import MapFunction, RuntimeContext
-from set_environment import set_env
+# from set_environment import set_env
 
 from config import config
 from credentials import credentials
@@ -22,7 +21,7 @@ from m4i_data_management import make_elastic_connection
 from m4i_data_management import ConfigStore as m4i_ConfigStore
 from kafka import KafkaProducer
 import time
-from DeadLetterBoxMessage import DeadLetterBoxMesage
+from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 import traceback
 import os
 
@@ -92,7 +91,7 @@ class PublishState(MapFunction):
 def run_publish_state_job():
 
     env = StreamExecutionEnvironment.get_execution_environment()
-    set_env(env)
+    # set_env(env)
     env.set_parallelism(1)
 
     path = os.path.dirname(__file__) 

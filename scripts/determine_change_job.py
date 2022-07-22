@@ -19,12 +19,12 @@ from config import config
 from credentials import credentials
 
 import pandas as pd
-from set_environment import set_env
+# from set_environment import set_env
 from m4i_data_management import make_elastic_connection, retrieve_elastic_data
 from m4i_data_management import ConfigStore as m4i_ConfigStore
 
-from AtlasEntityChangeMessage import AtlasEntityChangeMessage, AtlasEntityChangeMessageBody, EntityMessage
-from DeadLetterBoxMessage import DeadLetterBoxMesage
+from m4i_flink_tasks import AtlasEntityChangeMessage, AtlasEntityChangeMessageBody, EntityMessage
+from m4i_flink_tasks import DeadLetterBoxMesage
 import time 
 from kafka import KafkaProducer
 from copy import copy
@@ -240,7 +240,6 @@ class DetermineChange(MapFunction):
             logging.warning(repr(kafka_notification))
 
             kafka_notification_json = json.loads(kafka_notification)
-            return kafka_notification
 
             if not kafka_notification_json.get("kafka_notification") or not kafka_notification_json.get("atlas_entity"):
                 logging.warning("The Kafka notification received could not be handled due to unexpected notification structure.")
@@ -411,7 +410,7 @@ def determine_change():
     
 
     env = StreamExecutionEnvironment.get_execution_environment()
-    set_env(env)
+    # set_env(env)
     env.set_parallelism(1)
 
 
