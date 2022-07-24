@@ -3,14 +3,10 @@ import json
 import logging
 import sys
 import os
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import List, Optional
 from pyflink.common.typeinfo import Types
-from m4i_atlas_core import AtlasChangeMessage, ConfigStore as m4i_ConfigStore, EntityAuditAction, get_entity_by_guid, Entity
+from m4i_atlas_core import AtlasChangeMessage, ConfigStore as m4i_ConfigStore, EntityAuditAction, Entity
 
-import requests
-from pyflink.common.serialization import SimpleStringSchema, JsonRowSerializationSchema
+from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
 from pyflink.datastream.functions import MapFunction, RuntimeContext
@@ -19,28 +15,26 @@ from config import config
 from credentials import credentials
 
 import pandas as pd
-# from set_environment import set_env
-from m4i_data_management import make_elastic_connection, retrieve_elastic_data
-from m4i_data_management import ConfigStore as m4i_ConfigStore
-
-from m4i_flink_tasks import AtlasEntityChangeMessage, AtlasEntityChangeMessageBody, EntityMessage
+from m4i_flink_tasks.synchronize_app_search import make_elastic_connection
+from m4i_flink_tasks import EntityMessage
 from m4i_flink_tasks import DeadLetterBoxMesage
 import time 
 from kafka import KafkaProducer
 from copy import copy
 import traceback
+import re 
+from m4i_atlas_core import get_entity_audit
+from m4i_atlas_core import AtlasChangeMessage, EntityAuditAction, get_entity_by_guid, get_keycloak_token
 
-
-m4i_store = m4i_ConfigStore.get_instance()
 m4i_store = m4i_ConfigStore.get_instance()
 
 inserted_attributes = []
 changed_attributes = []
 deleted_attributes = []
 
-inserted_relationships = []
-changed_relationships = []
-deleted_relationships = []
+inserted_relationships = {}
+changed_relationships = {}
+deleted_relationships = {}
 
 
 def drop_columns(df : pd.DataFrame, drop_params: str):
@@ -87,18 +81,23 @@ def get_flat_df(atlas_entity: dict) -> pd.DataFrame:
     atlas_entity = pd.concat([atlas_entity, attributes, relationship_attributes], axis = 1)
     return atlas_entity
 
-def is_direct_change(kafka_notification) -> bool:
-    "This function determines whether the kafka notification belong to a direct entity change or an indirect change."
-    if "relationshipAttributes" in kafka_notification.get("message").get("entity").keys():
-        return kafka_notification.get("message").get("entity")["relationshipAttributes"]!=None
+def is_direct_change(entity_guid: str) -> bool:
+    """This function determines whether the kafka notification belong to a direct entity change or an indirect change."""
+    access_token = get_keycloak_token()
+    entity_audit =  asyncio.run(get_entity_audit(entity_guid = entity_guid, access_token = access_token))
+    if entity_audit:
+        atlas_entiy = Entity.from_json(re.search(r"{.*}", entity_audit.details).group(0))
+        return atlas_entiy.relationship_attributes != None
     else:
-        False
-    
+        return True
+
+
 def remove_prefix(input_string, prefix):
     if input_string.startswith(prefix):
         return input_string[len(prefix):]
     else:
         return input_string
+
 
 def remove_prefix_from_attributes(attribute_set, prefix):
     result = []
@@ -192,7 +191,7 @@ def get_deleted_fields(current_entity_df, previous_entity_df):
 
 
 def get_previous_atlas_entity(atlas_entity_parsed):
-    elastic_search_index = m4i_store.get("elastic_search_index")
+    elastic_search_index = m4i_store.get("elastic.search.index")
     latest_update_time = atlas_entity_parsed.update_time
     entity_guid = atlas_entity_parsed.guid
     elastic = make_elastic_connection()
@@ -231,7 +230,6 @@ class DetermineChange(MapFunction):
 
     def open(self, runtime_context: RuntimeContext):
         m4i_store.load({**config, **credentials})
-        m4i_store.load({**config, **credentials})
 
     def map(self, kafka_notification: str):
 
@@ -265,7 +263,7 @@ class DetermineChange(MapFunction):
                     old_value = atlas_entity_parsed,
                     new_value = {},
                     original_event_type = atlas_kafka_notification.message.operation_type,
-                    direct_change = is_direct_change(atlas_kafka_notification_json),
+                    direct_change = is_direct_change(atlas_entity_parsed.guid),
                     event_type = "EntityDeleted",
 
                     inserted_attributes = [],
@@ -292,7 +290,7 @@ class DetermineChange(MapFunction):
                     old_value = {},
                     new_value = atlas_entity_parsed,
                     original_event_type = atlas_kafka_notification.message.operation_type,
-                    direct_change = is_direct_change(atlas_kafka_notification_json),
+                    direct_change = is_direct_change(atlas_entity_parsed.guid),
                     event_type = "EntityCreated",
 
                     inserted_attributes = list((atlas_entity_json["attributes"]).keys()),
@@ -333,7 +331,7 @@ class DetermineChange(MapFunction):
                 
     
                 inserted_relationships = get_added_relationships(current_entity_relationships, previous_entity_relationships)
-                changed_relationships = []
+                changed_relationships = {}
                 deleted_relationships = get_deleted_relationships(current_entity_relationships, previous_entity_relationships)
 
                 logging.warning("Determine audit category.")
@@ -343,13 +341,10 @@ class DetermineChange(MapFunction):
                     return
                     
                 elif sum([len(inserted_attributes), len(changed_attributes), len(deleted_attributes)])>0:
-                    event_type = "EntityChanged"
-                elif len(inserted_relationships)>0:
-                    event_type = "RelationshipInserted"
-                elif len(changed_relationships)>0:
-                    event_type = "RelationshipChanged"
-                elif len(deleted_relationships)>0:
-                    event_type = "RelationshipDeleted"
+                    event_type = "EntityAttributeAudit"
+                elif sum([len(inserted_relationships), len(changed_relationships), len(deleted_relationships)])>0:
+                    event_type = "EntityRelationshipAudit"
+                
 
                 logging.warning("audit catergory determined.")
 
@@ -360,7 +355,7 @@ class DetermineChange(MapFunction):
                     old_value = previous_entity_parsed,
                     new_value = atlas_entity_parsed,
                     original_event_type = atlas_kafka_notification.message.operation_type,
-                    direct_change = is_direct_change(atlas_kafka_notification_json),
+                    direct_change = is_direct_change(atlas_entity_parsed.guid),
                     event_type = event_type,
 
                     inserted_attributes = inserted_attributes,
@@ -372,8 +367,6 @@ class DetermineChange(MapFunction):
                     deleted_relationships = deleted_relationships
 
                 )
-
-                
                     
                 return json.dumps(json.loads(atlas_entity_change_message.to_json()))
 
@@ -402,7 +395,6 @@ class DetermineChange(MapFunction):
             dead_lettter_box_topic = m4i_store.get("exception.events.topic.name") 
             producer.send(topic = dead_lettter_box_topic, value=event.to_json())
             
-            
            
 
     
@@ -410,15 +402,13 @@ def determine_change():
     
 
     env = StreamExecutionEnvironment.get_execution_environment()
-    # set_env(env)
     env.set_parallelism(1)
-
 
     path = os.path.dirname(__file__) 
 
     # download JARs
-    kafka_jar = f"file:///" + path + "/flink_jars/flink-connector-kafka-1.15.0.jar"
-    kafka_client = f"file:///" + path + "/flink_jars/kafka-clients-2.2.1.jar"
+    kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
+    kafka_client = f"file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
 
 
     env.add_jars(kafka_jar, kafka_client)
