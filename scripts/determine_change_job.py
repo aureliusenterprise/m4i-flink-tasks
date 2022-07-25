@@ -275,7 +275,7 @@ class DetermineChange(MapFunction):
                     deleted_relationships = (atlas_entity_json["relationshipAttributes"])
 
                 )
-                return json.dumps(json.loads(atlas_entity_change_message.to_json()))
+                return [json.dumps(json.loads(atlas_entity_change_message.to_json()))]
 
 
             if atlas_kafka_notification.message.operation_type == EntityAuditAction.ENTITY_CREATE:
@@ -302,7 +302,7 @@ class DetermineChange(MapFunction):
                     deleted_relationships = {}
 
                 )
-                return json.dumps(json.loads(atlas_entity_change_message.to_json()))
+                return [json.dumps(json.loads(atlas_entity_change_message.to_json()))]
 
 
 
@@ -339,6 +339,8 @@ class DetermineChange(MapFunction):
                 if sum([len(inserted_attributes), len(changed_attributes), len(deleted_attributes), len(inserted_relationships), len(changed_relationships), len(deleted_relationships)])==0:
                     logging.warning("No audit could be determined.")
                     return
+
+                result = []
                     
                 if sum([len(inserted_attributes), len(changed_attributes), len(deleted_attributes)])>0:
                     event_type = "EntityAttributeAudit"
@@ -361,7 +363,10 @@ class DetermineChange(MapFunction):
                     changed_relationships = {},
                     deleted_relationships = {}
 
-                )
+                    )
+
+                    result.append(atlas_entity_change_message)
+
 
                 if sum([len(inserted_relationships), len(changed_relationships), len(deleted_relationships)])>0:
                     event_type = "EntityRelationshipAudit"
@@ -384,12 +389,14 @@ class DetermineChange(MapFunction):
                     changed_relationships = changed_relationships,
                     deleted_relationships = deleted_relationships
 
-                )
+                    )
+
+                    result.append(atlas_entity_change_message)
                 
 
                 logging.warning("audit catergory determined.")
 
-                return json.dumps(json.loads(atlas_entity_change_message.to_json()))
+                return result
 
             return
 
@@ -447,8 +454,8 @@ def determine_change():
                                       deserialization_schema=SimpleStringSchema()).set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
     data_stream = env.add_source(kafka_source).name(f"consuming enriched atlas events")
-
-    data_stream = data_stream.map(DetermineChange(), Types.STRING()).name("determine change").filter(lambda notif: notif)
+    
+    data_stream = data_stream.map(DetermineChange(), Types.LIST(Types.STRING)).name("determine change").filter(lambda notif: notif)
 
     data_stream.print()
 
