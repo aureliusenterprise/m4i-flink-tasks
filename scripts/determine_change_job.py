@@ -340,15 +340,10 @@ class DetermineChange(MapFunction):
                     logging.warning("No audit could be determined.")
                     return
                     
-                elif sum([len(inserted_attributes), len(changed_attributes), len(deleted_attributes)])>0:
+                if sum([len(inserted_attributes), len(changed_attributes), len(deleted_attributes)])>0:
                     event_type = "EntityAttributeAudit"
-                elif sum([len(inserted_relationships), len(changed_relationships), len(deleted_relationships)])>0:
-                    event_type = "EntityRelationshipAudit"
-                
 
-                logging.warning("audit catergory determined.")
-
-                atlas_entity_change_message = EntityMessage(
+                    atlas_entity_change_message = EntityMessage(
                     type_name = atlas_entity_parsed.type_name,
                     qualified_name = atlas_entity_parsed.attributes.unmapped_attributes["qualifiedName"],
                     guid = atlas_entity_parsed.guid,
@@ -362,12 +357,38 @@ class DetermineChange(MapFunction):
                     changed_attributes = changed_attributes,
                     deleted_attributes = deleted_attributes,
 
+                    inserted_relationships = {},
+                    changed_relationships = {},
+                    deleted_relationships = {}
+
+                )
+
+                if sum([len(inserted_relationships), len(changed_relationships), len(deleted_relationships)])>0:
+                    event_type = "EntityRelationshipAudit"
+
+                    atlas_entity_change_message = EntityMessage(
+                    type_name = atlas_entity_parsed.type_name,
+                    qualified_name = atlas_entity_parsed.attributes.unmapped_attributes["qualifiedName"],
+                    guid = atlas_entity_parsed.guid,
+                    old_value = previous_entity_parsed,
+                    new_value = atlas_entity_parsed,
+                    original_event_type = atlas_kafka_notification.message.operation_type,
+                    direct_change = is_direct_change(atlas_entity_parsed.guid),
+                    event_type = event_type,
+
+                    inserted_attributes = [],
+                    changed_attributes = [],
+                    deleted_attributes = [],
+
                     inserted_relationships = inserted_relationships,
                     changed_relationships = changed_relationships,
                     deleted_relationships = deleted_relationships
 
                 )
-                    
+                
+
+                logging.warning("audit catergory determined.")
+
                 return json.dumps(json.loads(atlas_entity_change_message.to_json()))
 
             return
