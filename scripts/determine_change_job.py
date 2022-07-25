@@ -455,7 +455,7 @@ def determine_change():
 
     data_stream = env.add_source(kafka_source).name(f"consuming enriched atlas events")
     
-    data_stream = data_stream.map(DetermineChange(), Types.LIST(Types.STRING)).name("determine change").filter(lambda notif: notif)
+    data_stream = data_stream.map(DetermineChange(), Types.LIST(element_type_info = Types.STRING())).name("determine change").filter(lambda notif: notif)
 
     data_stream.print()
 
