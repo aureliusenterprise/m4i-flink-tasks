@@ -365,7 +365,7 @@ class DetermineChange(MapFunction):
 
                     )
 
-                    result.append(atlas_entity_change_message)
+                    result.append(json.dumps(json.loads(atlas_entity_change_message.to_json())))
 
 
                 if sum([len(inserted_relationships), len(changed_relationships), len(deleted_relationships)])>0:
@@ -391,7 +391,7 @@ class DetermineChange(MapFunction):
 
                     )
 
-                    result.append(atlas_entity_change_message)
+                    result.append(json.dumps(json.loads(atlas_entity_change_message.to_json())))
                 
 
                 logging.warning("audit catergory determined.")
