@@ -35,27 +35,28 @@ def create_user(server_url, admin_user, admin_passwd, username, password, roles 
     return response
 
 def main(argv):
-    admin_user = ''
-    admin_passwd = ''
+    admin_user = os.environ.get('KEYCLOAK_ADMIN_USERNAME', 'admin')
+    admin_passwd = os.environ.get('KEYCLOAK_ADMIN_PASSWORD', None)
     username = ''
     password_variable = ''
     roles = []
-    server_url = ''
+    server_url = os.environ.get('KEYCLOAK_SERVER_URL', None)
     try:
-        opts, args = getopt.getopt(argv,"hs:a:c:u:p:r:",["server_url=","admin_user=","admin_passwd","username=","password_variable=","roles="])
+        opts, args = getopt.getopt(argv,"hu:p:r:",["username=","password_variable=","roles="])
     except getopt.GetoptError:
         print('create_keycloak_users.py -u <username> -p <environment variable with password> -r <List of roles>')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print('create_keycloak_users.py -s <server_url> -a <admin_user> -c <admin_passwd -u <username> -p <environment variable with password> -r <List of roles>')
+            print('create_keycloak_users.py -u <username> -p <environment variable with password> -r <List of roles>')
+            # print('create_keycloak_users.py -s <server_url> -a <admin_user> -c <admin_passwd -u <username> -p <environment variable with password> -r <List of roles>')
             sys.exit()
-        elif opt in ("-s", "--server_url"):
-            server_url = arg
-        elif opt in ("-a", "--admin_user"):
-            admin_user = arg
-        elif opt in ("-c", "--admin_passwd"):
-            admin_passwd = arg
+        # elif opt in ("-s", "--server_url"):
+        #     server_url = arg
+        # elif opt in ("-a", "--admin_user"):
+        #     admin_user = arg
+        # elif opt in ("-c", "--admin_passwd"):
+        #     admin_passwd = arg
         elif opt in ("-u", "--username"):
             username = arg
         elif opt in ("-p", "--password_variable"):
