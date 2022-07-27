@@ -1,3 +1,6 @@
+
+from enum import Enum
+
 guid = "guid"
 type_name = "typename"
 definition = "definition"
@@ -118,3 +121,11 @@ breadcrumb_type = "breadcrumbtype"
 derived_data_owner_guid = "deriveddataownerguid"
 derived_data_steward_guid = "deriveddatastewardguid"
 derived_domain_lead_guid = "deriveddomainleadguid"
+
+
+class SourceType(Enum):
+    def __str__(self):
+        return str(self.value)
+
+    BUSINESS = "Business"
+    TECHNICAL = "Technical"

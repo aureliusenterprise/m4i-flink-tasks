@@ -4,50 +4,24 @@ from typing import Callable, Dict, List, Optional, Union
 
 from m4i_atlas_core import (ConfigStore, Entity, EntityDef, get_type_def, get_keycloak_token)
 from m4i_atlas_core.entities.atlas.core.relationship.Relationship import Relationship
-
+from elastic_enterprise_search import AppSearch
 from .HierarchyMapping import hierarchy_mapping
 from .parameters import *
+from .elastic import get_document, send_query, get_documents
 
 ActionHandler = Callable[[Optional[Union[Entity, Relationship]]], None]
 logger = logging.getLogger(__name__)
 
 config = ConfigStore.get_instance()
 
-
 update_attributes = [definition, email]
 
-engine_name = config.get("elastic_search_index")
+engine_name = config.get_many("elastic.app.search.engine.name")
 
 updated_docs: Dict[str, dict] = dict()
 breadcrumb_dict: Dict[str, list] = dict()
 derived_entity_dict: Dict[str, list] = dict()
 docs_dict: Dict[str, dict] = dict()
-
-
-def get_document(entity_guid, app_search):
-    """This function returns a document corresponding to the entity guid from elastic app search."""
-    doc_list = app_search.get_documents(
-        engine_name=engine_name, document_ids=[entity_guid])
-    if len(doc_list) > 0:
-        return doc_list[0]
-
-
-def list_all_documents(app_search, engine_name):
-    """This function lists all documents and returns the result"""
-    all_doc_list = []
-    index = 1
-
-    doc_list = app_search.list_documents(
-        engine_name=engine_name, current_page=index)["results"]
-
-    while len(doc_list) != 0:
-        all_doc_list = all_doc_list + doc_list
-
-        index = index + 1
-        doc_list = app_search.list_documents(
-            engine_name=engine_name, current_page=index)["results"]
-
-    return all_doc_list
 
 
 async def get_super_types(input_type: str) -> List[EntityDef]:
@@ -74,125 +48,81 @@ async def get_super_types(input_type: str) -> List[EntityDef]:
 # END get_super_types
 
 async def get_super_types_names(input_type: str) -> List[str]:
+    """This function returns all supertype names of the input type given with the given type included."""
     super_types = await get_super_types(input_type)
     return  [super_type.name for super_type in super_types]
 
-
-
-
-def get_source_type(super_types):
+def get_source_type(super_types : list) -> SourceType:
     """This function returns the source type, either Business or Technical, based on the supertypes provided as input."""
     if data_domain in super_types or data_entity in super_types or data_attribute in super_types:
-        return "Business"
+        return SourceType.BUSINESS
 
-    return "Technical"
+    return SourceType.TECHNICAL
+
+def get_source_type_from_app_search(input_document: dict) -> list:
+    """This function returns the m4i source types (e.g. m4i_data_attribute, m4i_field, m4i_dataset, etc.) of the app search document."""
+    return input_document.get("m4isourcetype")
 
 
-def fill_in_dq_scores(schema_keys, new_doc):
+def fill_in_dq_scores(schema_keys: list, input_document : dict) -> dict:
     """This function fills in and sets all dq scores to zero in the given document and returns the  updated document."""
     for key in schema_keys:
         if key.startswith("dq_score"):
-            new_doc[key] = 0
+            input_document[key] = 0
+    return input_document
 
-    return new_doc
-
-
-def get_parent_type(input_entity_type):
+def get_parent_type(input_entity_type: str) -> str:
     """This function get the parent type of the given entity type"""
     return hierarchy_mapping.get(input_entity_type)
 
-
-def get_parent_entity_guid(input_entity):
-    "This function returns the guid of the parent entity of the input entity given"
-    entity_relationships = input_entity.relationship_attributes
-    for key in entity_relationships.keys():
-        if key.startswith("parent"):
-            return entity_relationships[key]["guid"]
-    parent_type = get_parent_type(input_entity.type_name)
-    for key, val in entity_relationships.items():
-        if val != [] and val[0].get("typeName") == parent_type:
-            if len(val) > 1:
-                print("several parent entities are found for a single entity.")
-            else:
-                return val[0]["guid"]
-
-
-def get_parent_entity_doc(new_doc, entity_message, app_search):
-    """This functiomn returns the document belonging to the parent entity of the entity given."""
-    parent_entity_guid = get_parent_entity_guid(
-        entity_message.new_value, entity_message.new_value.relationship_attributes)
-    if parent_entity_guid:
-        return get_document(parent_entity_guid, app_search)
-    else:
-        print("No corresponding document is found in elastic app belonging to parent entity guid.")
-
-
-def define_breadcrumb(new_doc, entity_message, app_search):
+def define_breadcrumb(input_document: dict, parent_entity_guid : str, app_search: AppSearch) -> dict:
     """This function defines a breadcrumb by inheriting it from its parent entity and returns the updated docuement"""
-    parent_entity_guid = get_parent_entity_guid(
-        new_doc["guid"], entity_message)
     if not parent_entity_guid:
-        return new_doc
-    parent_entity_doc = get_document(parent_entity_guid, app_search)
-    if parent_entity_doc:
-        new_doc["breadcrumbguid"] = parent_entity_doc["breadcrumbguid"] + \
+        return input_document
+    parent_entity_document = get_document(parent_entity_guid, app_search)
+    if parent_entity_document:
+        input_document["breadcrumbguid"] = parent_entity_document["breadcrumbguid"] + \
             [parent_entity_guid]
-        new_doc["breadcrumbname"] = parent_entity_doc["breadcrumbname"] + \
-            [parent_entity_doc["name"]]
-        new_doc["breadcrumbtype"] = parent_entity_doc["breadcrumbtype"] + \
-            [parent_entity_doc["typename"]]
+        input_document["breadcrumbname"] = parent_entity_document["breadcrumbname"] + \
+            [parent_entity_document["name"]]
+        input_document["breadcrumbtype"] = parent_entity_document["breadcrumbtype"] + \
+            [parent_entity_document["typename"]]
     else:
         print("No corresponding document is found in elastic app belonging to parent entity guid.")
 
-    return new_doc
+    return input_document
 
-
-def get_source_types(super_types):
+def get_m4i_source_types(super_types : list) -> list:
+    """This function returns the m4i_source_types in the list of given super types."""
     source_types = [data_domain, data_entity,
                     data_attribute, field, dataset, collection, system]
     return list(filter(lambda super_type: super_type in source_types, super_types))
 
+def get_child_entity_docs(entity_guid : str, app_search : AppSearch, engine_name : str = None):
 
-def get_child_entity_docs(entity_guid, app_search, engine_name):
-    # This is the old query:
-    # results = app_search.search(engine_name = engine_name, body = {
-    #     "query":"",
-    #     "filters":{
-    #     breadcrumb_guid:[
-    #             entity_guid
-    #         ]
-    #     }
-    #     }).body.get("results")
+    engine_name = config.get_many("elastic.app.search.engine.name")
 
-    # breadcrumb_guid_list = [result["id"].get("raw") for result in results]
-
-    results = app_search.search(engine_name=engine_name, query=entity_guid, options={
-        "search_fields": {breadcrumb_guid: {}}
+    body = {
+        "query":"",
+        "filters":{
+        breadcrumb_guid:[
+                entity_guid
+            ]
+        }
     }
-    ).get("results")
 
-    breadcrumb_guid_list = [result["id"].get("raw") for result in results]
-
+    breadcrumb_guid_list = send_query(app_search=app_search, body = body, engine_name = engine_name)
     return get_documents(app_search, engine_name, breadcrumb_guid_list)
 
-
-def get_documents(app_search, engine_name, entity_guid_list):
-    """This function returns a list of documents having the input guids as ids."""
-
-    doc_list = app_search.get_documents(
-        engine_name=engine_name, document_ids=entity_guid_list)
-    return doc_list
-
-
-async def is_parent_child_relationship(doc, inserted_relationship):
+async def is_parent_child_relationship(input_document : dict, relationship_key :str, input_relationship : dict):
     """This function determines whether the entity belonging to the input document and the entity corresponding to the end point of the relationship are a parent child pair."""
-    super_types = await get_super_types_names(inserted_relationship["typeName"])
-    target_entity_source_types = get_source_types(super_types + [inserted_relationship["typeName"]])
+    super_types = await get_super_types_names(input_relationship["typeName"])
+    target_entity_source_types = get_m4i_source_types(super_types)
 
-    if set(target_entity_source_types) == set(doc["m4isourcetype"]):
+    if relationship_key.startswith("child") or relationship_key.startswith("parent"):
         return True
 
-    for current_entity_source_type in doc["m4isourcetype"]:
+    for current_entity_source_type in input_document["m4isourcetype"]:
         for target_entity_source_type in target_entity_source_types:
             if hierarchy_mapping.get(current_entity_source_type) == target_entity_source_type or hierarchy_mapping.get(target_entity_source_type) == current_entity_source_type:
                 return True
@@ -200,10 +130,12 @@ async def is_parent_child_relationship(doc, inserted_relationship):
     return False
 
 
+# Until here is checked 
+
 async def is_attribute_field_relationship(doc, inserted_relationship):
     """This function determines whether the relationship is an attribute field relationship."""
     super_types = await get_super_types(inserted_relationship["typeName"])
-    target_entity_source_types = get_source_types(super_types + [inserted_relationship["typeName"]])
+    target_entity_source_types = get_m4i_source_types(super_types + [inserted_relationship["typeName"]])
     if field in (target_entity_source_types) and data_attribute in doc["m4isourcetype"]:
         return True
     if data_attribute in (target_entity_source_types) and field in doc["m4isourcetype"]:
@@ -273,7 +205,7 @@ def delete_document(entity_guid, app_search):
 async def get_parent_child_entity_guid(doc, key, input_relationship):
     """This function determines the heirarchy between the input entities and rerturns the guids ordered: parent_guid, child_guid"""
     super_types = await get_super_types_names(input_relationship["typeName"])
-    target_entity_source_types = get_source_types(super_types + [input_relationship["typeName"]])
+    target_entity_source_types = get_m4i_source_types(super_types + [input_relationship["typeName"]])
     target_entity_guid = input_relationship[guid]
     input_entity_guid = doc[guid]
 
@@ -421,7 +353,7 @@ async def handle_inserted_relationships(entity_message, new_input_entity, insert
             continue
         for inserted_relationship in inserted_relationships_:
 
-            if await is_parent_child_relationship(doc, inserted_relationship):
+            if await is_parent_child_relationship(doc, key, inserted_relationship):
                 parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(
                     doc, key, inserted_relationship)
                 if input_entity_guid == child_entity_guid:
@@ -487,7 +419,7 @@ async def handle_deleted_relationships(entity_message, input_entity, deleted_rel
             continue
         for deleted_relationship in deleted_relationships_:
 
-            if await is_parent_child_relationship(doc, deleted_relationship):
+            if await is_parent_child_relationship(doc, key, deleted_relationship):
                 parent_entity_guid, child_entity_guid = get_parent_child_entity_guid(
                     doc, key, deleted_relationship)
                 if input_entity_guid == child_entity_guid:
@@ -648,7 +580,7 @@ async def create_doc(entity_message, app_search) -> dict:
     new_doc["referenceablequalifiedname"] = input_entity.attributes.unmapped_attributes["qualifiedName"]
     new_doc["typename"] = input_entity.type_name
     new_doc["sourcetype"] = get_source_type(super_types)
-    new_doc["m4isourcetype"] = get_source_types(super_types)
+    new_doc["m4isourcetype"] = get_m4i_source_types(super_types)
     new_doc["supertypenames"] = super_types
 
     new_doc[name] = input_entity.attributes.unmapped_attributes.get(name)
@@ -808,3 +740,25 @@ def update_name_in_derived_entity_fields(input_entity, current_doc, app_search, 
                         f"The entity guid index does not match the entity name index.")
 
     return updated_docs
+
+
+
+
+
+
+def get_parent_entity_guid(input_entity : Entity):
+    "This function returns the guid of the parent entity of the input entity given."
+    entity_relationships = input_entity.relationship_attributes
+    for key in entity_relationships.keys():
+        if key.startswith("parent"):
+            return entity_relationships[key]["guid"]
+
+    parent_type = get_parent_type(input_entity.type_name)
+
+    for key, val in entity_relationships.items():
+        if val != [] and val[0].get("typeName") == parent_type:
+            if len(val) > 1:
+                print(f"several parent entities are found for the input entit: {input_entity}.")
+                # The code should never reach this part!
+            else:
+                return val[0]["guid"]

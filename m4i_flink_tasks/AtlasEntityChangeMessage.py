@@ -1,11 +1,9 @@
 
 from dataclasses import dataclass, field
-from dataclasses_json import (DataClassJsonMixin, LetterCase, config,
-                              dataclass_json)
+from dataclasses_json import (DataClassJsonMixin, LetterCase, dataclass_json)
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import List, Optional, Dict
-from m4i_atlas_core import AtlasChangeMessage, EntityAuditAction, get_entity_by_guid, Entity
+from typing import List
+from m4i_atlas_core import EntityAuditAction, Entity
 
 
 
@@ -30,11 +28,7 @@ class EntityMessage(DataClassJsonMixin):
 
     old_value: Entity = field(default_factory=dict)
     new_value: Entity = field(default_factory=dict) 
-    # old_value: Entity 
-    # new_value: Entity
 
-
-    # atlas_kafka_notification: AtlasChangeMessage
     
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass

@@ -9,57 +9,47 @@ from typing import List, Optional
 from elastic_app_search import Client
 
 from pyflink.common.typeinfo import Types
-from m4i_atlas_core import AtlasChangeMessage, ConfigStore as m4i_ConfigStore, EntityAuditAction, get_entity_by_guid, Entity
-from synchronize_app_search.synchronize_app_search import create_doc, delete_document,  handle_updated_attributes, handle_deleted_attributes, handle_inserted_relationships, handle_deleted_relationships
+from m4i_flink_tasks import create_doc, delete_document,  handle_updated_attributes, handle_deleted_attributes, handle_inserted_relationships, handle_deleted_relationships
 
-import requests
-from pyflink.common.serialization import SimpleStringSchema, JsonRowSerializationSchema
+from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
+from pyflink.datastream.connectors import FlinkKafkaConsumer
 from pyflink.datastream.functions import MapFunction, RuntimeContext
 
 from config import config
 from credentials import credentials
 
-import pandas as pd
-
-from m4i_data_management import make_elastic_connection, retrieve_elastic_data
-from m4i_data_management import ConfigStore as m4i_ConfigStore
-
-from AtlasEntityChangeMessage import AtlasEntityChangeMessage, AtlasEntityChangeMessageBody, EntityMessage
-from DeadLetterBoxMessage import DeadLetterBoxMesage
+from m4i_flink_tasks import EntityMessage
+from m4i_flink_tasks import DeadLetterBoxMesage
 import time
 from kafka import KafkaProducer
-from copy import copy
 import traceback
-from elastic_enterprise_search import EnterpriseSearch
-from set_environment import set_env
+from elastic_enterprise_search import EnterpriseSearch, AppSearch
+# from set_environment import set_env
 
 from m4i_atlas_core import ConfigStore
-
 config_store = ConfigStore.get_instance()
 app_search = None
 
 def get_app_search():
+
     (
-        elastic_user,
-        elastic_passwd,
-        api_key,
+        elastic_base_endpoint, 
+        elastic_user, 
+        elastic_passwd
     ) = config_store.get_many(
-        "elastic_user",
-        "elastic_passwd",
-        "elastic_search_passwd",
+        "elastic.enterprise.search.endpoint", 
+        "elastic.user", 
+        "elastic.search.passwd")
+
+
+
+    app_search = AppSearch(
+        hosts=elastic_base_endpoint,
+        basic_auth=(elastic_user, elastic_passwd)
     )
 
-    elastic_base_endpoint, api_key = config_store.get_many("elastic_base_endpoint", "elastic_search_passwd")
-
-    app_search = Client(
-    base_endpoint=elastic_base_endpoint,
-    api_key=api_key,
-    use_https=True
-    )
-
-
+    
     return app_search
 
 class SynchronizeAppsearch(MapFunction):
@@ -101,23 +91,22 @@ class SynchronizeAppsearch(MapFunction):
                 logging.warning("handle updated attributes.")
                 updated_docs = handle_updated_attributes(entity_message, entity_message.new_value,entity_message.changed_attributes, app_search)
                 logging.warning("updated attributes handled.")
+  
 
             if entity_message.deleted_attributes != []:
                 logging.warning("handle deleted attributes.")
                 updated_docs = handle_deleted_attributes(entity_message, entity_message.new_value,entity_message.deleted_attributes, app_search, entity_doc)
                 logging.warning("deleted attributes handled.")
 
+            if entity_message.deleted_relationships != {}:
+                logging.warning("handle deleted relationships.")
+                updated_docs = asyncio.run(handle_deleted_relationships(entity_message, entity_message.old_value,entity_message.deleted_relationships, app_search, entity_doc))
+                logging.warning("deleted relationships handled.")
 
             if entity_message.inserted_relationships != {}:
                 logging.warning("handle inserted relationships.")
                 updated_docs = asyncio.run(handle_inserted_relationships(entity_message, entity_message.new_value, entity_message.inserted_relationships, app_search, entity_doc))
                 logging.warning("inserted relationships handled.")
-
-
-            if entity_message.deleted_relationships != {}:
-                logging.warning("handle deleted relationships.")
-                updated_docs = asyncio.run(handle_deleted_relationships(entity_message, entity_message.old_value,entity_message.deleted_relationships, app_search, entity_doc))
-                logging.warning("deleted relationships handled.")
 
             if entity_message.event_type=="EntityDeleted":
                 logging.warning("entity docuemnt is deleted.")
@@ -157,15 +146,15 @@ class SynchronizeAppsearch(MapFunction):
 def synchronize_app_search():
 
     env = StreamExecutionEnvironment.get_execution_environment()
-    set_env(env)
+    # set_env(env)
     env.set_parallelism(1)
 
 
     path = os.path.dirname(__file__)
 
     # download JARs
-    kafka_jar = f"file:///" + path + "/flink_jars/flink-connector-kafka-1.15.0.jar"
-    kafka_client = f"file:///" + path + "/flink_jars/kafka-clients-2.2.1.jar"
+    kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
+    kafka_client = f"file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
 
 
     env.add_jars(kafka_jar, kafka_client)

@@ -10,6 +10,7 @@ setup(
         # "avro",
         # "dict_hash",
         "elasticsearch==8.3.0",
+        "elastic_enterprise_search==8.3.0",
         "m4i-atlas-core @ git+https://github.com/aureliusenterprise/m4i_atlas_core.git#egg=m4i-atlas-core",
         #"m4i-data-management @ git+https://github.com/wombach/m4i-data-management.git#egg=m4i-data-management",
         # "fastavro",

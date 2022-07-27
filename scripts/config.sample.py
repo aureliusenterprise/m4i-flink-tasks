@@ -1,5 +1,4 @@
 config = {
-    "atlas.credentials.username": "admin", # only relevant if used for a local docker instance
     "atlas.server.url": "127.0.0.1:21000/api/atlas",
     "kafka.bootstrap.server.hostname": "127.0.0.1",
     "kafka.bootstrap.server.port": "9027",
@@ -9,12 +8,15 @@ config = {
     "determined.events.topic.name": "DETERMINED_CHANGE",
     "exception.events.topic.name": "DEAD_LETTER_BOX",
 
-    "elastic_search_index" : "atlas-dev-test",
+    "elastic.search.index" : "atlas-dev-test",
+    "elastic.app.search.engine.name" : "atlas-dev-test",
 
-    "elastic_cloud_username": "elastic",
-    "elastic_cloud_id": "YOUR CLOUD ID",
-    "elastic_base_endpoint" : "APP-SEACRH-HOSTNAME/api/as/v1",
-
+    "elastic.cloud.username": "elastic",
+    "elastic.cloud.id": "YOUR CLOUD ID",
+    "elastic.base.endpoint" : "APP-SEACRH-HOSTNAME/api/as/v1",
+    "elastic.search.endpoint" : "YOUR_ELASTIC_ENDPOINT",
+    "elastic.enterprise.search.endpoint": "YOUR_ELASTIC_SEARCH_ENDPOINT",
+    
     "keycloak.server.url" : "http://127.0.0.1:9100/auth/",
     "keycloak.client.id" : "m4i_public",
     "keycloak.realm.name": "m4i",

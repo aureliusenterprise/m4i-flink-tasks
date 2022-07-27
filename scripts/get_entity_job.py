@@ -19,7 +19,7 @@ from config import config
 from credentials import credentials
 import traceback
 from  aiohttp.client_exceptions import ClientResponseError
-#from set_environment import set_env
+# from set_environment import set_env
 
 store = ConfigStore.get_instance()
 
@@ -51,7 +51,6 @@ class GetEntity(MapFunction):
                 entity_json =   json.loads(event_entity.to_json())
 
                 logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json}))
-                logging.warning(str(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json})))
                 return json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json})
 
         # END func
