@@ -27,6 +27,9 @@ def create_user(server_url, admin_user, admin_passwd, username, password, roles 
         user_id = admin.get_user_id(username)
         available_realm_roles = admin.get_realm_roles()
         new_user_roles = [item for item in available_realm_roles if item['name'] in roles]
+        atlas_user_role = [item for item in available_realm_roles if item['name'] == "ATLAS_USER"]
+        new_user_roles = new_user_roles + atlas_user_role
+        
         admin.assign_realm_roles(user_id=user_id, roles=new_user_roles)
         # set the password
         response = admin.set_user_password(user_id=user_id,
