@@ -32,21 +32,6 @@ config_store = ConfigStore.get_instance()
 app_search = None
 
 def get_app_search():
-    # (
-    #     elastic_user,
-    #     elastic_passwd,
-    #     api_key,
-    # ) = config_store.get_many(
-    #     "elastic_user",
-    #     "elastic_passwd",
-    #     "elastic_search_passwd",
-    # )
-
-     # app_search = Client(
-    # base_endpoint=elastic_base_endpoint,
-    # api_key=api_key,
-    # use_https=True
-    # )
 
     (
         elastic_base_endpoint, 

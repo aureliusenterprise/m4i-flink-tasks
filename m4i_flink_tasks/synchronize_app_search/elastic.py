@@ -87,7 +87,7 @@ def send_query(app_search : AppSearch, body: dict, engine_name: str = None, curr
 
 def get_documents(app_search : AppSearch, engine_name : str, entity_guid_list: list) -> list:
     """This function returns a list of documents having the input guids as ids."""
-
+    
     documents_list = app_search.get_documents(
         engine_name=engine_name, document_ids=entity_guid_list)
     return documents_list

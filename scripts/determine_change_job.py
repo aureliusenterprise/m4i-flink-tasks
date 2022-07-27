@@ -25,6 +25,7 @@ import traceback
 import re 
 from m4i_atlas_core import get_entity_audit
 from m4i_atlas_core import AtlasChangeMessage, EntityAuditAction, get_entity_by_guid, get_keycloak_token
+from pyflink.datastream.functions import FlatMapFunction
 
 m4i_store = m4i_ConfigStore.get_instance()
 
@@ -422,7 +423,14 @@ class DetermineChange(MapFunction):
             )
             dead_lettter_box_topic = m4i_store.get("exception.events.topic.name") 
             producer.send(topic = dead_lettter_box_topic, value=event.to_json())
-            
+
+
+
+class GetResult(FlatMapFunction):
+
+    def flat_map(self, input_list):
+        for element in input_list:
+            yield element
            
 
     
@@ -456,6 +464,8 @@ def determine_change():
     data_stream = env.add_source(kafka_source).name(f"consuming enriched atlas events")
     
     data_stream = data_stream.map(DetermineChange(), Types.LIST(element_type_info = Types.STRING())).name("determine change").filter(lambda notif: notif)
+
+    data_stream = data_stream.flat_map(GetResult(), Types.STRING()).name("parse change")
 
     data_stream.print()
 
