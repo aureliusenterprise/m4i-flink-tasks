@@ -2,7 +2,7 @@ import asyncio
 import os
 
 from m4i_atlas_core import ConfigStore, create_type_defs, data_dictionary_types_def, process_types_def, \
-    connectors_types_def, kubernetes_types_def
+    connectors_types_def, kubernetes_types_def, get_keycloak_token
 
 store = ConfigStore.get_instance()
 
