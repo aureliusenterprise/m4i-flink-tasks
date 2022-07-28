@@ -6,14 +6,14 @@ from requests.auth import HTTPBasicAuth
 
 from app_search_engine_setup import engines
 
-enterprise_search_url = os.getenv('ENTERPRISE_SEARCH_INTERNAL_URL')
-elastic_username = os.getenv('ELASTIC_USERNAME')
-elastic_password = os.getenv('ELASTIC_PASSWORD')
+enterprise_search_url = os.getenv('enterprise_search_url')
+elastic_username = os.getenv('elastic_username')
+elastic_password = os.getenv('elastic_password')
 
 
 def get_enterprise_api_private_key():
     key_response = requests.get(
-        f'https://{enterprise_search_url}api/as/v1/credentials/private-key',
+        f'https://{enterprise_search_url}/api/as/v1/credentials/private-key',
         auth=HTTPBasicAuth(elastic_username, elastic_password)
 
     )
