@@ -9,7 +9,7 @@ store = ConfigStore.get_instance()
 store.load({
     "atlas.credentials.username": os.getenv('KEYCLOAK_ATLAS_USER_USERNAME'),
     "atlas.credentials.password": os.getenv('KEYCLOAK_ATLAS_ADMIN_PASSWORD'),
-    "atlas.server.url": os.getenv('atlas_url') + "/api/atlas"
+    "atlas.server.url": os.getenv('ATLAS_EXTERNAL_URL') + "/api/atlas"
 })
 
 asyncio.run(create_type_defs(data_dictionary_types_def))
