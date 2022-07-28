@@ -7,7 +7,6 @@ from m4i_atlas_core import ConfigStore
 config_store = ConfigStore.get_instance()
 
 
-
 def make_elastic_connection() -> Elasticsearch:
     """
     Returns a connection with the ElasticSearch database
@@ -23,7 +22,7 @@ def make_elastic_connection() -> Elasticsearch:
 
     return connection
 
-def make_elastic_app_search_connectpm() -> AppSearch:
+def make_elastic_app_search_connect() -> AppSearch:
     (
         elastic_base_endpoint, 
         elastic_user, 
@@ -43,7 +42,7 @@ def make_elastic_app_search_connectpm() -> AppSearch:
 def get_document(entity_guid : str, app_search : AppSearch) -> dict:
     """This function returns a document corresponding to the entity guid from elastic app search."""
     
-    engine_name = config_store.get_many("elastic.app.search.engine.name")
+    engine_name = config_store.get("elastic.app.search.engine.name")
 
     doc_list = app_search.get_documents(
         engine_name=engine_name, document_ids=[entity_guid])
@@ -69,7 +68,7 @@ def list_all_documents(app_search : AppSearch, engine_name : str = None, current
 
 def send_query(app_search : AppSearch, body: dict, engine_name: str = None, current_page: int = 1, page_size: int = 1000) -> list:
     """This function sends a query to the app search and returns a list of retrieved document ids."""
-    # engine_name = config_store.get_many("elastic.app.search.engine.name")
+    # engine_name = config_store.get("elastic.app.search.engine.name")
     
     documents = app_search.search(engine_name = engine_name, body = body, current_page = current_page, page_size = page_size).body.get("results")
     

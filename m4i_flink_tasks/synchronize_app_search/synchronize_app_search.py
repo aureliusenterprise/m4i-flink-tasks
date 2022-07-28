@@ -13,11 +13,10 @@ ActionHandler = Callable[[Optional[Union[Entity, Relationship]]], None]
 logger = logging.getLogger(__name__)
 
 config_store = ConfigStore.get_instance()
-
 update_attributes = [definition, email]
 
-engine_name = config_store.get("elastic.app.search.engine.name")
-logging.warning(engine_name)
+# engine_name = config_store.get("elastic.app.search.engine.name")
+# logging.warning(engine_name)
 
 updated_docs: Dict[str, dict] = dict()
 breadcrumb_dict: Dict[str, list] = dict()
@@ -103,7 +102,7 @@ def get_m4i_source_types(super_types : list) -> list:
 
 def get_child_entity_docs(entity_guid : str, app_search : AppSearch, engine_name : str = None):
 
-    engine_name = config_store.get_many("elastic.app.search.engine.name")
+    engine_name = config_store.get("elastic.app.search.engine.name")
 
     body = {
         "query":"",
@@ -203,6 +202,7 @@ def delete_derived_entity_attribute_field_fields(input_entity_guid, attribute_gu
 
 
 def delete_document(entity_guid, app_search: AppSearch):
+    engine_name = config_store.get("elastic.app.search.engine.name")
     app_search.delete_documents(
         engine_name=engine_name, document_ids=[entity_guid])
 
@@ -338,7 +338,7 @@ def delete_breadcrumb(new_doc, parent_entity_guid, app_search):
 
 async def handle_inserted_relationships(entity_message, new_input_entity, inserted_relationships, app_search, doc=None):
     updated_docs: Dict[str, dict] = dict()
-    engine_name = config_store.get("elastic_search_index")
+    engine_name = config_store.get("elastic.app.search.engine.name")
     schema_keys = sorted(
         list(app_search.get_schema(engine_name=engine_name).keys()))
     input_entity_guid = new_input_entity.guid
@@ -405,6 +405,7 @@ async def handle_inserted_relationships(entity_message, new_input_entity, insert
 
 async def handle_deleted_relationships(entity_message, input_entity, deleted_relationships, app_search, doc=None):
     updated_docs: Dict[str, dict] = dict()
+    engine_name = config_store.get("elastic.app.search.engine.name")
     schema_keys = sorted(
         list(app_search.get_schema(engine_name=engine_name).keys()))
     input_entity_guid = input_entity.guid
@@ -496,7 +497,7 @@ def define_parent_guid(new_doc, parent_entity_guid):
 def handle_updated_attributes(entity_message, input_entity, updated_attributes, app_search: AppSearch, doc=None) -> dict:
     """This function updates the document for the relevant set of inserted or updated attributes in the Apache Atlas entity.
     This function returns a dictionary with all updated documents as output with the following structure: guid -> app search document"""
-
+    engine_name = config_store.get("elastic.app.search.engine.name")
     updated_docs: Dict[str, dict] = dict()
     logging.warning(engine_name)
     schema_keys = sorted(
@@ -534,7 +535,7 @@ def handle_updated_attributes(entity_message, input_entity, updated_attributes, 
 def handle_deleted_attributes(entity_message, input_entity, deleted_attributes, app_search, doc=None) -> dict:
     """This function updates the document for the relevant set ofdeleted attributes in the Apache Atlas entity.
     This function returns a dictionary with all updated documents as output with the following structure: guid -> app search document"""
-
+    engine_name = config_store.get("elastic.app.search.engine.name")
     updated_docs: Dict[str, dict] = dict()
     schema_keys = sorted(
         list(app_search.get_schema(engine_name=engine_name).keys()))
@@ -572,7 +573,7 @@ async def create_doc(entity_message, app_search) -> dict:
     """This function creates a new app search document corresponding tp the entity belonging to the input entity message.
     The output document has the standard fields that could be infered directly from the entity message filled in.
     The dq scores are all equal to zero"""
-
+    engine_name = config_store.get("elastic.app.search.engine.name")
     schema_keys = sorted(
         list(app_search.get_schema(engine_name=engine_name).keys()))
     new_doc = {}
@@ -605,6 +606,8 @@ def update_name_in_breadcrumbs(input_entity_name: str, current_doc, app_search, 
     """This function synchronizes updated name of an entity in all breadcrumbs inheriting from this entity."""
     doc_entity_name = current_doc[name]
     doc_entity_guid = current_doc[guid]
+
+    engine_name = config_store.get("elastic.app.search.engine.name")
 
     # This is the old query:
 
@@ -644,6 +647,8 @@ def update_name_in_breadcrumbs(input_entity_name: str, current_doc, app_search, 
 
 def update_name_in_derived_entity_fields(input_entity, current_doc, app_search, updated_docs):
     """This function inserts newly defined name or an updated name to all documents inheriting this name"""
+    engine_name = config_store.get("elastic.app.search.engine.name")
+
     doc_entity_name = current_doc[name]
     doc_entity_guid = current_doc[guid]
     input_entity_name = input_entity.attributes.unmapped_attributes[name]
