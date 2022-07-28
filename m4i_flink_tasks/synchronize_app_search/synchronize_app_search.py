@@ -130,25 +130,27 @@ async def is_parent_child_relationship(input_document : dict, relationship_key :
     return False
 
 
-# Until here is checked 
 
-async def is_attribute_field_relationship(doc, inserted_relationship):
+async def is_attribute_field_relationship(input_document : dict, input_relationship : dict):
     """This function determines whether the relationship is an attribute field relationship."""
-    super_types = await get_super_types(inserted_relationship["typeName"])
-    target_entity_source_types = get_m4i_source_types(super_types + [inserted_relationship["typeName"]])
-    if field in (target_entity_source_types) and data_attribute in doc["m4isourcetype"]:
+    super_types = await get_super_types_names(input_relationship["typeName"])
+    target_entity_source_types = get_m4i_source_types(super_types)
+    if field in (target_entity_source_types) and data_attribute in input_document["m4isourcetype"]:
         return True
-    if data_attribute in (target_entity_source_types) and field in doc["m4isourcetype"]:
+    if data_attribute in (target_entity_source_types) and field in input_document["m4isourcetype"]:
         return True
     return False
 
 
-def get_attribute_field_guid(doc, relationship):
-    """"""
-    if doc["m4isourcetype"] == data_attribute:
-        return doc[guid], relationship[guid]
+def get_attribute_field_guid(input_document : dict, input_relationship : dict):
+    """This function returns respectively the guid of a data attribute and a field."""
+    if data_attribute in input_document["m4isourcetype"]:
+        return input_document[guid], input_relationship[guid]
     else:
-        return relationship[guid], doc[guid]
+        return input_relationship[guid], input_document[guid]
+
+    
+# Until here is checked 
 
 
 def define_derived_entity_attribute_field_fields(input_entity_guid, attribute_guid, field_guid, doc, app_search):
@@ -197,7 +199,7 @@ def delete_derived_entity_attribute_field_fields(input_entity_guid, attribute_gu
         return doc, attribute_doc
 
 
-def delete_document(entity_guid, app_search):
+def delete_document(entity_guid, app_search: AppSearch):
     app_search.delete_documents(
         engine_name=engine_name, document_ids=[entity_guid])
 
@@ -281,7 +283,7 @@ def delete_derived_entities(doc, parent_entity_guid, app_search):
     return doc
 
 
-def update_derived_entiies(doc, parent_entity_guid, app_search):
+def update_derived_entities(doc, parent_entity_guid, app_search):
     parent_entity_doc = get_document(parent_entity_guid, app_search)
     for key in parent_entity_doc:
         if key.startswith("derived") and parent_entity_doc.get(key):
@@ -360,7 +362,7 @@ async def handle_inserted_relationships(entity_message, new_input_entity, insert
                     doc = define_breadcrumb(
                         doc, parent_entity_guid, app_search)
                     doc = define_parent_guid(doc, parent_entity_guid)
-                    doc = update_derived_entiies(
+                    doc = update_derived_entities(
                         doc, parent_entity_guid, app_search)
 
                 child_docs = get_child_entity_docs(

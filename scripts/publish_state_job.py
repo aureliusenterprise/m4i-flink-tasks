@@ -121,11 +121,11 @@ def run_publish_state_job():
     bootstrap_server_hostname = config.get("kafka.bootstrap.server.hostname")
     bootstrap_server_port = config.get("kafka.bootstrap.server.port")
     source_topic_name = config.get("enriched.events.topic.name")
+    kafka_consumer_group_id = config.get("kafka.consumer.group.id")
 
     kafka_source = FlinkKafkaConsumer(topics = source_topic_name,
                                       properties={'bootstrap.servers': f"{bootstrap_server_hostname}:{bootstrap_server_port}",
-                                                  'group.id': 'test',
-                                                  'auto.offset.reset': 'earliest',
+                                                  'group.id': kafka_consumer_group_id,
                                                   "key.deserializer": "org.apache.kafka.common.serialization.StringDeserializer",
                                                   "value.deserializer": "org.apache.kafka.common.serialization.StringDeserializer"},
                                       deserialization_schema=SimpleStringSchema()).set_commit_offsets_on_checkpoints(True).set_start_from_latest()
