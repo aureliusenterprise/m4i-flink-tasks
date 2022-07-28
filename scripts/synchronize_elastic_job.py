@@ -9,6 +9,13 @@ from typing import List, Optional
 from elastic_app_search import Client
 
 from pyflink.common.typeinfo import Types
+
+from m4i_atlas_core import ConfigStore
+from config import config
+from credentials import credentials
+
+config_store = ConfigStore.get_instance()
+
 from m4i_flink_tasks import create_doc, delete_document,  handle_updated_attributes, handle_deleted_attributes, handle_inserted_relationships, handle_deleted_relationships
 
 from pyflink.common.serialization import SimpleStringSchema
@@ -16,8 +23,7 @@ from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import FlinkKafkaConsumer
 from pyflink.datastream.functions import MapFunction, RuntimeContext
 
-from config import config
-from credentials import credentials
+
 
 from m4i_flink_tasks import EntityMessage
 from m4i_flink_tasks import DeadLetterBoxMesage
@@ -27,9 +33,12 @@ import traceback
 from elastic_enterprise_search import EnterpriseSearch, AppSearch
 # from set_environment import set_env
 
-from m4i_atlas_core import ConfigStore
-config_store = ConfigStore.get_instance()
+
+
+
 app_search = None
+
+
 
 def get_app_search():
 
@@ -40,8 +49,8 @@ def get_app_search():
     ) = config_store.get_many(
         "elastic.enterprise.search.endpoint", 
         "elastic.user", 
-        "elastic.passwd")
-
+        "elastic.passwd"
+    )
 
 
     app_search = AppSearch(
@@ -91,7 +100,6 @@ class SynchronizeAppsearch(MapFunction):
                 logging.warning("handle updated attributes.")
                 updated_docs = handle_updated_attributes(entity_message, entity_message.new_value,entity_message.changed_attributes, app_search)
                 logging.warning("updated attributes handled.")
-  
 
             if entity_message.deleted_attributes != []:
                 logging.warning("handle deleted attributes.")
@@ -110,7 +118,7 @@ class SynchronizeAppsearch(MapFunction):
 
             if entity_message.event_type=="EntityDeleted":
                 logging.warning("entity docuemnt is deleted.")
-                delete_document(entity_message.guid, app_search)
+                # delete_document(entity_message.guid, app_search)
 
             for key, updated_doc in updated_docs.items():
                 logging.warning(repr(updated_doc))
@@ -164,6 +172,7 @@ def synchronize_app_search():
     bootstrap_server_port = config.get("kafka.bootstrap.server.port")
     source_topic_name = config.get("determined.events.topic.name")
     kafka_consumer_group_id = config.get("kafka.consumer.group.id")
+
 
     kafka_source = FlinkKafkaConsumer(topics = source_topic_name,
                                       properties={'bootstrap.servers':  f"{bootstrap_server_hostname}:{bootstrap_server_port}",

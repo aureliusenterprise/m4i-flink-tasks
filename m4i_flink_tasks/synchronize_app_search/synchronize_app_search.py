@@ -12,16 +12,19 @@ from .elastic import get_document, send_query, get_documents
 ActionHandler = Callable[[Optional[Union[Entity, Relationship]]], None]
 logger = logging.getLogger(__name__)
 
-config = ConfigStore.get_instance()
+config_store = ConfigStore.get_instance()
 
 update_attributes = [definition, email]
 
-engine_name = config.get_many("elastic.app.search.engine.name")
+engine_name = config_store.get("elastic.app.search.engine.name")
+logging.warning(engine_name)
 
 updated_docs: Dict[str, dict] = dict()
 breadcrumb_dict: Dict[str, list] = dict()
 derived_entity_dict: Dict[str, list] = dict()
 docs_dict: Dict[str, dict] = dict()
+
+
 
 
 async def get_super_types(input_type: str) -> List[EntityDef]:
@@ -100,7 +103,7 @@ def get_m4i_source_types(super_types : list) -> list:
 
 def get_child_entity_docs(entity_guid : str, app_search : AppSearch, engine_name : str = None):
 
-    engine_name = config.get_many("elastic.app.search.engine.name")
+    engine_name = config_store.get_many("elastic.app.search.engine.name")
 
     body = {
         "query":"",
@@ -335,7 +338,7 @@ def delete_breadcrumb(new_doc, parent_entity_guid, app_search):
 
 async def handle_inserted_relationships(entity_message, new_input_entity, inserted_relationships, app_search, doc=None):
     updated_docs: Dict[str, dict] = dict()
-    engine_name = config.get("elastic_search_index")
+    engine_name = config_store.get("elastic_search_index")
     schema_keys = sorted(
         list(app_search.get_schema(engine_name=engine_name).keys()))
     input_entity_guid = new_input_entity.guid
@@ -490,11 +493,12 @@ def define_parent_guid(new_doc, parent_entity_guid):
     return new_doc
 
 
-def handle_updated_attributes(entity_message, input_entity, updated_attributes, app_search, doc=None) -> dict:
+def handle_updated_attributes(entity_message, input_entity, updated_attributes, app_search: AppSearch, doc=None) -> dict:
     """This function updates the document for the relevant set of inserted or updated attributes in the Apache Atlas entity.
     This function returns a dictionary with all updated documents as output with the following structure: guid -> app search document"""
 
     updated_docs: Dict[str, dict] = dict()
+    logging.warning(engine_name)
     schema_keys = sorted(
         list(app_search.get_schema(engine_name=engine_name).keys()))
     input_entity_guid = input_entity.guid
