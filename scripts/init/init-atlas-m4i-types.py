@@ -7,8 +7,8 @@ from m4i_atlas_core import ConfigStore, create_type_defs, data_dictionary_types_
 store = ConfigStore.get_instance()
 
 store.load({
-    "atlas.credentials.username": os.getenv('atlas_username'),
-    "atlas.credentials.password": os.getenv('atlas_password'),
+    "atlas.credentials.username": os.getenv('KEYCLOAK_ATLAS_USER_USERNAME'),
+    "atlas.credentials.password": os.getenv('KEYCLOAK_ATLAS_ADMIN_PASSWORD'),
     "atlas.server.url": os.getenv('atlas_url') + "/api/atlas"
 })
 
