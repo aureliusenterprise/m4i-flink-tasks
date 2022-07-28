@@ -9,14 +9,13 @@ from typing import List, Optional
 from elastic_app_search import Client
 
 from pyflink.common.typeinfo import Types
+from m4i_flink_tasks import create_doc, delete_document,  handle_updated_attributes, handle_deleted_attributes, handle_inserted_relationships, handle_deleted_relationships
 
 from m4i_atlas_core import ConfigStore
 from config import config
 from credentials import credentials
 
 config_store = ConfigStore.get_instance()
-
-from m4i_flink_tasks import create_doc, delete_document,  handle_updated_attributes, handle_deleted_attributes, handle_inserted_relationships, handle_deleted_relationships
 
 from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream import StreamExecutionEnvironment
@@ -119,9 +118,11 @@ class SynchronizeAppsearch(MapFunction):
             if entity_message.event_type=="EntityDeleted":
                 logging.warning("entity docuemnt is deleted.")
                 # delete_document(entity_message.guid, app_search)
-
+            engine_name = config_store.get("elastic.app.search.engine.name")
+            
             for key, updated_doc in updated_docs.items():
                 logging.warning(repr(updated_doc))
+                app_search.put_documents(engine_name=engine_name, documents=updated_doc)
 
             logging.warning("kafka notification is handled.")
 
@@ -156,7 +157,6 @@ def synchronize_app_search():
     env = StreamExecutionEnvironment.get_execution_environment()
     # set_env(env)
     env.set_parallelism(1)
-
 
     path = os.path.dirname(__file__)
 
