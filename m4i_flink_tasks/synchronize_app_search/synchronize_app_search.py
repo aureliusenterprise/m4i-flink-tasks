@@ -13,7 +13,6 @@ ActionHandler = Callable[[Optional[Union[Entity, Relationship]]], None]
 logger = logging.getLogger(__name__)
 
 config_store = ConfigStore.get_instance()
-
 update_attributes = [definition, email]
 
 engine_name = config_store.get("elastic.app.search.engine.name")
@@ -103,7 +102,7 @@ def get_m4i_source_types(super_types : list) -> list:
 
 def get_child_entity_docs(entity_guid : str, app_search : AppSearch, engine_name : str = None):
 
-    engine_name = config_store.get_many("elastic.app.search.engine.name")
+    engine_name = config_store.get("elastic.app.search.engine.name")
 
     body = {
         "query":"",
@@ -338,7 +337,7 @@ def delete_breadcrumb(new_doc, parent_entity_guid, app_search):
 
 async def handle_inserted_relationships(entity_message, new_input_entity, inserted_relationships, app_search, doc=None):
     updated_docs: Dict[str, dict] = dict()
-    engine_name = config_store.get("elastic_search_index")
+    engine_name = config_store.get("elastic.app.search.engine.name")
     schema_keys = sorted(
         list(app_search.get_schema(engine_name=engine_name).keys()))
     input_entity_guid = new_input_entity.guid
