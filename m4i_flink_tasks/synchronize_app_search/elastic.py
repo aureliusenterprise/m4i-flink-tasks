@@ -90,3 +90,9 @@ def get_documents(app_search : AppSearch, engine_name : str, entity_guid_list: l
     documents_list = app_search.get_documents(
         engine_name=engine_name, document_ids=entity_guid_list)
     return documents_list
+
+def delete_document(entity_guid : str, app_search: AppSearch) -> None:
+    "This function deleted all documents corresponding to the given entity guid. No output is returned."
+    engine_name = config_store.get("elastic.app.search.engine.name")
+    app_search.delete_documents(
+        engine_name=engine_name, document_ids=[entity_guid])

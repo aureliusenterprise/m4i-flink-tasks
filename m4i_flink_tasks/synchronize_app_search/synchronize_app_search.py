@@ -23,7 +23,7 @@ breadcrumb_dict: Dict[str, list] = dict()
 derived_entity_dict: Dict[str, list] = dict()
 docs_dict: Dict[str, dict] = dict()
 
-
+AppSearch.search
 
 
 async def get_super_types(input_type: str) -> List[EntityDef]:
@@ -131,8 +131,6 @@ async def is_parent_child_relationship(input_document : dict, relationship_key :
 
     return False
 
-
-
 async def is_attribute_field_relationship(input_document : dict, input_relationship : dict):
     """This function determines whether the relationship is an attribute field relationship."""
     super_types = await get_super_types_names(input_relationship["typeName"])
@@ -152,69 +150,44 @@ def get_attribute_field_guid(input_document : dict, input_relationship : dict):
         return input_relationship[guid], input_document[guid]
 
     
-# Until here is checked 
 
 
-def define_derived_entity_attribute_field_fields(input_entity_guid, attribute_guid, field_guid, doc, app_search):
-    """"""
-    if input_entity_guid == attribute_guid:
-        field_doc = get_document(field_guid, app_search)
-        doc["derivedfieldguid"] = [field_guid]
-        doc["derivedfield"] = field_doc[name]
+def define_derived_entity_attribute_field_fields(data_attribute_document: dict, field_document : dict) -> List[dict]:
+    """This function defines the derived entity fields for the documents provided which should correspond to a data attribute and field.
+    The documents updated are returned as a result."""
 
-        field_doc["deriveddataattributeguid"] = [attribute_guid]
-        field_doc["deriveddataattribute"] = doc[name]
+    data_attribute_document["derivedfieldguid"] = [field_document[guid]]
+    data_attribute_document["derivedfield"] = [field_document[name]]
 
-        return doc, field_doc
+    field_document["deriveddataattributeguid"] = [data_attribute_document[guid]]
+    field_document["deriveddataattribute"] = [data_attribute_document[name]]
 
-    else:
-        attribute_doc = get_document(attribute_guid, app_search)
-        doc["deriveddataattributeguid"] = [field_guid]
-        doc["deriveddataattribute"] = attribute_doc[name]
+    return data_attribute_document, field_document
 
-        attribute_doc["derivedfieldguid"] = [field_guid]
-        attribute_doc["derivedfield"] = doc[name]
+def delete_derived_entity_attribute_field_fields(data_attribute_document: dict, field_document: dict) -> List[dict]:
+    """This function deleted the derived entity fields for the documents provided which should correspond to a data attribute and field.
+    The documents updated are returned as a result."""
 
-        return doc, attribute_doc
+    # This can be done using a generic function that takes a document and a field as input and resets the field...
+    # Implement this function once the schema is formalized
+    
+    data_attribute_document["derivedfieldguid"] = []
+    data_attribute_document["derivedfield"] = []
 
+    field_document["deriveddataattributeguid"] = []
+    field_document["deriveddataattribute"] = []
 
-def delete_derived_entity_attribute_field_fields(input_entity_guid, attribute_guid, field_guid, doc, app_search):
-    """"""
-    if input_entity_guid == attribute_guid:
-        field_doc = get_document(field_guid, app_search)
-        doc["derivedfieldguid"] = None
-        doc["derivedfield"] = None
+    return data_attribute_document, field_document
 
-        field_doc["deriveddataattributeguid"] = None
-        field_doc["deriveddataattribute"] = None
-
-        return doc, field_doc
-
-    else:
-        attribute_doc = get_document(attribute_guid, app_search)
-        doc["deriveddataattributeguid"] = None
-        doc["deriveddataattribute"] = None
-
-        attribute_doc["derivedfieldguid"] = None
-        attribute_doc["derivedfield"] = None
-
-        return doc, attribute_doc
-
-
-def delete_document(entity_guid, app_search: AppSearch):
-    engine_name = config_store.get("elastic.app.search.engine.name")
-    app_search.delete_documents(
-        engine_name=engine_name, document_ids=[entity_guid])
-
-
-async def get_parent_child_entity_guid(doc, key, input_relationship):
-    """This function determines the heirarchy between the input entities and rerturns the guids ordered: parent_guid, child_guid"""
+async def get_parent_child_entity_guid(input_document, key, input_relationship):
+    """This function determines the hierarchy between the input entities and rerturns the guids ordered: parent_guid, child_guid"""
     super_types = await get_super_types_names(input_relationship["typeName"])
-    target_entity_source_types = get_m4i_source_types(super_types + [input_relationship["typeName"]])
-    target_entity_guid = input_relationship[guid]
-    input_entity_guid = doc[guid]
+    target_entity_source_types = get_m4i_source_types(super_types)
 
-    if set(target_entity_source_types) == set(doc["m4isourcetype"]):
+    target_entity_guid = input_relationship[guid]
+    input_entity_guid = input_document[guid]
+
+    if set(target_entity_source_types) == set(input_document["m4isourcetype"]):
         if key.startswith("child"):
             return input_entity_guid, target_entity_guid
         if key.startswith("parent"):
@@ -222,7 +195,7 @@ async def get_parent_child_entity_guid(doc, key, input_relationship):
         else:
             print("The parent and child entity could not be determined of a relatonship that is classified as a parent-child relationship.")
 
-    for current_entity_source_type in doc["m4isourcetype"]:
+    for current_entity_source_type in input_document["m4isourcetype"]:
         for target_entity_source_type in target_entity_source_types:
             if hierarchy_mapping.get(current_entity_source_type) == target_entity_source_type:
                 return target_entity_guid, input_entity_guid
@@ -233,46 +206,47 @@ async def get_parent_child_entity_guid(doc, key, input_relationship):
     print("The parent and child entity could not be determined of a relatonship that is classified as a parent-child relationship.")
 
 
-def insert_prefix_to_breadcrumbs_of_child_entities(doc, child_entity_docs):
+def insert_prefix_to_breadcrumbs_of_child_entities(input_document : dict, child_entity_documents : List[dict]) -> List[dict]:
     """This function updates the breadcrumb of all child entity documents and returns the updated documents in case of an inserted relationship."""
-    for child_doc in child_entity_docs:
-        if doc[guid] not in child_doc["breadcrumbguid"]:
+    for child_document in child_entity_documents:
+        if input_document[guid] not in child_document["breadcrumbguid"]:
+            child_document["breadcrumbguids"] = input_document["breadcrumbguids"] + child_document["breadcrumbguid"]
 
-            child_doc["breadcrumbguids"].insert(0, doc[guid])
+        if input_document["name"] not in child_document["breadcrumbname"]:
+            child_document["breadcrumbname"] = input_document["breadcrumbname"] + child_document["breadcrumbname"]
 
-        if doc["name"] not in child_doc["breadcrumbname"]:
-            child_doc["breadcrumbname"].insert(0, doc["name"])
+        if input_document["typename"] not in child_document["breadcrumbtype"]:
+            child_document["breadcrumbtype"] = input_document["breadcrumbtype"] + child_document["breadcrumbtype"]
 
-        if doc["typename"] not in child_doc["breadcrumbtype"]:
-            child_doc["breadcrumbtype"].insert(0, doc["typename"])
+    return child_entity_documents
 
-    return child_entity_docs
+# Until here is checked 
 
-
-def delete_prefix_from_breadcrumbs_of_child_entities(doc, child_entity_docs):
+# this function is probably incorrect 
+def delete_prefix_from_breadcrumbs_of_child_entities(input_document : dict, child_entity_documents : List[dict]) -> List[dict]:
     """This function updates the breadcrumb of all child entity documents and returns the updated documents in case of a deleted relationship."""
-    for child_doc in child_entity_docs:
-        if doc[guid] in child_doc["breadcrumbguid"]:
-            guid_index = child_doc["breadcrumbguid"].index(doc[guid])
+    for child_doc in child_entity_documents:
+        if input_document[guid] in child_doc["breadcrumbguid"]:
+            guid_index = child_doc["breadcrumbguid"].index(input_document[guid])
             child_doc["breadcrumbguid"] = child_doc["breadcrumbguid"][guid_index::]
 
-        if doc["name"] in child_doc["breadcrumbname"]:
+        if input_document["name"] in child_doc["breadcrumbname"]:
             child_doc["breadcrumbname"] = child_doc["breadcrumbname"][guid_index::]
 
-        if doc["typename"] in child_doc["breadcrumbtype"]:
+        if input_document["typename"] in child_doc["breadcrumbtype"]:
             child_doc["breadcrumbtype"] = child_doc["breadcrumbtype"][guid_index::]
 
-    return child_entity_docs
+    return child_entity_documents
 
 
-def update_derived_entity_fields_of_child_entities(doc, child_entity_docs):
+def update_derived_entity_fields_of_child_entities(input_document :  dict, child_entity_documents : List[dict]) -> List[dict]:
     """This function updates the derived entity fields of all child entity documents and returns the updated documents"""
-    for child_doc in child_entity_docs:
-        for key in doc:
+    for child_document in child_entity_documents:
+        for key in input_document:
             if key.startswith("derived"):
-                child_doc[key] = doc[key]
+                child_document[key] = input_document[key]
 
-    return child_entity_docs
+    return child_entity_documents
 
 
 def delete_derived_entities(doc, parent_entity_guid, app_search):
@@ -321,19 +295,19 @@ def update_governance_role_derived_entity_fields(doc, key, input_entity):
         return doc
 
 
-def delete_parent_guid(new_doc):
+def delete_parent_guid(input_document : dict) -> dict:
     """This function deletes the parent guid of the given document."""
-    new_doc["parentguid"] = None
-    return new_doc
+    input_document["parentguid"] = None
+    return input_document
 
 
-def delete_breadcrumb(new_doc, parent_entity_guid, app_search):
+def delete_breadcrumb(input_document : dict):
     """This function deleted a breadcrumb of a child entity given that relationship to its parent is deleted."""
-    new_doc["breadcrumbguid"] = []
-    new_doc["breadcrumbname"] = []
-    new_doc["breadcrumbtype"] = []
+    input_document["breadcrumbguid"] = []
+    input_document["breadcrumbname"] = []
+    input_document["breadcrumbtype"] = []
 
-    return new_doc
+    return input_document
 
 
 async def handle_inserted_relationships(entity_message, new_input_entity, inserted_relationships, app_search, doc=None):
@@ -393,8 +367,10 @@ async def handle_inserted_relationships(entity_message, new_input_entity, insert
 
                 attribute_guid, field_guid = get_attribute_field_guid(
                     doc, inserted_relationship)
-                docs = define_derived_entity_attribute_field_fields(
-                    input_entity_guid, attribute_guid, field_guid, doc, app_search)
+                
+                data_attribute_doc, field_doc = get_documents(app_search, engine_name, [attribute_guid, field_guid])
+
+                docs = define_derived_entity_attribute_field_fields(data_attribute_doc, field_doc)
                 for doc_ in docs:
                     updated_docs[doc_[guid]] = doc_
 
@@ -430,7 +406,7 @@ async def handle_deleted_relationships(entity_message, input_entity, deleted_rel
                     doc, key, deleted_relationship)
                 if input_entity_guid == child_entity_guid:
                     doc = delete_breadcrumb(
-                        doc, parent_entity_guid, app_search)
+                        doc)
                     doc = delete_parent_guid(doc)
                     doc = delete_derived_entities(
                         doc, parent_entity_guid, app_search)
@@ -460,8 +436,9 @@ async def handle_deleted_relationships(entity_message, input_entity, deleted_rel
 
                 attribute_guid, field_guid = get_attribute_field_guid(
                     doc, deleted_relationship)
+                data_attribute_document, field_document = get_documents(app_search, engine_name, [attribute_guid, field_guid])
                 docs = delete_derived_entity_attribute_field_fields(
-                    input_entity_guid, attribute_guid, field_guid, doc, app_search)
+                    data_attribute_document, field_document)
                 for doc_ in docs:
                     updated_docs[doc_[guid]] = doc_
 
@@ -513,17 +490,19 @@ def handle_updated_attributes(entity_message, input_entity, updated_attributes, 
         return updated_docs
 
     for update_attribute in updated_attributes:
+        logging.warning("start update attribute")
 
         if update_attribute in input_entity.attributes.unmapped_attributes.keys() and update_attribute in schema_keys and update_attribute in update_attributes:
             doc[update_attribute] = input_entity.attributes.unmapped_attributes[update_attribute]
 
     if name in updated_attributes and name in input_entity.attributes.unmapped_attributes.keys() and name in schema_keys:
-
+        logging.warning("start update name.")
         if input_entity.attributes.unmapped_attributes[name] != doc.get(name):
             input_entity_name = input_entity.attributes.unmapped_attributes[name]
-
+            logging.warning("start breadcrumb update.")
             updated_docs = update_name_in_breadcrumbs(
                 input_entity_name, doc, app_search, updated_docs)
+            logging.warning("start dervived name update.")
             updated_docs = update_name_in_derived_entity_fields(
                 input_entity, doc,  app_search, updated_docs)
             doc[name] = input_entity_name
@@ -602,47 +581,38 @@ async def create_doc(entity_message, app_search) -> dict:
     # new_doc = define_derived_entity_fields(new_doc, entity_message, app_search)
 
 
-def update_name_in_breadcrumbs(input_entity_name: str, current_doc, app_search, updated_docs) -> Dict:
+def update_name_in_breadcrumbs(input_entity_name: str, input_document : dict, app_search : AppSearch, updated_documents : List[dict]) -> List[dict]:
     """This function synchronizes updated name of an entity in all breadcrumbs inheriting from this entity."""
-    doc_entity_name = current_doc[name]
-    doc_entity_guid = current_doc[guid]
+    doc_entity_name = input_document[name]
+    doc_entity_guid = input_document[guid]
 
     engine_name = config_store.get("elastic.app.search.engine.name")
 
-    # This is the old query:
-
-    # results = app_search.search(engine_name = engine_name, body = {
-    # "query":"",
-    # "filters":{
-    #    breadcrumb_guid:[
-    #         doc_entity_guid
-    #     ]
-    # }
-    # }).body.get("results")
-
-    # breadcrumb_guid_list = [result["id"].get("raw") for result in results]
-
-    results = app_search.search(engine_name=engine_name, query=doc_entity_guid, options={
-        {
-            "search_fields": {breadcrumb_guid: {}}
-        }
-    }).get("results")
+    results = app_search.search(engine_name = engine_name, body = {
+    "query":"",
+    "filters":{
+       breadcrumb_guid:[
+            doc_entity_guid
+        ]
+    }
+    }).body.get("results")
 
     breadcrumb_guid_list = [result["id"].get("raw") for result in results]
 
+    
     if len(breadcrumb_guid_list) == 0:
-        return updated_docs
+        return updated_documents
+    
+    retrieved_documents = get_documents(app_search=app_search,engine_name=engine_name,entity_guid_list=breadcrumb_guid_list)
+    for retrieved_document in retrieved_documents:
+        if breadcrumb_guid in retrieved_document.keys() and doc_entity_guid in retrieved_document[breadcrumb_guid]:
 
-    for entity_guid in breadcrumb_guid_list:
-        doc = get_document(entity_guid, app_search)
-        if breadcrumb_guid in doc.keys() and doc_entity_guid in doc[breadcrumb_guid]:
+            if breadcrumb_name in retrieved_document.keys() and doc_entity_name in retrieved_document[breadcrumb_name]:
+                retrieved_document[breadcrumb_name] = [input_entity_name if entity_name ==
+                                        doc_entity_name else entity_name for entity_name in retrieved_document[breadcrumb_name]]
+                updated_documents[retrieved_document[guid]] = retrieved_document
 
-            if breadcrumb_name in doc.keys() and doc_entity_name in doc[breadcrumb_name]:
-                doc[breadcrumb_name] = [input_entity_name if entity_name ==
-                                        doc_entity_name else entity_name for entity_name in doc[breadcrumb_name]]
-                updated_docs[doc[guid]] = doc
-
-    return updated_docs
+    return updated_documents
 
 
 def update_name_in_derived_entity_fields(input_entity, current_doc, app_search, updated_docs):
@@ -688,39 +658,38 @@ def update_name_in_derived_entity_fields(input_entity, current_doc, app_search, 
         derived_types = [derived_person]
         derived_guids = [derived_person_guid]
 
-    # This is the old query:
 
-    # results = app_search.search(engine_name = engine_name, body =
-    # {   "query":"",
-    #     "filters":{
-    #         "any" :
-    #         [
-    #             {derived_data_domain_guid:      [doc_entity_guid]},
-    #             {derived_data_entity_guid:      [doc_entity_guid]},
-    #             {derived_entity_guids:          [doc_entity_guid]},
-    #             {derived_data_attribute_guid:   [doc_entity_guid]},
-    #             {derived_system_guid:           [doc_entity_guid]},
-    #             {derived_collection_guid:       [doc_entity_guid]},
-    #             {derived_dataset_guid:          [doc_entity_guid]},
-    #             {derived_dataset_guids:         [doc_entity_guid]},
-    #             {derived_field_guid:            [doc_entity_guid]},
-    #             {derived_person_guid:           [doc_entity_guid]}
-    #         ]
-    #     }
-    # }).body.get("results")
+    results = app_search.search(engine_name = engine_name, body =
+    {   "query":"",
+        "filters":{
+            "any" :
+            [
+                {derived_data_domain_guid:      [doc_entity_guid]},
+                {derived_data_entity_guid:      [doc_entity_guid]},
+                {derived_entity_guids:          [doc_entity_guid]},
+                {derived_data_attribute_guid:   [doc_entity_guid]},
+                {derived_system_guid:           [doc_entity_guid]},
+                {derived_collection_guid:       [doc_entity_guid]},
+                {derived_dataset_guid:          [doc_entity_guid]},
+                {derived_dataset_guids:         [doc_entity_guid]},
+                {derived_field_guid:            [doc_entity_guid]},
+                {derived_person_guid:           [doc_entity_guid]}
+            ]
+        }
+    }).body.get("results")
 
-    results = app_search.search(engine_name=engine_name, query=doc_entity_guid, options={
-        "search_fields":    {derived_data_domain_guid:     {},
-                             derived_data_entity_guid:      {},
-                             derived_entity_guids:          {},
-                             derived_data_attribute_guid:   {},
-                             derived_system_guid:           {},
-                             derived_collection_guid:       {},
-                             derived_dataset_guid:          {},
-                             derived_dataset_guids:         {},
-                             derived_field_guid:            {},
-                             derived_person_guid:           {}}
-    }).get("results")
+    # results = app_search.search(engine_name=engine_name, query=doc_entity_guid, options={
+    #     "search_fields":    {derived_data_domain_guid:     {},
+    #                          derived_data_entity_guid:      {},
+    #                          derived_entity_guids:          {},
+    #                          derived_data_attribute_guid:   {},
+    #                          derived_system_guid:           {},
+    #                          derived_collection_guid:       {},
+    #                          derived_dataset_guid:          {},
+    #                          derived_dataset_guids:         {},
+    #                          derived_field_guid:            {},
+    #                          derived_person_guid:           {}}
+    # }).get("results")
 
     derived_entity_guid_list = [result["id"].get("raw") for result in results]
 
