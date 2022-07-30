@@ -691,6 +691,9 @@ def update_name_in_derived_entity_fields(new_input_entity_name: str, input_docum
     }
 
     derived_entity_guid_list = send_query(app_search=app_search, body=body)
+
+    if len(derived_entity_guid_list) == 0:
+        return updated_documents
     
         
     retrieved_documents = []
@@ -701,11 +704,7 @@ def update_name_in_derived_entity_fields(new_input_entity_name: str, input_docum
             retrieved_documents.append(updated_documents[document_guid])
 
     retrieved_documents = retrieved_documents + list(get_documents(app_search=app_search, engine_name=engine_name, entity_guid_list=derived_entity_guid_list))
-
-    if len(derived_entity_guid_list) == 0:
-        return updated_documents
-        
-    retrieved_documents = get_documents(app_search=app_search, engine_name=engine_name, entity_guid_list=derived_entity_guid_list)
+    
     for retrieved_document in retrieved_documents:
 
         for index in range(len(derived_types)):
