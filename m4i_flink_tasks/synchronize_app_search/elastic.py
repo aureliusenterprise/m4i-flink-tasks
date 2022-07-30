@@ -87,10 +87,12 @@ def send_query(app_search : AppSearch, body: dict, engine_name: str = None, curr
 
 def get_documents(app_search : AppSearch, engine_name : str, entity_guid_list: list) -> list:
     """This function returns a list of documents having the input guids as ids."""
-    
+    if entity_guid_list == []:
+        return []
+        
     documents_list = app_search.get_documents(
         engine_name=engine_name, document_ids=entity_guid_list)
-    return documents_list
+    return list(documents_list)
 
 def delete_document(entity_guid : str, app_search: AppSearch) -> None:
     "This function deleted all documents corresponding to the given entity guid. No output is returned."
