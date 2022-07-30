@@ -9,6 +9,7 @@ from .HierarchyMapping import hierarchy_mapping
 from .parameters import *
 from .elastic import get_document, send_query, get_documents
 import json
+from copy import copy #add this to dependencies
 
 ActionHandler = Callable[[Optional[Union[Entity, Relationship]]], None]
 logger = logging.getLogger(__name__)
@@ -503,6 +504,7 @@ def handle_updated_attributes(entity_message, input_entity, updated_attributes, 
             logging.warning("start breadcrumb update.")
             updated_docs = update_name_in_breadcrumbs(
                 input_entity_name, doc, app_search, updated_docs)
+
             logging.warning("start dervived name update.")
             updated_docs = update_name_in_derived_entity_fields(
                 input_entity_name, doc,  app_search, updated_docs)
@@ -589,22 +591,30 @@ def update_name_in_breadcrumbs(new_input_entity_name: str, input_document : dict
 
     engine_name = config_store.get("elastic.app.search.engine.name")
 
-    results = app_search.search(engine_name = engine_name, body = {
-    "query":"",
-    "filters":{
-       breadcrumb_guid:[
-            document_entity_guid
-        ]
+    body = {
+        "query":"",
+        "filters":{
+            breadcrumb_guid:[
+                document_entity_guid
+            ]
+        }
     }
-    }).body.get("results")
 
-    breadcrumb_guid_list = [result["id"].get("raw") for result in results]
-
+    
+    breadcrumb_guid_list = send_query(app_search=app_search, body=body)
     
     if len(breadcrumb_guid_list) == 0:
         return updated_documents
+
+    retrieved_documents = []
+
+    for document_guid in copy(breadcrumb_guid_list):
+        if document_guid in updated_documents.keys():
+            breadcrumb_guid_list.remove(document_guid)
+            retrieved_documents.append(updated_documents[document_guid])
+
+    retrieved_documents = retrieved_documents + list(get_documents(app_search=app_search, engine_name=engine_name, entity_guid_list=breadcrumb_guid_list))
     
-    retrieved_documents = get_documents(app_search=app_search, engine_name=engine_name, entity_guid_list=breadcrumb_guid_list)
     for retrieved_document in retrieved_documents:
         if breadcrumb_guid in retrieved_document.keys() and document_entity_guid in retrieved_document[breadcrumb_guid]:
             if breadcrumb_name in retrieved_document.keys():
@@ -661,9 +671,8 @@ def update_name_in_derived_entity_fields(new_input_entity_name: str, input_docum
         derived_types = [derived_person]
         derived_guids = [derived_person_guid]
 
-
-    results = app_search.search(engine_name = engine_name, body =
-    {   "query":"",
+    body = {   
+        "query":"",
         "filters":{
             "any" :
             [
@@ -679,25 +688,23 @@ def update_name_in_derived_entity_fields(new_input_entity_name: str, input_docum
                 {derived_person_guid:           [document_entity_guid]}
             ]
         }
-    }).body.get("results")
+    }
 
-    # results = app_search.search(engine_name=engine_name, query=doc_entity_guid, options={
-    #     "search_fields":    {derived_data_domain_guid:     {},
-    #                          derived_data_entity_guid:      {},
-    #                          derived_entity_guids:          {},
-    #                          derived_data_attribute_guid:   {},
-    #                          derived_system_guid:           {},
-    #                          derived_collection_guid:       {},
-    #                          derived_dataset_guid:          {},
-    #                          derived_dataset_guids:         {},
-    #                          derived_field_guid:            {},
-    #                          derived_person_guid:           {}}
-    # }).get("results")
+    derived_entity_guid_list = send_query(app_search=app_search, body=body)
+    
+        
+    retrieved_documents = []
 
-    derived_entity_guid_list = [result["id"].get("raw") for result in results]
+    for document_guid in copy(derived_entity_guid_list):
+        if document_guid in updated_documents.keys():
+            derived_entity_guid_list.remove(document_guid)
+            retrieved_documents.append(updated_documents[document_guid])
+
+    retrieved_documents = retrieved_documents + list(get_documents(app_search=app_search, engine_name=engine_name, entity_guid_list=derived_entity_guid_list))
 
     if len(derived_entity_guid_list) == 0:
         return updated_documents
+        
     retrieved_documents = get_documents(app_search=app_search, engine_name=engine_name, entity_guid_list=derived_entity_guid_list)
     for retrieved_document in retrieved_documents:
 
