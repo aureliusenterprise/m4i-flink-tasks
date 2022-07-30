@@ -8,6 +8,7 @@ from elastic_enterprise_search import AppSearch
 from .HierarchyMapping import hierarchy_mapping
 from .parameters import *
 from .elastic import get_document, send_query, get_documents
+import json
 
 ActionHandler = Callable[[Optional[Union[Entity, Relationship]]], None]
 logger = logging.getLogger(__name__)
@@ -608,8 +609,12 @@ def update_name_in_breadcrumbs(new_input_entity_name: str, input_document : dict
         if breadcrumb_guid in retrieved_document.keys() and document_entity_guid in retrieved_document[breadcrumb_guid]:
             if breadcrumb_name in retrieved_document.keys():
                 index = retrieved_document[breadcrumb_guid].index(document_entity_guid)
+                logging.warning("updating breadcrtumb name")
                 retrieved_document[breadcrumb_name][index] = new_input_entity_name
+                logging.warning("updating documents returned by function: update_naem_in_breadcrumbs")
                 updated_documents[retrieved_document[guid]] = retrieved_document
+                logging.warning(json.dumps(retrieved_document))
+
 
     return updated_documents
 
