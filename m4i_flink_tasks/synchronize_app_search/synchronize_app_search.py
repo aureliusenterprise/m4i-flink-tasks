@@ -612,8 +612,8 @@ def update_name_in_breadcrumbs(new_input_entity_name: str, input_document : dict
         if document_guid in updated_documents.keys():
             breadcrumb_guid_list.remove(document_guid)
             retrieved_documents.append(updated_documents[document_guid])
-
-    retrieved_documents = retrieved_documents + list(get_documents(app_search=app_search, engine_name=engine_name, entity_guid_list=breadcrumb_guid_list))
+    
+    retrieved_documents = retrieved_documents + (get_documents(app_search=app_search, engine_name=engine_name, entity_guid_list=breadcrumb_guid_list))
     
     for retrieved_document in retrieved_documents:
         if breadcrumb_guid in retrieved_document.keys() and document_entity_guid in retrieved_document[breadcrumb_guid]:
@@ -703,9 +703,11 @@ def update_name_in_derived_entity_fields(new_input_entity_name: str, input_docum
             derived_entity_guid_list.remove(document_guid)
             retrieved_documents.append(updated_documents[document_guid])
 
-    retrieved_documents = retrieved_documents + list(get_documents(app_search=app_search, engine_name=engine_name, entity_guid_list=derived_entity_guid_list))
+    retrieved_documents = retrieved_documents + (get_documents(app_search=app_search, engine_name=engine_name, entity_guid_list=derived_entity_guid_list))
     
     for retrieved_document in retrieved_documents:
+        logging.warning("start value:")
+        logging.warning(json.dumps(retrieved_document))
 
         for index in range(len(derived_types)):
             derived_type_field = derived_types[index]
@@ -726,7 +728,8 @@ def update_name_in_derived_entity_fields(new_input_entity_name: str, input_docum
                 else:
                     logging.warning(
                         f"The entity guid index does not match the entity name index.")
-
+        logging.warning("result:")
+        logging.warning(json.dumps(retrieved_document))
     return updated_documents
 
 
