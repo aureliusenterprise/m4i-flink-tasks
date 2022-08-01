@@ -53,7 +53,7 @@ class GetEntity(MapFunction):
                 logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json}))
                 return json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json})
                 
-            if kafka_notification.message.operation_type in EntityAuditAction.ENTITY_DELETE:
+            if kafka_notification.message.operation_type == EntityAuditAction.ENTITY_DELETE:
                 kafka_notification_json = json.loads(kafka_notification.to_json())
                 logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}}))
                 return json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}})

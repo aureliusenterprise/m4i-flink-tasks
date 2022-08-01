@@ -30,7 +30,7 @@ def make_elastic_app_search_connect() -> AppSearch:
     ) = config_store.get_many(
         "elastic.enterprise.search.endpoint", 
         "elastic.user", 
-        "elastic.search.passwd")
+        "elastic.passwd")
 
     app_search = AppSearch(
         hosts=elastic_base_endpoint,

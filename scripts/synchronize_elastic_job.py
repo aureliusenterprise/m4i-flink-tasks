@@ -9,7 +9,7 @@ from typing import List, Optional
 from elastic_app_search import Client
 
 from pyflink.common.typeinfo import Types
-from m4i_flink_tasks import create_doc, delete_document,  handle_updated_attributes, handle_deleted_attributes, handle_inserted_relationships, handle_deleted_relationships
+from m4i_flink_tasks import create_document, delete_document,  handle_updated_attributes, handle_deleted_attributes, handle_inserted_relationships, handle_deleted_relationships
 
 from m4i_atlas_core import ConfigStore
 from config import config
@@ -87,7 +87,7 @@ class SynchronizeAppsearch(MapFunction):
 
             if entity_message.event_type=="EntityCreated":
                 logging.warning("New document will be created.")
-                entity_doc = asyncio.run(create_doc(entity_message, app_search))
+                entity_doc = asyncio.run(create_document(entity_message.new_value))
                 logging.warning("New document is created.")
                 logging.warning(repr(entity_doc))
             if entity_message.inserted_attributes != []:
@@ -105,24 +105,27 @@ class SynchronizeAppsearch(MapFunction):
                 updated_docs = handle_deleted_attributes(entity_message, entity_message.new_value,entity_message.deleted_attributes, app_search, entity_doc)
                 logging.warning("deleted attributes handled.")
 
-            if entity_message.deleted_relationships != {}:
-                logging.warning("handle deleted relationships.")
-                updated_docs = asyncio.run(handle_deleted_relationships(entity_message, entity_message.old_value,entity_message.deleted_relationships, app_search, entity_doc))
-                logging.warning("deleted relationships handled.")
+            # if entity_message.deleted_relationships != {}:
+            #     logging.warning("handle deleted relationships.")
+            #     updated_docs = asyncio.run(handle_deleted_relationships(entity_message, entity_message.old_value,entity_message.deleted_relationships, app_search, entity_doc))
+            #     logging.warning("deleted relationships handled.")
 
-            if entity_message.inserted_relationships != {}:
-                logging.warning("handle inserted relationships.")
-                updated_docs = asyncio.run(handle_inserted_relationships(entity_message, entity_message.new_value, entity_message.inserted_relationships, app_search, entity_doc))
-                logging.warning("inserted relationships handled.")
+            # if entity_message.inserted_relationships != {}:
+            #     logging.warning("handle inserted relationships.")
+            #     updated_docs = asyncio.run(handle_inserted_relationships(entity_message, entity_message.new_value, entity_message.inserted_relationships, app_search, entity_doc))
+            #     logging.warning("inserted relationships handled.")
 
-            if entity_message.event_type=="EntityDeleted":
-                logging.warning("entity docuemnt is deleted.")
-                # delete_document(entity_message.guid, app_search)
-            engine_name = config_store.get("elastic.app.search.engine.name")
-            
             for key, updated_doc in updated_docs.items():
                 logging.warning(repr(updated_doc))
-                app_search.put_documents(engine_name=engine_name, documents=updated_doc)
+                res = app_search.index_documents(engine_name=engine_name, documents=updated_doc)
+                logging.warning(res)
+
+            if entity_message.event_type=="EntityDeleted":
+                logging.warning("entity document is deleted.")
+                delete_document(entity_message.guid, app_search)
+            engine_name = config_store.get("elastic.app.search.engine.name")
+            
+     
 
             logging.warning("kafka notification is handled.")
 

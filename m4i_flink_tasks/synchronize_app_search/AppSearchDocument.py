@@ -1,12 +1,12 @@
 
 from dataclasses import dataclass, field
 from dataclasses_json import DataClassJsonMixin, LetterCase, dataclass_json
-from typing import List
+from typing import List, Optional
 
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass
-class AppSearchSchema(DataClassJsonMixin):
+class AppSearchDocument(DataClassJsonMixin):
     id: str
     sourcetype: str
     name: str
@@ -38,13 +38,13 @@ class AppSearchSchema(DataClassJsonMixin):
     dqscorecnt_accuracy: float = field(default_factory=float)
     dqscorecnt_validity: float = field(default_factory=float)
 
-    parentguid: str =  field(default_factory=str)
-    entityname : str =  field(default_factory=str)
-    definition: str = field(default_factory=str)
-    email: str = field(default_factory=str)
-    deriveddataownerguid: str = field(default_factory=str)
-    deriveddomainleadguid: str = field(default_factory=str)
-    deriveddatastewardguid: str = field(default_factory=str)
+    parentguid: Optional[str] =  None
+    entityname : Optional[str] =  None
+    definition: Optional[str] =  None
+    email: Optional[str] =  None
+    deriveddataownerguid: Optional[str] =  None
+    deriveddomainleadguid: Optional[str] =  None
+    deriveddatastewardguid: Optional[str] =  None
     
     derivedfield: List[str] = field(default_factory=list)
     deriveddataattribute: List[str] = field(default_factory=list)

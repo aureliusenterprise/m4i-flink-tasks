@@ -7,6 +7,7 @@ from m4i_atlas_core.entities.atlas.core.relationship.Relationship import Relatio
 from elastic_enterprise_search import AppSearch
 from .HierarchyMapping import hierarchy_mapping
 from .parameters import *
+from .AppSearchDocument import AppSearchDocument
 from .elastic import get_document, send_query, get_documents
 import json
 from copy import copy #add this to dependencies
@@ -738,34 +739,25 @@ def handle_deleted_attributes(entity_message, input_entity, deleted_attributes, 
     return updated_docs
 
 
-async def create_document(input_entity : Entity, app_search : AppSearch) -> dict:
+async def create_document(input_entity : Entity) -> dict:
     """This function creates a new app search document corresponding tp the entity belonging to the input entity message.
     The output document has the standard fields that could be infered directly from the entity message filled in.
     The dq scores are all equal to zero"""
-    engine_name = config_store.get("elastic.app.search.engine.name")
-    schema_keys = sorted(
-        list(app_search.get_schema(engine_name=engine_name).keys()))
-    
-    new_document = {}
-
-    super_types = await get_super_types_names(input_entity.type_name)
     super_types = list(reversed(super_types))
 
-    new_document["id"] = input_entity.guid
-    new_document[guid] = input_entity.guid
-    new_document["referenceablequalifiedname"] = input_entity.attributes.unmapped_attributes["qualifiedName"]
-    new_document["typename"] = input_entity.type_name
-    new_document["sourcetype"] = get_source_type(super_types)
-    new_document["m4isourcetype"] = get_m4i_source_types(super_types)
-    new_document["supertypenames"] = super_types
+    app_search_document = AppSearchDocument(id=input_entity.guid,
+        guid = input_entity.guid,
+        sourcetype = get_source_type(super_types),
+        referenceablequalifiedname = input_entity.attributes.unmapped_attributes["qualifiedName"],
+        typename = input_entity.type_name,
+        m4isourcetype = get_m4i_source_types(super_types),
+        supertypenames = super_types,
+        name = input_entity.attributes.unmapped_attributes.get(name),
+        definition =  input_entity.attributes.unmapped_attributes.get(definition),
+        email = input_entity.attributes.unmapped_attributes.get(email)
+        )
 
-    new_document[name] = input_entity.attributes.unmapped_attributes.get(name)
-    new_document[definition] = input_entity.attributes.unmapped_attributes.get(
-        definition)
-    new_document[email] = input_entity.attributes.unmapped_attributes.get(email)
-
-    new_document = fill_in_dq_scores(schema_keys, new_document)
-    return new_document
+    return json.loads(app_search_document.to_json())
 
     # new_doc = define_breadcrumb(new_doc, entity_message, app_search)
     # new_doc = define_derived_entity_fields(new_doc, entity_message, app_search)
