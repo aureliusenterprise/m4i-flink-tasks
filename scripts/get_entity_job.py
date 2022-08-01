@@ -37,7 +37,7 @@ class GetEntity(MapFunction):
             access_token = get_keycloak_token()
             logging.warning(access_token)
 
-            if kafka_notification.message.operation_type in [EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE, EntityAuditAction.ENTITY_DELETE]:
+            if kafka_notification.message.operation_type in [EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE]:
                 entity_guid = kafka_notification.message.entity.guid
                 await get_entity_by_guid.cache.clear()
                 event_entity = await get_entity_by_guid(guid=entity_guid, ignore_relationships=False, access_token=access_token)
@@ -47,11 +47,17 @@ class GetEntity(MapFunction):
 
                 logging.warning(repr(kafka_notification))
                 logging.warning(repr(event_entity))
-                kafka_notification_json =  json.loads(kafka_notification.to_json())
-                entity_json =   json.loads(event_entity.to_json())
+                kafka_notification_json = json.loads(kafka_notification.to_json())
+                entity_json = json.loads(event_entity.to_json())
 
                 logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json}))
                 return json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json})
+                
+            if kafka_notification.message.operation_type in EntityAuditAction.ENTITY_DELETE:
+                kafka_notification_json = json.loads(kafka_notification.to_json())
+                logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}}))
+                return json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}})
+
 
         # END func
         try:

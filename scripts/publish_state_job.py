@@ -66,7 +66,7 @@ class PublishState(MapFunction):
             if not kafka_notification_json.get("atlas_entity"):
                 logging.warning(kafka_notification)
                 logging.warning("No atlas entity.")
-                raise Exception("Atlas Entity in Kafka notification is missing.")
+                return kafka_notification
 
             atlas_entity_json = kafka_notification_json["atlas_entity"]
             atlas_entity = json.dumps(atlas_entity_json)

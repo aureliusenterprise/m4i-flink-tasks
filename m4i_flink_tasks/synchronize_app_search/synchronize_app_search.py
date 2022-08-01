@@ -59,9 +59,9 @@ async def get_super_types_names(input_type: str) -> List[str]:
 def get_source_type(super_types : list) -> SourceType:
     """This function returns the source type, either Business or Technical, based on the supertypes provided as input."""
     if data_domain in super_types or data_entity in super_types or data_attribute in super_types:
-        return SourceType.BUSINESS
+        return SourceType.BUSINESS.value
 
-    return SourceType.TECHNICAL
+    return SourceType.TECHNICAL.value
 
 def get_source_type_from_app_search(input_document: dict) -> list:
     """This function returns the m4i source types (e.g. m4i_data_attribute, m4i_field, m4i_dataset, etc.) of the app search document."""
