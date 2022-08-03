@@ -115,9 +115,10 @@ class SynchronizeAppsearch(MapFunction):
             #     updated_docs = asyncio.run(handle_inserted_relationships(entity_message, entity_message.new_value, entity_message.inserted_relationships, app_search, entity_doc))
             #     logging.warning("inserted relationships handled.")
 
+            logging.warning("updated documents")
             for key, updated_doc in updated_docs.items():
                 logging.warning(repr(updated_doc))
-                res = app_search.index_documents(engine_name=engine_name, documents=updated_doc)
+                res = app_search.put_documents(engine_name=engine_name, documents=updated_doc)
                 logging.warning(res)
 
             if entity_message.event_type=="EntityDeleted":

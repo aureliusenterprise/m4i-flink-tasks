@@ -8,6 +8,14 @@ from credentials import credentials
 from m4i_atlas_core import ConfigStore
 from AtlasEntityChangeMessage import EntityMessage
 from elastic_app_search import Client
+from .elastic import * 
+from m4i_atlas_core import *
+import json 
+import requests
+import asyncio
+
+test_engine_name = "test_synchronize_app_search_engine"
+
 
 @pytest.fixture(autouse=True)
 def store():
@@ -19,6 +27,32 @@ def store():
     config_store.reset()
 # END store
 
+@pytest.fixture(autouse=True)
+def create_test_engine():
+    config_store  = store()
+    app_search = make_elastic_app_search_connect()
+    app_search.create_engine(test_engine_name)
+# END delete_test_engine
+
+@pytest.fixture(autouse=True)
+def delete_test_engine():
+    config_store  = store()
+    app_search = make_elastic_app_search_connect()
+    app_search.delete_engine(test_engine_name)
+# END delete_test_engine
+
+
+async def create_atlas_entites():
+    access_token = get_keycloak_token()
+    input_entity = Entity(type_name="m4i_data_domain", attributes=M4IAttributes(qualified_name="test_data_domain_0",unmapped_attributes={"name" : "test_data_domain"}))
+    res = await create_entities(entities = input_entity, access_token=access_token)
+
+
+async def delete_atlas_entities(entity_guids = list):
+    access_token = get_keycloak_token()
+    res = await delete_entity_hard(entity_guids, access_token)
+    
+
 @pytest.mark.asyncio
 async def test__get_super_types():
     type_name = "m4i_kafka_field"
@@ -27,6 +61,9 @@ async def test__get_super_types():
 
     assert len(super_types) == 4
 # END test__get_super_types
+
+
+
 
 # @pytest.mark.asyncio
 # async def test__handle_updated_attributes():

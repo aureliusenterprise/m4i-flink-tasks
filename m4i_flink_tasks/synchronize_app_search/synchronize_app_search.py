@@ -755,7 +755,7 @@ async def create_document(input_entity : Entity) -> dict:
         name = input_entity.attributes.unmapped_attributes.get(name),
         definition =  input_entity.attributes.unmapped_attributes.get(definition),
         email = input_entity.attributes.unmapped_attributes.get(email)
-        )
+    )
 
     return json.loads(app_search_document.to_json())
 
