@@ -18,11 +18,11 @@ import pandas as pd
 from m4i_flink_tasks.synchronize_app_search import make_elastic_connection
 from m4i_flink_tasks import EntityMessage
 from m4i_flink_tasks import DeadLetterBoxMesage
-import time 
+import time
 from kafka import KafkaProducer
 from copy import copy
 import traceback
-import re 
+import re
 from m4i_atlas_core import get_entity_audit
 from m4i_atlas_core import AtlasChangeMessage, EntityAuditAction, get_entity_by_guid, get_keycloak_token
 from pyflink.datastream.functions import FlatMapFunction
@@ -113,12 +113,12 @@ def get_non_matching_fields(current_entity, previous_entity):
 
     for changed_attribute in copy(changed_attributes):
         if type(current_entity[changed_attribute].iloc[0])==list and type(previous_entity[changed_attribute].iloc[0])==list:
-            
+
             list_is_idential = True
             for element in (current_entity[changed_attribute].iloc[0]):
                 if element not in ((previous_entity[changed_attribute].iloc[0])):
                     list_is_idential = False
-            
+
             if list_is_idential:
                 changed_attributes.remove(changed_attribute)
 
@@ -127,7 +127,7 @@ def get_non_matching_fields(current_entity, previous_entity):
 def get_added_relationships(current_entity, previous_entity):
     comparison = current_entity.iloc[0].eq(previous_entity.iloc[0])
     changed_attributes = comparison[comparison==False].index.to_list()
-    
+
     result  = dict()
     for changed_attribute in copy(changed_attributes):
         element_list = []
@@ -137,7 +137,7 @@ def get_added_relationships(current_entity, previous_entity):
                 if element not in (previous_entity[changed_attribute].iloc[0]):
                     list_is_idential = False
                     element_list.append(element)
-        
+
             if list_is_idential:
                 changed_attributes.remove(changed_attribute)
             else:
@@ -148,7 +148,7 @@ def get_added_relationships(current_entity, previous_entity):
 def get_deleted_relationships(current_entity, previous_entity):
     comparison = current_entity.iloc[0].eq(previous_entity.iloc[0])
     changed_attributes = comparison[comparison==False].index.to_list()
-    
+
     result  = dict()
     for changed_attribute in copy(changed_attributes):
         element_list = []
@@ -158,7 +158,7 @@ def get_deleted_relationships(current_entity, previous_entity):
                 if element not in (current_entity[changed_attribute].iloc[0]):
                     list_is_idential = False
                     element_list.append(element)
-        
+
             if list_is_idential:
                 changed_attributes.remove(changed_attribute)
             else:
@@ -196,7 +196,7 @@ def get_previous_atlas_entity(atlas_entity_parsed):
     latest_update_time = atlas_entity_parsed.update_time
     entity_guid = atlas_entity_parsed.guid
     elastic = make_elastic_connection()
-  
+
     query = {
         "bool": {
             "filter": [
@@ -220,11 +220,11 @@ def get_previous_atlas_entity(atlas_entity_parsed):
         "updateTime": {"numeric_type" : "long", "order": "desc"}
     }
 
-    result = elastic.search(index = elastic_search_index, query = query, sort = sort, size = 1) 
+    result = elastic.search(index = elastic_search_index, query = query, sort = sort, size = 1)
 
     if result["hits"]["total"]["value"] >= 1:
         return result["hits"]["hits"][0]["_source"]
-    
+
 
 
 class DetermineChange(MapFunction):
@@ -234,15 +234,15 @@ class DetermineChange(MapFunction):
 
     def map(self, kafka_notification: str):
 
-        try: 
-           
+        try:
+
             logging.warning(repr(kafka_notification))
 
             kafka_notification_json = json.loads(kafka_notification)
 
             if not kafka_notification_json.get("kafka_notification") or not kafka_notification_json.get("atlas_entity"):
                 logging.warning("The Kafka notification received could not be handled due to unexpected notification structure.")
-                return 
+                return
 
             atlas_kafka_notification_json = kafka_notification_json["kafka_notification"]
             atlas_entity_json = kafka_notification_json["atlas_entity"]
@@ -313,13 +313,13 @@ class DetermineChange(MapFunction):
                 previous_atlas_entity_json = get_previous_atlas_entity(atlas_entity_parsed)
                 if not previous_atlas_entity_json:
                     logging.warning("The Kafka notification received could not be handled due to missing corresponding entity document in the audit database in elastic search.")
-                    return 
+                    return
                 logging.warning("Previous entity found.")
                 previous_entity_parsed = Entity.from_json(json.dumps(previous_atlas_entity_json))
 
                 previous_atlas_entity_json["attributes"] = delete_list_values_from_dict(previous_atlas_entity_json["attributes"])
                 atlas_entity_json["attributes"] = delete_list_values_from_dict(atlas_entity_json["attributes"])
-                
+
                 previous_entity_attributes = get_attributes_df(previous_atlas_entity_json, "attributes")
                 current_entity_attributes = get_attributes_df(atlas_entity_json, "attributes")
 
@@ -329,8 +329,8 @@ class DetermineChange(MapFunction):
                 inserted_attributes = get_added_fields(current_entity_attributes, previous_entity_attributes)
                 changed_attributes = get_changed_fields(current_entity_attributes, previous_entity_attributes)
                 deleted_attributes = get_deleted_fields(current_entity_attributes, previous_entity_attributes)
-                
-    
+
+
                 inserted_relationships = get_added_relationships(current_entity_relationships, previous_entity_relationships)
                 changed_relationships = {}
                 deleted_relationships = get_deleted_relationships(current_entity_relationships, previous_entity_relationships)
@@ -342,7 +342,7 @@ class DetermineChange(MapFunction):
                     return
 
                 result = []
-                    
+
                 if sum([len(inserted_attributes), len(changed_attributes), len(deleted_attributes)])>0:
                     event_type = "EntityAttributeAudit"
 
@@ -393,7 +393,7 @@ class DetermineChange(MapFunction):
                     )
 
                     result.append(json.dumps(json.loads(atlas_entity_change_message.to_json())))
-                
+
 
                 logging.warning("audit catergory determined.")
 
@@ -404,13 +404,13 @@ class DetermineChange(MapFunction):
         except Exception as e:
 
             logging.warning("The Kafka notification received could not be handled.")
-            
-                       
+
+
             exc_info = sys.exc_info()
             e = (''.join(traceback.format_exception(*exc_info)))
 
             logging.warning(e)
-            
+
             event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="determine_change", description = (e))
             bootstrap_server_hostname, bootstrap_server_port =  m4i_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
             producer = KafkaProducer(
@@ -421,7 +421,7 @@ class DetermineChange(MapFunction):
                 retries = 1,
                 linger_ms = 1000
             )
-            dead_lettter_box_topic = m4i_store.get("exception.events.topic.name") 
+            dead_lettter_box_topic = m4i_store.get("exception.events.topic.name")
             producer.send(topic = dead_lettter_box_topic, value=event.to_json())
 
 
@@ -431,16 +431,16 @@ class GetResult(FlatMapFunction):
     def flat_map(self, input_list):
         for element in input_list:
             yield element
-           
 
-    
+
+
 def determine_change():
-    
+
 
     env = StreamExecutionEnvironment.get_execution_environment()
     env.set_parallelism(1)
 
-    path = os.path.dirname(__file__) 
+    path = os.path.dirname(__file__)
 
     # download JARs
     kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
@@ -462,10 +462,17 @@ def determine_change():
                                                   'group.id': kafka_consumer_group_id,
                                                   "key.deserializer": "org.apache.kafka.common.serialization.StringDeserializer",
                                                   "value.deserializer": "org.apache.kafka.common.serialization.StringDeserializer"},
-                                      deserialization_schema=SimpleStringSchema()).set_commit_offsets_on_checkpoints(True).set_start_from_latest()
+                                      deserialization_schema=SimpleStringSchema())
+    if kafka_source==None:
+        logging.warning("kafka source is empty")
+        logging.warning(f"bootstrap_servers: {bootstrap_server_hostname}:{bootstrap_server_port}")
+        logging.warning(f"group.id: {kafka_consumer_group_id}")
+        logging.warning(f"topcis: {source_topic_name}")
+        raise Exception("kafka source is empty")
+    kafka_source.set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
     data_stream = env.add_source(kafka_source).name(f"consuming enriched atlas events")
-    
+
     data_stream = data_stream.map(DetermineChange(), Types.LIST(element_type_info = Types.STRING())).name("determine change").filter(lambda notif: notif)
 
     data_stream = data_stream.flat_map(GetResult(), Types.STRING()).name("parse change")

@@ -52,12 +52,12 @@ class PublishState(MapFunction):
         config_store.load({**config, **credentials})
 
     def map(self, kafka_notification: str):
-        try: 
+        try:
             kafka_notification_json = json.loads(kafka_notification)
 
             if "kafka_notification" not in kafka_notification_json.keys() or "atlas_entity" not in kafka_notification_json.keys():
                 raise Exception("Kafka event does not match the predefined structure: {\"kafka_notification\" : {}, \"atlas_entity\" : {}}")
-            
+
             if not kafka_notification_json.get("kafka_notification"):
                 logging.warning(kafka_notification)
                 logging.warning("No kafka notification.")
@@ -73,9 +73,9 @@ class PublishState(MapFunction):
             logging.warning(atlas_entity)
 
             atlas_entity = Entity.from_json(atlas_entity)
-            
+
             doc_id = "{}_{}".format(atlas_entity.guid, atlas_entity.update_time)
-            
+
             logging.warning(kafka_notification)
 
             elastic_search_index = config_store.get("elastic.search.index")
@@ -84,7 +84,7 @@ class PublishState(MapFunction):
             elastic.close()
 
             return kafka_notification
-        
+
         except Exception as e:
             exc_info = sys.exc_info()
             e = (''.join(traceback.format_exception(*exc_info)))
@@ -100,22 +100,22 @@ class PublishState(MapFunction):
                 retries = 1,
                 linger_ms = 1000
             )
-            dead_lettter_box_topic = config_store.get("exception.events.topic.name") 
+            dead_lettter_box_topic = config_store.get("exception.events.topic.name")
             producer.send(topic = dead_lettter_box_topic, value=event.to_json())
-        
-       
+
+
 def run_publish_state_job():
 
     env = StreamExecutionEnvironment.get_execution_environment()
     # set_env(env)
     env.set_parallelism(1)
 
-    path = os.path.dirname(__file__) 
+    path = os.path.dirname(__file__)
 
     # download JARs
     kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
     kafka_client = f"file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
-    
+
     env.add_jars(kafka_jar, kafka_client)
 
     bootstrap_server_hostname = config.get("kafka.bootstrap.server.hostname")
@@ -128,8 +128,14 @@ def run_publish_state_job():
                                                   'group.id': kafka_consumer_group_id,
                                                   "key.deserializer": "org.apache.kafka.common.serialization.StringDeserializer",
                                                   "value.deserializer": "org.apache.kafka.common.serialization.StringDeserializer"},
-                                      deserialization_schema=SimpleStringSchema()).set_commit_offsets_on_checkpoints(True).set_start_from_latest()
-
+                                      deserialization_schema=SimpleStringSchema())
+    if kafka_source==None:
+        logging.warning("kafka source is empty")
+        logging.warning(f"bootstrap_servers: {bootstrap_server_hostname}:{bootstrap_server_port}")
+        logging.warning(f"group.id: {kafka_consumer_group_id}")
+        logging.warning(f"topcis: {source_topic_name}")
+        raise Exception("kafka source is empty")
+    kafka_source.set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
 
     data_stream = env.add_source(kafka_source)

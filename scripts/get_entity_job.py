@@ -52,7 +52,7 @@ class GetEntity(MapFunction):
 
                 logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json}))
                 return json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json})
-                
+
             if kafka_notification.message.operation_type == EntityAuditAction.ENTITY_DELETE:
                 kafka_notification_json = json.loads(kafka_notification.to_json())
                 logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}}))
@@ -120,7 +120,7 @@ def run_get_entity_job():
         logging.warning(f"bootstrap_servers: {bootstrap_server_hostname}:{bootstrap_server_port}")
         logging.warning(f"group.id: {kafka_consumer_group_id}")
         logging.warning(f"topcis: {source_topic_name}")
-        raise Exception(kafka source is empty)
+        raise Exception("kafka source is empty")
     kafka_source.set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
 
