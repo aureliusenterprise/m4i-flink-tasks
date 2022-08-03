@@ -114,7 +114,14 @@ def run_get_entity_job():
                                                   'group.id': kafka_consumer_group_id,
                                                   "key.deserializer": "org.apache.kafka.common.serialization.StringDeserializer",
                                                   "value.deserializer": "org.apache.kafka.common.serialization.StringDeserializer"},
-                                      deserialization_schema=SimpleStringSchema()).set_commit_offsets_on_checkpoints(True).set_start_from_latest()
+                                      deserialization_schema=SimpleStringSchema())
+    if kafka_source==None:
+        logging.warning("kafka source is empty")
+        logging.warning(f"bootstrap_servers: {bootstrap_server_hostname}:{bootstrap_server_port}")
+        logging.warning(f"group.id: {kafka_consumer_group_id}")
+        logging.warning(f"topcis: {source_topic_name}")
+        raise Exception(kafka source is empty)
+    kafka_source.set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
 
     data_stream = env.add_source(kafka_source).name(f"consuming atlas events")

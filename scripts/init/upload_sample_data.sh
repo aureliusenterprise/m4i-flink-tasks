@@ -8,3 +8,4 @@ curl -g -v -X POST -H "Authorization: Bearer ${TOKEN:1:-1}" \
                 -H "Cache-Control: no-cache" \
                 -F data=@data/response1.zip \
                 "${ATLAS_EXTERNAL_URL}api/atlas/admin/import"
+
