@@ -459,7 +459,7 @@ def determine_change():
 
     kafka_source = FlinkKafkaConsumer(topics = source_topic_name,
                                       properties={'bootstrap.servers':  f"{bootstrap_server_hostname}:{bootstrap_server_port}",
-                                                  'group.id': kafka_consumer_group_id,
+                                                  'group.id': kafka_consumer_group_id+"_determine_change_job",
                                                   "key.deserializer": "org.apache.kafka.common.serialization.StringDeserializer",
                                                   "value.deserializer": "org.apache.kafka.common.serialization.StringDeserializer"},
                                       deserialization_schema=SimpleStringSchema())

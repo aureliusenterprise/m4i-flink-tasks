@@ -111,7 +111,7 @@ def run_get_entity_job():
 
     kafka_source = FlinkKafkaConsumer(topics=source_topic_name,
                                       properties={'bootstrap.servers': f"{bootstrap_server_hostname}:{bootstrap_server_port}",
-                                                  'group.id': kafka_consumer_group_id,
+                                                  'group.id': kafka_consumer_group_id+"_get_entity_job",
                                                   "key.deserializer": "org.apache.kafka.common.serialization.StringDeserializer",
                                                   "value.deserializer": "org.apache.kafka.common.serialization.StringDeserializer"},
                                       deserialization_schema=SimpleStringSchema())
