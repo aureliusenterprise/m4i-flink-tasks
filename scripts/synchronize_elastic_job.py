@@ -42,12 +42,12 @@ app_search = None
 def get_app_search():
 
     (
-        elastic_base_endpoint, 
-        elastic_user, 
+        elastic_base_endpoint,
+        elastic_user,
         elastic_passwd
     ) = config_store.get_many(
-        "elastic.enterprise.search.endpoint", 
-        "elastic.user", 
+        "elastic.enterprise.search.endpoint",
+        "elastic.user",
         "elastic.passwd"
     )
 
@@ -57,7 +57,7 @@ def get_app_search():
         basic_auth=(elastic_user, elastic_passwd)
     )
 
-    
+
     return app_search
 
 class SynchronizeAppsearch(MapFunction):
@@ -87,22 +87,22 @@ class SynchronizeAppsearch(MapFunction):
 
             if entity_message.event_type=="EntityCreated":
                 logging.warning("New document will be created.")
-                entity_doc = asyncio.run(create_document(entity_message.new_value))
+                # entity_doc = asyncio.run(create_document(entity_message.new_value))
                 logging.warning("New document is created.")
-                logging.warning(repr(entity_doc))
+                # logging.warning(repr(entity_doc))
             if entity_message.inserted_attributes != []:
                 logging.warning("handle inserted attributes.")
-                updated_docs = handle_updated_attributes(entity_message, entity_message.new_value,entity_message.inserted_attributes, app_search, entity_doc)
+                # updated_docs = handle_updated_attributes(entity_message, entity_message.new_value,entity_message.inserted_attributes, app_search, entity_doc)
                 logging.warning("inserted attributes handled.")
 
             if entity_message.changed_attributes != []:
                 logging.warning("handle updated attributes.")
-                updated_docs = handle_updated_attributes(entity_message, entity_message.new_value,entity_message.changed_attributes, app_search)
+                # updated_docs = handle_updated_attributes(entity_message, entity_message.new_value,entity_message.changed_attributes, app_search)
                 logging.warning("updated attributes handled.")
 
             if entity_message.deleted_attributes != []:
                 logging.warning("handle deleted attributes.")
-                updated_docs = handle_deleted_attributes(entity_message, entity_message.new_value,entity_message.deleted_attributes, app_search, entity_doc)
+                # updated_docs = handle_deleted_attributes(entity_message, entity_message.new_value,entity_message.deleted_attributes, app_search, entity_doc)
                 logging.warning("deleted attributes handled.")
 
             # if entity_message.deleted_relationships != {}:
@@ -115,18 +115,18 @@ class SynchronizeAppsearch(MapFunction):
             #     updated_docs = asyncio.run(handle_inserted_relationships(entity_message, entity_message.new_value, entity_message.inserted_relationships, app_search, entity_doc))
             #     logging.warning("inserted relationships handled.")
 
-            logging.warning("updated documents")
-            for key, updated_doc in updated_docs.items():
-                logging.warning(repr(updated_doc))
-                res = app_search.put_documents(engine_name=engine_name, documents=updated_doc)
-                logging.warning(res)
+            # logging.warning("updated documents")
+            # for key, updated_doc in updated_docs.items():
+            #     logging.warning(repr(updated_doc))
+            #     res = app_search.put_documents(engine_name=engine_name, documents=updated_doc)
+            #     logging.warning(res)
 
             if entity_message.event_type=="EntityDeleted":
                 logging.warning("entity document is deleted.")
-                delete_document(entity_message.guid, app_search)
+                # delete_document(entity_message.guid, app_search)
             engine_name = config_store.get("elastic.app.search.engine.name")
-            
-     
+
+
 
             logging.warning("kafka notification is handled.")
 
