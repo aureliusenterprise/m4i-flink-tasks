@@ -47,9 +47,13 @@ config_store = ConfigStore.get_instance()
 #     return connection
 
 class PublishState(MapFunction):
+    elastic = None
+    elastic_search_index = None
 
     def open(self, runtime_context: RuntimeContext):
         config_store.load({**config, **credentials})
+        self.elastic_search_index = config_store.get("elastic.search.index")
+        self.elastic = make_elastic_connection()
 
     def map(self, kafka_notification: str):
         try:
@@ -78,11 +82,26 @@ class PublishState(MapFunction):
 
             logging.warning(kafka_notification)
 
-            elastic_search_index = config_store.get("elastic.search.index")
-            elastic = make_elastic_connection()
-            elastic.index(index=elastic_search_index, id = doc_id, document=atlas_entity_json)
-            elastic.close()
-
+            # elastic_search_index = config_store.get("elastic.search.index")
+            # elastic = make_elastic_connection()
+            # elastic.index(index=elastic_search_index, id = doc_id, document=atlas_entity_json)
+            # elastic.close()
+            retry = 0
+            success = False
+            while not success and retry<3:
+                try:
+                    self.elastic.index(index=self.elastic_search_index, id = doc_id, document=atlas_entity_json)
+                    success = True
+                    logging.warning("successfully submitted the document")
+                except Exception as e:
+                    logging.warning("failed to submit the document")
+                    logging.warning(str(e))
+                    try:
+                        self.elastic = make_elastic_connection()
+                    except:
+                        pass
+                    retry = retry + 1
+            # elastic.close()
             return kafka_notification
 
         except Exception as e:
