@@ -93,7 +93,7 @@ class DumpEvents(MapFunction):
             success = False
             while not success and retry<3:
                 try:
-                    self.elastic.index(index=self.elastic_search_index, id = self.get_doc_id(), document=atlas_entity_json)
+                    self.elastic.index(index=self.elastic_search_index, id = self.get_doc_id(), document=kafka_notification_json)
                     success = True
                     logging.warning("successfully submitted the document")
                 except Exception as e:
@@ -113,7 +113,7 @@ class DumpEvents(MapFunction):
             e = (''.join(traceback.format_exception(*exc_info)))
             logging.warning(e)
 
-            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="publish_state", description = (e))
+            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification_json, job="publish_state", description = (e))
             bootstrap_server_hostname, bootstrap_server_port =  config_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
             producer = KafkaProducer(
                 bootstrap_servers=  f"{bootstrap_server_hostname}:{bootstrap_server_port}",
