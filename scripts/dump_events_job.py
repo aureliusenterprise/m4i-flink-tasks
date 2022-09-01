@@ -80,7 +80,7 @@ class DumpEvents(MapFunction):
 
             # doc_id = "{}_{}".format(atlas_entity.guid, atlas_entity.update_time)
 
-            # logging.warning(kafka_notification)
+            logging.warning(kafka_notification_json)
 
             # elastic_search_index = config_store.get("elastic.search.dump.index")
             # if elastic_search_index==None:
@@ -91,7 +91,10 @@ class DumpEvents(MapFunction):
                 try:
                     self.elastic.index(index=elastic_search_index, id = doc_id, document=atlas_entity_json)
                     success = True
-                except:
+                    logging.warning("successfully submitted the document")
+                except Exception e:
+                    logging.warning("failed to submit the document")
+                    logging.warning(str(e))
                     try:
                         self.elastic = make_elastic_connection()
                     except:
