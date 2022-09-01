@@ -92,9 +92,14 @@ class PublishState(MapFunction):
             success = False
             while not success and retry<3:
                 try:
-                    self.elastic.index(index=self.elastic_search_index, id = doc_id, document=atlas_entity_json)
-                    success = True
-                    logging.warning("successfully submitted the document")
+                    res = self.elastic.index(index=self.elastic_search_index, id = doc_id, document=atlas_entity_json)
+                    logging.warning(str(res))
+                    if res['result'] in ['updated','created','deleted']:
+                        success = True
+                        logging.warning("successfully submitted the document")
+                    else:
+                        retry = retry + 1
+                        logging.warning(f"errornouse result state {res['result']}")
                 except Exception as e:
                     logging.warning("failed to submit the document")
                     logging.warning(str(e))
@@ -163,7 +168,7 @@ def run_publish_state_job():
 
     data_stream = data_stream.map(PublishState()).name("my_mapping")
 
-    data_stream.print()
+    #data_stream.print()
 
     env.execute("publish_state_to_elastic_search")
 

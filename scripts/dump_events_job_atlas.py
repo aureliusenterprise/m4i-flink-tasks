@@ -93,9 +93,13 @@ class DumpEvents(MapFunction):
             success = False
             while not success and retry<3:
                 try:
-                    self.elastic.index(index=self.elastic_search_index, id = self.get_doc_id(), document=kafka_notification_json)
-                    success = True
-                    logging.warning("successfully submitted the document")
+                    res = self.elastic.index(index=self.elastic_search_index, id = self.get_doc_id(), document=kafka_notification_json)
+                    if res['result'] in ['updated','created','deleted']:
+                        success = True
+                        logging.warning("successfully submitted the document")
+                    else:
+                        retry = retry + 1
+                        logging.warning(f"errornouse result state {res['result']}")
                 except Exception as e:
                     logging.warning("failed to submit the document")
                     logging.warning(str(e))
