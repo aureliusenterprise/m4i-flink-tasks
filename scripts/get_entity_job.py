@@ -25,16 +25,24 @@ store = ConfigStore.get_instance()
 
 
 class GetEntity(MapFunction):
+    access_token = None
 
     def open(self, runtime_context: RuntimeContext):
         store.load({**config, **credentials})
 
+    def get_accress_token(self):
+        if self.access_token==None:
+            try:
+                self.access_token = get_keycloak_token()
+            except:
+                pass
+        return self.access_token
+
     def map(self, kafka_notification: str):
-        async def get_entity(kafka_notification):
+        async def get_entity(kafka_notification, access_token):
 
             logging.warning(repr(kafka_notification))
             kafka_notification = AtlasChangeMessage.from_json(kafka_notification)
-            access_token = get_keycloak_token()
             logging.warning(access_token)
 
             if kafka_notification.message.operation_type in [EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE]:
@@ -63,7 +71,15 @@ class GetEntity(MapFunction):
 
         # END func
         try:
-            return asyncio.run(get_entity(kafka_notification))
+            retry = 0
+            while retry < 3:
+                try:
+                    return asyncio.run(get_entity(kafka_notification, self.get_accress_token()))
+                except Exception as e:
+                    logging.warning("failed to retrieve entity from atlas - retry")
+                    logging.warning(str(e))
+                    retry = retry+1
+                    self.access_token = None
 
         except Exception as e:
 
@@ -130,7 +146,7 @@ def run_get_entity_job():
 
     data_stream = data_stream.map(GetEntity(), Types.STRING()).name("retrieve entity from atlas").filter(lambda notif: notif)
 
-    data_stream.print()
+    #data_stream.print()
 
     data_stream.add_sink(FlinkKafkaProducer(topic=sink_topic_name,
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id},
