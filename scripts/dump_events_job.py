@@ -49,6 +49,11 @@ config_store = ConfigStore.get_instance()
 class DumpEvents(MapFunction):
     elastic = None
     elastic_search_index = "debug_dump_events"
+    doc_id = 0
+
+    def get_doc_id(self):
+        self.doc_id = self.doc_id + 1
+        return self.doc_id
 
     def open(self, runtime_context: RuntimeContext):
         config_store.load({**config, **credentials})
@@ -78,7 +83,6 @@ class DumpEvents(MapFunction):
 
             # atlas_entity = Entity.from_json(atlas_entity)
 
-            # doc_id = "{}_{}".format(atlas_entity.guid, atlas_entity.update_time)
 
             logging.warning(kafka_notification_json)
 
@@ -89,7 +93,7 @@ class DumpEvents(MapFunction):
             success = False
             while not success and retry<3:
                 try:
-                    self.elastic.index(index=self.elastic_search_index, id = doc_id, document=atlas_entity_json)
+                    self.elastic.index(index=self.elastic_search_index, id = self.get_doc_id(), document=atlas_entity_json)
                     success = True
                     logging.warning("successfully submitted the document")
                 except Exception as e:
