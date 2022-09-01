@@ -49,6 +49,11 @@ config_store = ConfigStore.get_instance()
 class PublishState(MapFunction):
     elastic = None
     elastic_search_index = None
+    doc_id = 0
+
+    def get_doc_id(self):
+        self.doc_id = self.doc_id + 1
+        return self.doc_id
 
     def open(self, runtime_context: RuntimeContext):
         config_store.load({**config, **credentials})
@@ -80,7 +85,7 @@ class PublishState(MapFunction):
 
             # turns out update_time for an import of data into atlas is the same for all events. Does not work for us!
             # doc_id = "{}_{}".format(atlas_entity.guid, atlas_entity.update_time)
-            doc_id = "{}_{}".format(atlas_entity.guid, kafka_notification_json["atlas_entity"]["msgCreationTime"])
+            doc_id_ = "{}_{}".format(atlas_entity.guid, self.get_doc_id())
 
             logging.warning(kafka_notification)
 
@@ -92,7 +97,7 @@ class PublishState(MapFunction):
             success = False
             while not success and retry<3:
                 try:
-                    res = self.elastic.index(index=self.elastic_search_index, id = doc_id, document=atlas_entity_json)
+                    res = self.elastic.index(index=self.elastic_search_index, id = doc_id_, document=atlas_entity_json)
                     logging.warning(str(res))
                     if res['result'] in ['updated','created','deleted']:
                         success = True
