@@ -53,17 +53,19 @@ class GetEntity(MapFunction):
                 logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json}))
                 return json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json})
 
-            if kafka_notification.message.operation_type == EntityAuditAction.ENTITY_DELETE:
+            elif kafka_notification.message.operation_type == EntityAuditAction.ENTITY_DELETE:
                 kafka_notification_json = json.loads(kafka_notification.to_json())
                 logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}}))
                 return json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}})
 
+            else:
+                logging.warning("message with an unexpected message operation type")
 
         # END func
         try:
             return asyncio.run(get_entity(kafka_notification))
 
-        except ClientResponseError as e:
+        except Exception as e:
 
             bootstrap_server_hostname, bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
 
