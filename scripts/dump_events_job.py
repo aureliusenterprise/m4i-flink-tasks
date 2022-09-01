@@ -47,45 +47,59 @@ config_store = ConfigStore.get_instance()
 #     return connection
 
 class DumpEvents(MapFunction):
+    elastic = None
+    elastic_search_index = "debug_dump_events"
 
     def open(self, runtime_context: RuntimeContext):
         config_store.load({**config, **credentials})
+        self.elastic = make_elastic_connection()
+
 
     def map(self, kafka_notification: str):
         try:
             kafka_notification_json = json.loads(kafka_notification)
 
-            if "kafka_notification" not in kafka_notification_json.keys() or "atlas_entity" not in kafka_notification_json.keys():
-                raise Exception("Kafka event does not match the predefined structure: {\"kafka_notification\" : {}, \"atlas_entity\" : {}}")
+            # if "kafka_notification" not in kafka_notification_json.keys() or "atlas_entity" not in kafka_notification_json.keys():
+            #     raise Exception("Kafka event does not match the predefined structure: {\"kafka_notification\" : {}, \"atlas_entity\" : {}}")
 
-            if not kafka_notification_json.get("kafka_notification"):
-                logging.warning(kafka_notification)
-                logging.warning("No kafka notification.")
-                raise Exception("Original Kafka notification which is produced by Atlas is missing")
+            # if not kafka_notification_json.get("kafka_notification"):
+            #     logging.warning(kafka_notification)
+            #     logging.warning("No kafka notification.")
+            #     raise Exception("Original Kafka notification which is produced by Atlas is missing")
 
-            if not kafka_notification_json.get("atlas_entity"):
-                logging.warning(kafka_notification)
-                logging.warning("No atlas entity.")
-                return kafka_notification
+            # if not kafka_notification_json.get("atlas_entity"):
+            #     logging.warning(kafka_notification)
+            #     logging.warning("No atlas entity.")
+            #     return kafka_notification
 
-            atlas_entity_json = kafka_notification_json["atlas_entity"]
-            atlas_entity = json.dumps(atlas_entity_json)
-            logging.warning(atlas_entity)
+            # atlas_entity_json = kafka_notification_json["atlas_entity"]
+            # atlas_entity = json.dumps(atlas_entity_json)
+            # logging.warning(atlas_entity)
 
-            atlas_entity = Entity.from_json(atlas_entity)
+            # atlas_entity = Entity.from_json(atlas_entity)
 
-            doc_id = "{}_{}".format(atlas_entity.guid, atlas_entity.update_time)
+            # doc_id = "{}_{}".format(atlas_entity.guid, atlas_entity.update_time)
 
-            logging.warning(kafka_notification)
+            # logging.warning(kafka_notification)
 
             # elastic_search_index = config_store.get("elastic.search.dump.index")
             # if elastic_search_index==None:
-            elastic_search_index = "debug_dump_events"
-            elastic = make_elastic_connection()
-            elastic.index(index=elastic_search_index, id = doc_id, document=atlas_entity_json)
-            elastic.close()
+            # elastic = make_elastic_connection()
+            retry = 0
+            success = False
+            while not success and retry<3:
+                try:
+                    self.elastic.index(index=elastic_search_index, id = doc_id, document=atlas_entity_json)
+                    success = True
+                except:
+                    try:
+                        self.elastic = make_elastic_connection()
+                    except:
+                        pass
+                    retry = retry + 1
+            # elastic.close()
 
-            return kafka_notification
+            return kafka_notification_json
 
         except Exception as e:
             exc_info = sys.exc_info()
@@ -146,7 +160,7 @@ def run_dump_events_job():
 
     data_stream.print()
 
-    env.execute("publish_state_to_elastic_search")
+    env.execute("dump_event_to_elastic")
 
 
 if __name__ == '__main__':
