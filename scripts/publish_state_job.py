@@ -78,7 +78,9 @@ class PublishState(MapFunction):
 
             atlas_entity = Entity.from_json(atlas_entity)
 
-            doc_id = "{}_{}".format(atlas_entity.guid, atlas_entity.update_time)
+            # turns out update_time for an import of data into atlas is the same for all events. Does not work for us!
+            # doc_id = "{}_{}".format(atlas_entity.guid, atlas_entity.update_time)
+            doc_id = "{}_{}".format(atlas_entity.guid, kafka_notification_json["atlas_entity"]["msgCreationTime"])
 
             logging.warning(kafka_notification)
 
