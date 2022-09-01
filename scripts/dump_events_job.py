@@ -89,7 +89,7 @@ class DumpEvents(MapFunction):
             success = False
             while not success and retry<3:
                 try:
-                    self.elastic.index(index=elastic_search_index, id = doc_id, document=atlas_entity_json)
+                    self.elastic.index(index=self.elastic_search_index, id = doc_id, document=atlas_entity_json)
                     success = True
                     logging.warning("successfully submitted the document")
                 except Exception as e:
