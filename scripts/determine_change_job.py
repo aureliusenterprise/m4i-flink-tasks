@@ -191,49 +191,64 @@ def get_deleted_fields(current_entity_df, previous_entity_df):
     return list(set(result))
 
 
-def get_previous_atlas_entity(atlas_entity_parsed):
-    elastic_search_index = m4i_store.get("elastic.search.index")
-    latest_update_time = atlas_entity_parsed.update_time
-    entity_guid = atlas_entity_parsed.guid
-    elastic = make_elastic_connection()
-
-    query = {
-        "bool": {
-            "filter": [
-            {
-                "match": {
-                "guid.keyword": entity_guid
-                }
-            },
-            {
-                "range": {
-                "updateTime": {
-                    "lt": latest_update_time
-                }
-                }
-            }
-            ]
-        }
-    }
-
-    sort = {
-        "updateTime": {"numeric_type" : "long", "order": "desc"}
-    }
-
-    result = elastic.search(index = elastic_search_index, query = query, sort = sort, size = 1)
-
-    if result["hits"]["total"]["value"] >= 1:
-        return result["hits"]["hits"][0]["_source"]
-
-
 
 class DetermineChange(MapFunction):
 
+    elastic_search_index = None
+    elastic = None
+
     def open(self, runtime_context: RuntimeContext):
         m4i_store.load({**config, **credentials})
+        self.elastic_search_index = m4i_store.get("elastic.search.index")
+        self.elastic = make_elastic_connection()
+
+# elastic = make_elastic_connection()
+    def get_previous_atlas_entity(atlas_entity_parsed):
+        #elastic_search_index = m4i_store.get("elastic.search.index")
+        latest_update_time = atlas_entity_parsed.update_time
+        entity_guid = atlas_entity_parsed.guid
+        #elastic = make_elastic_connection()
+
+        query = {
+            "bool": {
+                "filter": [
+                {
+                    "match": {
+                    "guid.keyword": entity_guid
+                    }
+                },
+                {
+                    "range": {
+                    "updateTime": {
+                        "lt": latest_update_time
+                    }
+                    }
+                }
+                ]
+            }
+        }
+
+        sort = {
+            "updateTime": {"numeric_type" : "long", "order": "desc"}
+        }
+
+        retry = 0
+        while retry<3:
+            try:
+                result = self.elastic.search(index = self.elastic_search_index, query = query, sort = sort, size = 1)
+
+                if result["hits"]["total"]["value"] >= 1:
+                    return result["hits"]["hits"][0]["_source"]
+            except Exception as e:
+                logging.warning("failed to retrieve document")
+                logging.warning(str(e))
+                try:
+                    self.elastic = make_elastic_connection()
+                except:
+                    pass
+                retry = retry + 1
 
     def map(self, kafka_notification: str):
-
         try:
 
             logging.warning(repr(kafka_notification))
@@ -477,7 +492,7 @@ def determine_change():
 
     data_stream = data_stream.flat_map(GetResult(), Types.STRING()).name("parse change")
 
-    data_stream.print()
+    # data_stream.print()
 
     data_stream.add_sink(FlinkKafkaProducer(topic = sink_topic_name,
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id},
