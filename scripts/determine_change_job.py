@@ -235,6 +235,7 @@ class DetermineChange(MapFunction):
         retry = 0
         while retry<3:
             try:
+                # there is still potential to improve by using search_templayes instead of index search
                 result = self.elastic.search(index = self.elastic_search_index, query = query, sort = sort, size = 1)
 
                 if result["hits"]["total"]["value"] >= 1:
@@ -414,6 +415,10 @@ class DetermineChange(MapFunction):
 
                 return result
 
+            try:
+                logging.warning(f"unknown event type: {atlas_kafka_notification.message.operation_type}")
+            except:
+                pass
             return
 
         except Exception as e:
