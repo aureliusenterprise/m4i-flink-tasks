@@ -203,7 +203,7 @@ class DetermineChange(MapFunction):
         self.elastic = make_elastic_connection()
 
 # elastic = make_elastic_connection()
-    def get_previous_atlas_entity(atlas_entity_parsed):
+    def get_previous_atlas_entity(self, atlas_entity_parsed):
         #elastic_search_index = m4i_store.get("elastic.search.index")
         latest_update_time = atlas_entity_parsed.update_time
         entity_guid = atlas_entity_parsed.guid
@@ -326,7 +326,7 @@ class DetermineChange(MapFunction):
 
             if atlas_kafka_notification.message.operation_type == EntityAuditAction.ENTITY_UPDATE:
                 logging.warning("The Kafka notification received belongs to an entity update audit.")
-                previous_atlas_entity_json = get_previous_atlas_entity(atlas_entity_parsed)
+                previous_atlas_entity_json = self.get_previous_atlas_entity(atlas_entity_parsed)
                 if not previous_atlas_entity_json:
                     logging.warning("The Kafka notification received could not be handled due to missing corresponding entity document in the audit database in elastic search.")
                     return
