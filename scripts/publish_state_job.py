@@ -103,7 +103,6 @@ class PublishState(MapFunction):
                         success = True
                         logging.warning("successfully submitted the document")
                     else:
-                        retry = retry + 1
                         logging.warning(f"errornouse result state {res['result']}")
                 except Exception as e:
                     logging.warning("failed to submit the document")
@@ -112,7 +111,7 @@ class PublishState(MapFunction):
                         self.elastic = make_elastic_connection()
                     except:
                         pass
-                    retry = retry + 1
+                retry = retry + 1
             # elastic.close()
             return kafka_notification
 

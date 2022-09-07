@@ -240,6 +240,8 @@ class DetermineChange(MapFunction):
 
                 if result["hits"]["total"]["value"] >= 1:
                     return result["hits"]["hits"][0]["_source"]
+                if result["hits"]["total"]["value"] == 0:
+                    return None
             except Exception as e:
                 logging.warning("failed to retrieve document")
                 logging.warning(str(e))
@@ -247,7 +249,7 @@ class DetermineChange(MapFunction):
                     self.elastic = make_elastic_connection()
                 except:
                     pass
-                retry = retry + 1
+            retry = retry + 1
 
     def map(self, kafka_notification: str):
         try:
@@ -256,22 +258,24 @@ class DetermineChange(MapFunction):
 
             kafka_notification_json = json.loads(kafka_notification)
 
+    	    # check whether notification or entity is missing
             if not kafka_notification_json.get("kafka_notification") or not kafka_notification_json.get("atlas_entity"):
                 logging.warning("The Kafka notification received could not be handled due to unexpected notification structure.")
-                return
+                guid = kafka_notification_json.get("guid","not available")
+                raise Exception(f"event with GUID {guid} does not have a kafka notification and or an atlas entity attribute.")
 
             atlas_kafka_notification_json = kafka_notification_json["kafka_notification"]
-            atlas_entity_json = kafka_notification_json["atlas_entity"]
-
             atlas_kafka_notification = AtlasChangeMessage.from_json(json.dumps(atlas_kafka_notification_json))
 
+            atlas_entity_json = kafka_notification_json["atlas_entity"]
             atlas_entity_parsed = Entity.from_json(json.dumps(atlas_entity_json))
 
+        	# DELETE operation
             if atlas_kafka_notification.message.operation_type == EntityAuditAction.ENTITY_DELETE:
+                logging.warning("The Kafka notification received belongs to an entity delete audit.")
+
                 atlas_entity_json["attributes"] = delete_list_values_from_dict(atlas_entity_json["attributes"])
                 atlas_entity_json["attributes"] = delete_null_values_from_dict(atlas_entity_json["attributes"])
-
-                logging.warning("The Kafka notification received belongs to an entity delete audit.")
 
                 atlas_entity_change_message = EntityMessage(
                     type_name = atlas_entity_parsed.type_name,
@@ -294,11 +298,11 @@ class DetermineChange(MapFunction):
                 )
                 return [json.dumps(json.loads(atlas_entity_change_message.to_json()))]
 
-
+            # CREATE operation
             if atlas_kafka_notification.message.operation_type == EntityAuditAction.ENTITY_CREATE:
+                logging.warning("The Kafka notification received belongs to an entity create audit.")
                 atlas_entity_json["attributes"] = delete_list_values_from_dict(atlas_entity_json["attributes"])
                 atlas_entity_json["attributes"] = delete_null_values_from_dict(atlas_entity_json["attributes"])
-                logging.warning("The Kafka notification received belongs to an entity create audit.")
 
                 atlas_entity_change_message = EntityMessage(
                     type_name = atlas_entity_parsed.type_name,
@@ -321,13 +325,12 @@ class DetermineChange(MapFunction):
                 )
                 return [json.dumps(json.loads(atlas_entity_change_message.to_json()))]
 
-
-
-
+            # UPDATE operation
             if atlas_kafka_notification.message.operation_type == EntityAuditAction.ENTITY_UPDATE:
                 logging.warning("The Kafka notification received belongs to an entity update audit.")
                 previous_atlas_entity_json = self.get_previous_atlas_entity(atlas_entity_parsed)
-                if not previous_atlas_entity_json:
+                # this is not good.... need a way to handle individual states even if they have the same updatetime
+                if previous_atlas_entity_json==None or not previous_atlas_entity_json:
                     logging.warning("The Kafka notification received could not be handled due to missing corresponding entity document in the audit database in elastic search.")
                     return
                 logging.warning("Previous entity found.")
