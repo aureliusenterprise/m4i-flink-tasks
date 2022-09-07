@@ -23,6 +23,8 @@ from  aiohttp.client_exceptions import ClientResponseError
 
 store = ConfigStore.get_instance()
 
+class WrongOperationTypeException(Exception):
+    pass
 
 class GetEntity(MapFunction):
     access_token = None
@@ -68,19 +70,22 @@ class GetEntity(MapFunction):
 
             else:
                 logging.warning("message with an unexpected message operation type")
-                raise Exception(f"message with an unexpected message operation type  received from Atlas with guid {kafka_notification.message.entity.guid} and operation type {kafka_notification.message.operation_type}")
-
+                raise WrongOperationTypeException(f"message with an unexpected message operation type  received from Atlas with guid {kafka_notification.message.entity.guid} and operation type {kafka_notification.message.operation_type}")
         # END func
+
         try:
             retry = 0
             while retry < 3:
                 try:
                     return asyncio.run(get_entity(kafka_notification, self.get_accress_token()))
+                except WrongOperationTypeException as e:
+                    raise e
                 except Exception as e:
                     logging.warning("failed to retrieve entity from atlas - retry")
                     logging.warning(str(e))
-                    retry = retry+1
                     self.access_token = None
+                retry = retry+1
+            raise Exception("Failed to lookup entity for kafka notification {kafka_notification}")
 
         except Exception as e:
 
