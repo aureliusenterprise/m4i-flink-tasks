@@ -68,6 +68,7 @@ class GetEntity(MapFunction):
 
             else:
                 logging.warning("message with an unexpected message operation type")
+                raise Exception(f"message with an unexpected message operation type  received from Atlas with guid {kafka_notification.message.entity.guid} and operation type {kafka_notification.message.operation_type}")
 
         # END func
         try:
