@@ -43,34 +43,34 @@ class GetEntity(MapFunction):
     def map(self, kafka_notification: str):
         async def get_entity(kafka_notification, access_token):
 
-            logging.warning(repr(kafka_notification))
-            kafka_notification = AtlasChangeMessage.from_json(kafka_notification)
-            logging.warning(access_token)
+            logging.info(repr(kafka_notification))
+            kafka_notification_obj = AtlasChangeMessage.from_json(kafka_notification)
+            logging.info(access_token)
 
-            if kafka_notification.message.operation_type in [EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE]:
-                entity_guid = kafka_notification.message.entity.guid
+            if kafka_notification_obj.message.operation_type in [EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE]:
+                entity_guid = kafka_notification_obj.message.entity.guid
                 await get_entity_by_guid.cache.clear()
                 event_entity = await get_entity_by_guid(guid=entity_guid, ignore_relationships=False, access_token=access_token)
                 # event_entity = await get_entity_by_guid(guid=entity_guid, ignore_relationships=False)
                 if not event_entity:
                     raise Exception(f"No entity could be retreived from Atlas with guid {entity_guid}")
 
-                logging.warning(repr(kafka_notification))
+                logging.warning(repr(kafka_notification_obj))
                 logging.warning(repr(event_entity))
-                kafka_notification_json = json.loads(kafka_notification.to_json())
+                kafka_notification_json = json.loads(kafka_notification_obj.to_json())
                 entity_json = json.loads(event_entity.to_json())
 
                 logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json}))
                 return json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json})
 
-            elif kafka_notification.message.operation_type == EntityAuditAction.ENTITY_DELETE:
-                kafka_notification_json = json.loads(kafka_notification.to_json())
+            elif kafka_notification_obj.message.operation_type == EntityAuditAction.ENTITY_DELETE:
+                kafka_notification_json = json.loads(kafka_notification_obj.to_json())
                 logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}}))
                 return json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}})
 
             else:
                 logging.warning("message with an unexpected message operation type")
-                raise WrongOperationTypeException(f"message with an unexpected message operation type  received from Atlas with guid {kafka_notification.message.entity.guid} and operation type {kafka_notification.message.operation_type}")
+                raise WrongOperationTypeException(f"message with an unexpected message operation type  received from Atlas with guid {kafka_notification_obj.message.entity.guid} and operation type {kafka_notification.message.operation_type}")
         # END func
 
         try:
@@ -81,22 +81,21 @@ class GetEntity(MapFunction):
                 except WrongOperationTypeException as e:
                     raise e
                 except Exception as e:
-                    logging.warning("failed to retrieve entity from atlas - retry")
-                    logging.warning(str(e))
+                    logging.error("failed to retrieve entity from atlas - retry")
+                    logging.error(str(e))
                     self.access_token = None
                 retry = retry+1
             raise Exception("Failed to lookup entity for kafka notification {kafka_notification}")
 
         except Exception as e:
-
             bootstrap_server_hostname, bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
 
             exc_info = sys.exc_info()
             e = (''.join(traceback.format_exception(*exc_info)))
 
-            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification.to_json(), job="get_entity", description = (e))
-            logging.warning("this goes into dead letter box: ")
-            logging.warning(repr(event))
+            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=repr(kafka_notification), job="get_entity", description = (e))
+            logging.error("this goes into dead letter box: ")
+            logging.error(repr(event))
 
             producer = KafkaProducer(
                 bootstrap_servers=  f"{bootstrap_server_hostname}:{bootstrap_server_port}",
