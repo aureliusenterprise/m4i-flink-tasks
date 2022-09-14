@@ -14,7 +14,7 @@ class EntityMessage(DataClassJsonMixin):
     type_name: str
     qualified_name: str
     guid: str
-    msg_creation_time: long
+    msg_creation_time: int
     original_event_type: EntityAuditAction
     direct_change: bool
     event_type : str
