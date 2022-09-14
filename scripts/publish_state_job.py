@@ -118,7 +118,7 @@ class PublishState(MapFunction):
         except Exception as e:
             exc_info = sys.exc_info()
             e = (''.join(traceback.format_exception(*exc_info)))
-            logging.warning(e)
+            logging.error(e)
 
             event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="publish_state", description = (e))
             bootstrap_server_hostname, bootstrap_server_port =  config_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")

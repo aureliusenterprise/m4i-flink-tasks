@@ -89,6 +89,8 @@ class GetEntity(MapFunction):
 
         except Exception as e:
             bootstrap_server_hostname, bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
+            logging.error("Exception during processing:")
+            logging.error(repr(e))
 
             exc_info = sys.exc_info()
             e = (''.join(traceback.format_exception(*exc_info)))
