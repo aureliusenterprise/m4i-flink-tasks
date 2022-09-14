@@ -28,15 +28,13 @@ def store():
 # END store
 
 @pytest.fixture(autouse=True)
-def create_test_engine():
-    config_store  = store()
+def create_test_engine(store):
     app_search = make_elastic_app_search_connect()
     app_search.create_engine(test_engine_name)
 # END delete_test_engine
 
 @pytest.fixture(autouse=True)
-def delete_test_engine():
-    config_store  = store()
+def delete_test_engine(store):
     app_search = make_elastic_app_search_connect()
     app_search.delete_engine(test_engine_name)
 # END delete_test_engine
@@ -63,7 +61,13 @@ async def test__get_super_types():
 # END test__get_super_types
 
 
-
+async def test__create_document():
+    expected_app_search_document = None 
+    f = open('data.json')   
+    kafka_notification = json.load(f)
+    input_entity = kafka_notification["newValue"]
+    app_search_document = asyncio.run(create_document(Entity.from_json(json.dumps(input_entity))))
+    assert app_search_document == expected_app_search_document
 
 # @pytest.mark.asyncio
 # async def test__handle_updated_attributes():

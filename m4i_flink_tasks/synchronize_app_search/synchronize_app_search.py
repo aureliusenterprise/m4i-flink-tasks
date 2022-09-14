@@ -26,7 +26,6 @@ breadcrumb_dict: Dict[str, list] = dict()
 derived_entity_dict: Dict[str, list] = dict()
 docs_dict: Dict[str, dict] = dict()
 
-AppSearch.search
 
 
 async def get_super_types(input_type: str) -> List[EntityDef]:
@@ -743,8 +742,7 @@ async def create_document(input_entity : Entity) -> dict:
     """This function creates a new app search document corresponding tp the entity belonging to the input entity message.
     The output document has the standard fields that could be infered directly from the entity message filled in.
     The dq scores are all equal to zero"""
-    super_types = list(reversed(super_types))
-
+    super_types = await get_super_types_names(input_entity.type_name)
     app_search_document = AppSearchDocument(id=input_entity.guid,
         guid = input_entity.guid,
         sourcetype = get_source_type(super_types),
