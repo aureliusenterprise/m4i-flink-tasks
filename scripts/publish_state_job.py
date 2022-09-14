@@ -77,6 +77,8 @@ class PublishState(MapFunction):
                 logging.warning("No atlas entity.")
                 return kafka_notification
 
+            msg_creation_time = kafka_notification_json.get("msg_creation_time")
+
             atlas_entity_json = kafka_notification_json["atlas_entity"]
             atlas_entity = json.dumps(atlas_entity_json)
             logging.warning(atlas_entity)
@@ -85,7 +87,8 @@ class PublishState(MapFunction):
 
             # turns out update_time for an import of data into atlas is the same for all events. Does not work for us!
             # doc_id = "{}_{}".format(atlas_entity.guid, atlas_entity.update_time)
-            doc_id_ = "{}_{}".format(atlas_entity.guid, self.get_doc_id())
+            doc_id_ = "{}_{}".format(atlas_entity.guid, msg_creation_time)
+            doc = json.loads(json.dumps({"msg_creation_time": msg_creation_time, "body": atlas_entity_json }))
 
             logging.warning(kafka_notification)
 
@@ -97,7 +100,7 @@ class PublishState(MapFunction):
             success = False
             while not success and retry<3:
                 try:
-                    res = self.elastic.index(index=self.elastic_search_index, id = doc_id_, document=atlas_entity_json)
+                    res = self.elastic.index(index=self.elastic_search_index, id = doc_id_, document=doc)
                     logging.warning(str(res))
                     if res['result'] in ['updated','created','deleted']:
                         success = True

@@ -203,9 +203,9 @@ class DetermineChange(MapFunction):
         self.elastic = make_elastic_connection()
 
 # elastic = make_elastic_connection()
-    def get_previous_atlas_entity(self, atlas_entity_parsed):
+    def get_previous_atlas_entity(self, atlas_entity_parsed, msg_creation_time):
         #elastic_search_index = m4i_store.get("elastic.search.index")
-        latest_update_time = atlas_entity_parsed.update_time
+        #latest_update_time = atlas_entity_parsed.update_time
         entity_guid = atlas_entity_parsed.guid
         #elastic = make_elastic_connection()
 
@@ -214,13 +214,13 @@ class DetermineChange(MapFunction):
                 "filter": [
                 {
                     "match": {
-                    "guid.keyword": entity_guid
+                    "body.guid.keyword": entity_guid
                     }
                 },
                 {
                     "range": {
-                    "updateTime": {
-                        "lt": latest_update_time
+                    "msg_creation_time": {
+                        "lt": msg_creation_time
                     }
                     }
                 }
@@ -229,7 +229,7 @@ class DetermineChange(MapFunction):
         }
 
         sort = {
-            "updateTime": {"numeric_type" : "long", "order": "desc"}
+            "msg_creation_time": {"numeric_type" : "long", "order": "desc"}
         }
 
         retry = 0
@@ -239,7 +239,7 @@ class DetermineChange(MapFunction):
                 result = self.elastic.search(index = self.elastic_search_index, query = query, sort = sort, size = 1)
 
                 if result["hits"]["total"]["value"] >= 1:
-                    return result["hits"]["hits"][0]["_source"]
+                    return result["hits"]["hits"][0]["_source"]["body"]
                 if result["hits"]["total"]["value"] == 0:
                     return None
             except Exception as e:
@@ -257,6 +257,7 @@ class DetermineChange(MapFunction):
             logging.warning(repr(kafka_notification))
 
             kafka_notification_json = json.loads(kafka_notification)
+            msg_creation_time = kafka_notification_json.get("msg_creation_time")
 
     	    # check whether notification or entity is missing
             if not kafka_notification_json.get("kafka_notification") or not kafka_notification_json.get("atlas_entity"):
@@ -328,7 +329,7 @@ class DetermineChange(MapFunction):
             # UPDATE operation
             if atlas_kafka_notification.message.operation_type == EntityAuditAction.ENTITY_UPDATE:
                 logging.warning("The Kafka notification received belongs to an entity update audit.")
-                previous_atlas_entity_json = self.get_previous_atlas_entity(atlas_entity_parsed)
+                previous_atlas_entity_json = self.get_previous_atlas_entity(atlas_entity_parsed, msg_creation_time)
                 # this is not good.... need a way to handle individual states even if they have the same updatetime
                 if previous_atlas_entity_json==None or not previous_atlas_entity_json:
                     logging.warning("The Kafka notification received could not be handled due to missing corresponding entity document in the audit database in elastic search.")
