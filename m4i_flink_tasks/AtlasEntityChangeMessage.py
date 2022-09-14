@@ -14,6 +14,7 @@ class EntityMessage(DataClassJsonMixin):
     type_name: str
     qualified_name: str
     guid: str
+    msg_creation_time: long
     original_event_type: EntityAuditAction
     direct_change: bool
     event_type : str
@@ -27,9 +28,9 @@ class EntityMessage(DataClassJsonMixin):
     deleted_relationships: dict
 
     old_value: Entity = field(default_factory=dict)
-    new_value: Entity = field(default_factory=dict) 
+    new_value: Entity = field(default_factory=dict)
 
-    
+
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass
 class AtlasEntityChangeMessageBody(DataClassJsonMixin):
