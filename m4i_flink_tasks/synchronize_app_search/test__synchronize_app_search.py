@@ -62,12 +62,18 @@ async def test__get_super_types():
 
 
 async def test__create_document():
-    expected_app_search_document = None 
-    f = open('data.json')   
+    f = open('input_entity.json')   
     kafka_notification = json.load(f)
+
+    g = open('elastic_document.json')   
+    elastic_document = json.load(g)
+
+
     input_entity = kafka_notification["newValue"]
-    app_search_document = asyncio.run(create_document(Entity.from_json(json.dumps(input_entity))))
-    assert app_search_document == expected_app_search_document
+    generated_output_entity = asyncio.run(create_document(Entity.from_json(json.dumps(input_entity))))
+    assert generated_output_entity == elastic_document
+
+
 
 # @pytest.mark.asyncio
 # async def test__handle_updated_attributes():

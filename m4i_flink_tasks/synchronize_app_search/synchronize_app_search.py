@@ -780,3 +780,15 @@ def get_parent_entity_guid(input_entity : Entity):
                 # The code should never reach this part!
             else:
                 return val[0]["guid"]
+
+
+async def get_hierarhical_operations(input_document : dict, input_relationships : list):
+    local_operations = []
+    
+    for key, input_relationships_ in input_relationships.items():
+        if input_relationships_ == []:
+            continue
+        for input_relationships in input_relationships_:
+            if await is_parent_child_relationship(input_document, key, input_relationships):
+                local_operations.append("update_breadcrumb")
+    return local_operations

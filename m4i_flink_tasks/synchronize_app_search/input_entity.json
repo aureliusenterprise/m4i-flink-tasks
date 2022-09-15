@@ -1,0 +1,162 @@
+{
+    "typeName": "m4i_data_domain",
+    "qualifiedName": "finance",
+    "guid": "ad49630e-7885-4560-aad3-8fbe743eb0ec",
+    "originalEventType": "ENTITY_CREATE",
+    "directChange": true,
+    "eventType": "EntityCreated",
+    "insertedAttributes": [
+      "archimateReference",
+      "replicatedTo",
+      "replicatedFrom",
+      "qualifiedName",
+      "domainLead",
+      "name",
+      "dataEntity",
+      "definition",
+      "source"
+    ],
+    "changedAttributes": [],
+    "deletedAttributes": [],
+    "insertedRelationships": {
+      "ArchiMateReference": [],
+      "domainLead": [
+        {
+          "guid": "e399f28b-9f72-40c9-b8ec-1b25d8f72dff",
+          "typeName": "m4i_person",
+          "entityStatus": "ACTIVE",
+          "displayText": "Eveline Daphne",
+          "relationshipType": "m4i_domainLead_assignment",
+          "relationshipGuid": "36a5dd79-fd8e-4197-aec1-2c070d78ba53",
+          "relationshipStatus": "ACTIVE",
+          "relationshipAttributes": {
+            "typeName": "m4i_domainLead_assignment"
+          }
+        }
+      ],
+      "dataEntity": [
+        {
+          "guid": "846d3d77-439e-4f96-bb67-c22be61097cf",
+          "typeName": "m4i_data_entity",
+          "entityStatus": "ACTIVE",
+          "displayText": "Cost Centre",
+          "relationshipType": "m4i_data_entity_assignment",
+          "relationshipGuid": "8cab5046-a81a-4d26-a393-957cb86fe0ef",
+          "relationshipStatus": "ACTIVE",
+          "relationshipAttributes": {
+            "typeName": "m4i_data_entity_assignment"
+          }
+        }
+      ],
+      "source": [
+        {
+          "guid": "0d6473a0-5e57-4dfd-b741-da6013a68200",
+          "typeName": "m4i_source",
+          "entityStatus": "ACTIVE",
+          "displayText": "/hr/hr/Data Dictionary_template.xlsm",
+          "relationshipType": "m4i_referenceable_source_assignment",
+          "relationshipGuid": "7b141b71-9821-41ff-8ac5-32f760a617f4",
+          "relationshipStatus": "ACTIVE",
+          "relationshipAttributes": {
+            "typeName": "m4i_referenceable_source_assignment"
+          }
+        }
+      ],
+      "meanings": []
+    },
+    "changedRelationships": {},
+    "deletedRelationships": {},
+    "oldValue": {},
+    "newValue": {
+      "typeName": "m4i_data_domain",
+      "attributes": {
+        "archimateReference": [],
+        "replicatedTo": null,
+        "replicatedFrom": null,
+        "qualifiedName": "finance",
+        "domainLead": [
+          {
+            "guid": "e399f28b-9f72-40c9-b8ec-1b25d8f72dff",
+            "typeName": "m4i_person",
+            "uniqueAttributes": {
+              "qualifiedName": "eveline.daphne@email.com",
+              "email": "eveline.daphne@email.com"
+            }
+          }
+        ],
+        "name": "Finance",
+        "dataEntity": [
+          {
+            "guid": "846d3d77-439e-4f96-bb67-c22be61097cf",
+            "typeName": "m4i_data_entity",
+            "uniqueAttributes": {
+              "qualifiedName": "finance--cost-centre"
+            }
+          }
+        ],
+        "definition": "This data domain contains data from the finance department (8th update)",
+        "source": []
+      },
+      "classifications": [],
+      "createTime": 1656493552392,
+      "createdBy": "admin",
+      "customAttributes": null,
+      "guid": "ad49630e-7885-4560-aad3-8fbe743eb0ec",
+      "homeId": null,
+      "isIncomplete": false,
+      "labels": [],
+      "meanings": [],
+      "provenanceType": 0,
+      "proxy": false,
+      "relationshipAttributes": {
+        "ArchiMateReference": [],
+        "domainLead": [
+          {
+            "guid": "e399f28b-9f72-40c9-b8ec-1b25d8f72dff",
+            "typeName": "m4i_person",
+            "entityStatus": "ACTIVE",
+            "displayText": "Eveline Daphne",
+            "relationshipType": "m4i_domainLead_assignment",
+            "relationshipGuid": "36a5dd79-fd8e-4197-aec1-2c070d78ba53",
+            "relationshipStatus": "ACTIVE",
+            "relationshipAttributes": {
+              "typeName": "m4i_domainLead_assignment"
+            }
+          }
+        ],
+        "dataEntity": [
+          {
+            "guid": "846d3d77-439e-4f96-bb67-c22be61097cf",
+            "typeName": "m4i_data_entity",
+            "entityStatus": "ACTIVE",
+            "displayText": "Cost Centre",
+            "relationshipType": "m4i_data_entity_assignment",
+            "relationshipGuid": "8cab5046-a81a-4d26-a393-957cb86fe0ef",
+            "relationshipStatus": "ACTIVE",
+            "relationshipAttributes": {
+              "typeName": "m4i_data_entity_assignment"
+            }
+          }
+        ],
+        "source": [
+          {
+            "guid": "0d6473a0-5e57-4dfd-b741-da6013a68200",
+            "typeName": "m4i_source",
+            "entityStatus": "ACTIVE",
+            "displayText": "/hr/hr/Data Dictionary_template.xlsm",
+            "relationshipType": "m4i_referenceable_source_assignment",
+            "relationshipGuid": "7b141b71-9821-41ff-8ac5-32f760a617f4",
+            "relationshipStatus": "ACTIVE",
+            "relationshipAttributes": {
+              "typeName": "m4i_referenceable_source_assignment"
+            }
+          }
+        ],
+        "meanings": []
+      },
+      "status": "ACTIVE",
+      "updateTime": 1657099979499,
+      "updatedBy": "admin",
+      "version": 0
+    }
+  }
