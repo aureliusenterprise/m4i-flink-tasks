@@ -1,4 +1,4 @@
-from core_operation import UpdateLocalAttributeProcessor, Sequence
+from core_operation import UpdateLocalAttributeProcessor, Sequence, WorkflowEngine
 
 def test__specify_local_update():
     op = UpdateLocalAttributeProcessor(name="update data entity with value hallo",
@@ -51,3 +51,20 @@ def test__update_dq_score():
     seq = Sequence("seq",[op])
     spec = jsonpickle.encode(seq)
     
+    
+def test__workflowengine():
+    op = UpdateLocalAttributeProcessor(name="update data entity with value hallo",
+                                        key="entity",
+                                        value="hallo")
+    seq = Sequence("seq",[op])
+    spec = jsonpickle.encode(seq)
+    
+    engine = WorkflowEngine(spec)
+    
+    #APP SEARCH DOCUMENT
+    data = {"entity":"unknown", "test":815}
+    res_data = engine.run(data)
+    
+    assert(res_data['entity']=="hallo")
+    assert(res_data['test']==815)
+    assert(len(res_data.keys())==2)
