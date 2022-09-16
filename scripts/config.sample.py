@@ -7,7 +7,6 @@ config = {
     "enriched.events.topic.name": "ENRICHED_ENTITIES",
     "determined.events.topic.name": "DETERMINED_CHANGE",
     "sync_elastic.events.topic.name": "SYNC_ELASTIC",
-    "operations.events.topic.name": "LOCAL_OPERATION",
     "exception.events.topic.name": "DEAD_LETTER_BOX",
 
     "elastic.search.index" : "atlas-dev-test",
