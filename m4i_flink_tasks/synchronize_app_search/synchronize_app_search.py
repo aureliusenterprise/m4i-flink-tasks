@@ -96,6 +96,23 @@ def define_breadcrumb(input_document: dict, parent_entity_guid : str, app_search
 
     return input_document
 
+
+def insert_prefix_to_breadcrumbs_of_child_entities(input_document : dict, child_entity_documents : List[dict]) -> List[dict]:
+    """This function updates the breadcrumb of all child entity documents and returns the updated documents in case of an inserted relationship."""
+    for child_document in child_entity_documents:
+        if input_document[guid] not in child_document["breadcrumbguid"]:
+            child_document["breadcrumbguids"] = input_document["breadcrumbguids"] + child_document["breadcrumbguid"]
+
+        if input_document["name"] not in child_document["breadcrumbname"]:
+            child_document["breadcrumbname"] = input_document["breadcrumbname"] + child_document["breadcrumbname"]
+
+        if input_document["typename"] not in child_document["breadcrumbtype"]:
+            child_document["breadcrumbtype"] = input_document["breadcrumbtype"] + child_document["breadcrumbtype"]
+
+    return child_entity_documents
+
+
+
 def get_m4i_source_types(super_types : list) -> list:
     """This function returns the m4i_source_types in the list of given super types."""
     source_types = [data_domain, data_entity,
@@ -132,6 +149,24 @@ async def is_parent_child_relationship(input_document : dict, relationship_key :
                 return True
 
     return False
+
+
+async def is_parent_child_relationship(input_type : str, relationship_key :str, input_relationship : dict):
+    """This function determines whether the entity belonging to the input document and the entity corresponding to the end point of the relationship are a parent child pair."""
+    super_types = await get_super_types_names(input_relationship["typeName"])
+    target_entity_source_types = get_m4i_source_types(super_types)
+
+    if relationship_key.startswith("child") or relationship_key.startswith("parent"):
+        return True
+
+    m4i_source_types = get_super_types_names(input_type)
+    for current_entity_source_type in m4i_source_types:
+        for target_entity_source_type in target_entity_source_types:
+            if hierarchy_mapping.get(current_entity_source_type) == target_entity_source_type or hierarchy_mapping.get(target_entity_source_type) == current_entity_source_type:
+                return True
+
+    return False
+
 
 async def is_attribute_field_relationship(input_document : dict, input_relationship : dict):
     """This function determines whether the relationship is an attribute field relationship."""
