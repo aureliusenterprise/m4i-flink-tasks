@@ -6,11 +6,15 @@ config = {
     "atlas.audit.events.topic.name": "ATLAS_ENTITIES",
     "enriched.events.topic.name": "ENRICHED_ENTITIES",
     "determined.events.topic.name": "DETERMINED_CHANGE",
+    "sync_elastic.events.topic.name": "SYNC_ELASTIC",
+    "operations.events.topic.name": "LOCAL_OPERATION",
     "exception.events.topic.name": "DEAD_LETTER_BOX",
 
     "elastic.search.index" : "atlas-dev-test",
     "elastic.app.search.engine.name" : "atlas-dev-test",
 
+    "operations.appsearch.engine.name": "atlas-dev",
+    
     "elastic.cloud.username": "elastic",
     "elastic.cloud.id": "YOUR CLOUD ID",
     "elastic.base.endpoint" : "APP-SEACRH-HOSTNAME/api/as/v1",
