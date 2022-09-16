@@ -67,16 +67,12 @@ class UpdateDqScoresProcessor(AbstractProcessor):
         Name of the processor
     """
     def __init__(self,
-                name:str,
-                key:str,
-                value):
+                name:str):
         super().__init__(name)
-        self.key = key
-        self.value = value
     # end of __init__
 
     def process(self, input_data:Dict) -> Dict:
-       input_data[self.key] = self.value
+       #TODO: do something meaningful here 
        return input_data
     # end of process
 
