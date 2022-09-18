@@ -154,14 +154,14 @@ class LocalOperation(MapFunction):
     def open(self, runtime_context: RuntimeContext):
         super.open()
         super.open_local(config, credentials, m4i_store)
-        self.bootstrap_server_hostname, self.bootstrap_server_port =  self.m4i_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
-        self.dead_lettter_box_topic = self.m4i_store.get("exception.events.topic.name")
+        self.bootstrap_server_hostname, self.bootstrap_server_port =  m4i_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
+        self.dead_lettter_box_topic = m4i_store.get("exception.events.topic.name")
     
 
     def get_producer(self):
         if self.producer == None:
             self.producer = KafkaProducer(
-                            bootstrap_servers=  f"{self.self.bootstrap_server_hostname}:{self.bootstrap_server_port}",
+                            bootstrap_servers=  f"{self.bootstrap_server_hostname}:{self.bootstrap_server_port}",
                             value_serializer=str.encode,
                             request_timeout_ms = 1000,
                             api_version = (2,0,2),
@@ -216,12 +216,12 @@ def local_operation():
 
     env.add_jars(kafka_jar, kafka_client)
 
-    bootstrap_server_hostname = config.get("kafka.bootstrap.server.hostname")
-    bootstrap_server_port = config.get("kafka.bootstrap.server.port")
-    source_topic_name = config.get("sync_elastic.events.topic.name")
+    bootstrap_server_hostname = m4i_store.get("kafka.bootstrap.server.hostname")
+    bootstrap_server_port = m4i_store.get("kafka.bootstrap.server.port")
+    source_topic_name = m4i_store.get("sync_elastic.events.topic.name")
     sink_topic_name = source_topic_name
-    dead_lettter_box_topic = config.get("exception.events.topic.name")
-    kafka_consumer_group_id = config.get("kafka.consumer.group.id")
+    dead_lettter_box_topic = m4i_store.get("exception.events.topic.name")
+    kafka_consumer_group_id = m4i_store.get("kafka.consumer.group.id")
 
     kafka_source = FlinkKafkaConsumer(topics = source_topic_name,
                                       properties={'bootstrap.servers':  f"{bootstrap_server_hostname}:{bootstrap_server_port}",
@@ -249,14 +249,6 @@ def local_operation():
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_local_operation_job2"},
         serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink")
 
-    data_stream.add_sink(FlinkKafkaProducer(topic = sink_topic_name,
-        producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_local_operation_job2"},
-        serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink")
-    
-    deadeletter_stream = data_stream.get_side_output("deadletter")
-    deadeletter_stream.add_sink(FlinkKafkaProducer(topic = dead_lettter_box_topic,
-        producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_local_operation_job2"},
-        serialization_schema=SimpleStringSchema())).name("write_to_deadletter_sink")
     
     # bootstrap_server_hostname, bootstrap_server_port =  self.m4i_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
     # producer = KafkaProducer(
