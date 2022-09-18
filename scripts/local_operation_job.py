@@ -143,7 +143,7 @@ m4i_store = m4i_ConfigStore.get_instance()
 #             producer.send(topic = dead_lettter_box_topic, value=event.to_json())
 # # end of class LocalOperationLocal
 
-class LocalOperation(FlatMapFunction):
+class LocalOperation(MapFunction):
     app_search = None
     local_operation = None
     bootstrap_server_hostname = None
