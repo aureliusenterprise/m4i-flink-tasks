@@ -10,6 +10,7 @@ from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
 from pyflink.datastream.functions import MapFunction, RuntimeContext
+from pyflink.datastream.output_tag import OutputTag
 
 from config import config
 from credentials import credentials
@@ -26,7 +27,7 @@ from m4i_atlas_core import get_entity_audit
 from m4i_atlas_core import AtlasChangeMessage, EntityAuditAction, get_entity_by_guid, get_keycloak_token
 from pyflink.datastream.functions import FlatMapFunction
 import copy
-
+from m4i_flink_tasks import DeadLetterBoxMesage
 
 m4i_store = m4i_ConfigStore.get_instance()
 
@@ -142,17 +143,56 @@ m4i_store = m4i_ConfigStore.get_instance()
 #             producer.send(topic = dead_lettter_box_topic, value=event.to_json())
 # # end of class LocalOperationLocal
 
-class LocalOperation(MapFunction,LocalOperationLocal):
-
+class LocalOperation(FlatMapFunction):
     app_search = None
+    local_operation = None
+    bootstrap_server_hostname = None
+    bootstrap_server_port = None
+    producer = None
+    dead_lettter_box_topic = None
 
     def open(self, runtime_context: RuntimeContext):
-        super(LocalOperation, self).open()
-        super(LocalOperation, self).open_local(config, credentials, m4i_store)
+        super.open()
+        super.open_local(config, credentials, m4i_store)
+        self.bootstrap_server_hostname, self.bootstrap_server_port =  self.m4i_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
+        self.dead_lettter_box_topic = self.m4i_store.get("exception.events.topic.name")
+    
+
+    def get_producer(self):
+        if self.producer == None:
+            self.producer = KafkaProducer(
+                            bootstrap_servers=  f"{self.self.bootstrap_server_hostname}:{self.bootstrap_server_port}",
+                            value_serializer=str.encode,
+                            request_timeout_ms = 1000,
+                            api_version = (2,0,2),
+                            retries = 1,
+                            linger_ms = 1000
+                        )
+        return self.producer
+            
     
     def map(self, kafka_notification: str):
-        return self.map_local(kafka_notification)
-# end of class LocalOperationLocal
+        try:
+            self.map_local(kafka_notification)
+        except Exception as e:
+            logging.error("The Kafka notification received could not be handled.")
+
+            exc_info = sys.exc_info()
+            e = (''.join(traceback.format_exception(*exc_info)))
+            logging.error(repr(e))
+
+            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="local_operation", description = (e))
+            retry = 0
+            while retry<3:
+                try:
+                    producer_ = self.get_producer()
+                    producer_.send(topic = self.dead_lettter_box_topic, value=event.to_json())
+                except Exception as e:
+                    logging.error(f"Problems sending a deadletter message : {str(e)}")
+                    retry = retry+1
+                    self.producer = None
+
+# end of class LocalOperation
 
 
 class GetResult(FlatMapFunction):
@@ -165,6 +205,7 @@ class GetResult(FlatMapFunction):
 
 def local_operation():
     env = StreamExecutionEnvironment.get_execution_environment()
+    output_tag = OutputTag("deadletter", Types.STRING())
     env.set_parallelism(1)
 
     path = os.path.dirname(__file__)
@@ -180,6 +221,7 @@ def local_operation():
     bootstrap_server_port = config.get("kafka.bootstrap.server.port")
     source_topic_name = config.get("sync_elastic.events.topic.name")
     sink_topic_name = source_topic_name
+    dead_lettter_box_topic = config.get("exception.events.topic.name")
     kafka_consumer_group_id = config.get("kafka.consumer.group.id")
 
     kafka_source = FlinkKafkaConsumer(topics = source_topic_name,
@@ -208,6 +250,27 @@ def local_operation():
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_local_operation_job2"},
         serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink")
 
+    data_stream.add_sink(FlinkKafkaProducer(topic = sink_topic_name,
+        producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_local_operation_job2"},
+        serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink")
+    
+    deadeletter_stream = data_stream.get_side_output("deadletter")
+    deadeletter_stream.add_sink(FlinkKafkaProducer(topic = dead_lettter_box_topic,
+        producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_local_operation_job2"},
+        serialization_schema=SimpleStringSchema())).name("write_to_deadletter_sink")
+    
+    # bootstrap_server_hostname, bootstrap_server_port =  self.m4i_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
+    # producer = KafkaProducer(
+    #     bootstrap_servers=  f"{bootstrap_server_hostname}:{bootstrap_server_port}",
+    #     value_serializer=str.encode,
+    #     request_timeout_ms = 1000,
+    #     api_version = (2,0,2),
+    #     retries = 1,
+    #     linger_ms = 1000
+    # )
+    # dead_lettter_box_topic = self.m4i_store.get("exception.events.topic.name")
+    # producer.send(topic = dead_lettter_box_topic, value=event.to_json())
+            
     env.execute("local_operation")
 
 
