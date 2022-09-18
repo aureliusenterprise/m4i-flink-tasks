@@ -152,8 +152,8 @@ class LocalOperation(MapFunction):
     dead_lettter_box_topic = None
 
     def open(self, runtime_context: RuntimeContext):
-        super.open()
-        super.open_local(config, credentials, m4i_store)
+        m4i_store.load({**config, **credentials})
+        self.open_local(config, credentials, m4i_store)
         self.bootstrap_server_hostname, self.bootstrap_server_port =  m4i_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
         self.dead_lettter_box_topic = m4i_store.get("exception.events.topic.name")
     
