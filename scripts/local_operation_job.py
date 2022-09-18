@@ -10,13 +10,14 @@ from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
 from pyflink.datastream.functions import MapFunction, RuntimeContext
-from pyflink.datastream.output_tag import OutputTag
 
 from config import config
 from credentials import credentials
 
 from m4i_flink_tasks.synchronize_app_search import make_elastic_connection,get_child_entity_guids,make_elastic_app_search_connect
-from m4i_flink_tasks import OperationEvent, WorkflowEngine, LocalOperationLocal
+from m4i_flink_tasks.operation import OperationEvent
+from m4i_flink_tasks.operation import WorkflowEngine
+from m4i_flink_tasks.operation import LocalOperationLocal
 from m4i_flink_tasks import DeadLetterBoxMesage
 import time
 from kafka import KafkaProducer
@@ -27,7 +28,6 @@ from m4i_atlas_core import get_entity_audit
 from m4i_atlas_core import AtlasChangeMessage, EntityAuditAction, get_entity_by_guid, get_keycloak_token
 from pyflink.datastream.functions import FlatMapFunction
 import copy
-from m4i_flink_tasks import DeadLetterBoxMesage
 
 m4i_store = m4i_ConfigStore.get_instance()
 

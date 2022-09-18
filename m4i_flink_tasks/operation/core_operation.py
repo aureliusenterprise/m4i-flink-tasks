@@ -310,8 +310,9 @@ class ComputeDqScoresProcessor(AbstractProcessor):
     # end of __init__
 
     def process(self, input_data:Dict, child_entity_docs: List) -> Dict:
-        for child_entity_doc in child_entity_docs:
-            child_entity_doc[]
+        # TODO: add semantics
+        # for child_entity_doc in child_entity_docs:
+        #     child_entity_doc[]
         return input_data
     # end of process
 

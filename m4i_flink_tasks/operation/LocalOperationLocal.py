@@ -3,7 +3,7 @@ import logging
 import sys
 
 from m4i_flink_tasks.synchronize_app_search import get_child_entity_guids,make_elastic_app_search_connect
-from m4i_flink_tasks import OperationEvent, WorkflowEngine
+from m4i_flink_tasks.operation import OperationEvent, WorkflowEngine
 from m4i_flink_tasks import DeadLetterBoxMesage
 import time
 from kafka import KafkaProducer
