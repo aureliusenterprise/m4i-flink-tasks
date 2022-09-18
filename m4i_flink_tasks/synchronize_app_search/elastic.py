@@ -99,3 +99,35 @@ def delete_document(entity_guid : str, app_search: AppSearch) -> None:
     engine_name = config_store.get("elastic.app.search.engine.name")
     app_search.delete_documents(
         engine_name=engine_name, document_ids=[entity_guid])
+
+def get_source_type_from_app_search(input_document: dict) -> list:
+    """This function returns the m4i source types (e.g. m4i_data_attribute, m4i_field, m4i_dataset, etc.) of the app search document."""
+    return input_document.get("m4isourcetype")
+
+def get_child_entity_docs(entity_guid : str, app_search : AppSearch, engine_name : str = None):
+
+    engine_name = config_store.get("elastic.app.search.engine.name")
+
+    body = {
+        "query":"",
+        "filters":{
+        "breadcrumbguid":[ entity_guid ]
+        }
+    }
+
+    breadcrumb_guid_list = send_query(app_search=app_search, body = body, engine_name = engine_name)
+    return get_documents(app_search, engine_name, breadcrumb_guid_list)
+
+def get_child_entity_guids(entity_guid : str, app_search : AppSearch, engine_name : str = None):
+    if engine_name==None:
+        engine_name = config_store.get("elastic.app.search.engine.name")
+
+    body = {
+        "query":"",
+        "filters":{
+        "parentguid":[ entity_guid ]
+        }
+    }
+
+    guid_list = send_query(app_search=app_search, body = body, engine_name = engine_name)
+    return guid_list
