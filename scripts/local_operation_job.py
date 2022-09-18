@@ -10,7 +10,6 @@ from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
 from pyflink.datastream.functions import MapFunction, RuntimeContext
-from pyflink.datastream.output_tag import OutputTag
 
 from config import config
 from credentials import credentials
