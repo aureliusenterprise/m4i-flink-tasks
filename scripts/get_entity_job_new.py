@@ -90,7 +90,7 @@ class GetEntityLocal(object):
 # end of class GetEntityLocal
         
 
-class GetEntity(MapFunction,GetENtityLocal):
+class GetEntity(MapFunction,GetEntityLocal):
     deadletter = None
     bootstrap_server_hostname=None
     bootstrap_server_port=None
