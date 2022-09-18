@@ -205,7 +205,6 @@ class GetResult(FlatMapFunction):
 
 def local_operation():
     env = StreamExecutionEnvironment.get_execution_environment()
-    output_tag = OutputTag("deadletter", Types.STRING())
     env.set_parallelism(1)
 
     path = os.path.dirname(__file__)
