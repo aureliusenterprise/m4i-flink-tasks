@@ -20,6 +20,7 @@ setup(
         "pytest",
         "python-keycloak",
         "kafka-python==2.0.2",
+        "jsonpickle",
         # "requests",
         # "typing_extensions",
         # "deepdiff",
