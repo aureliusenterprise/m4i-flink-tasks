@@ -8,6 +8,7 @@ config = {
     "determined.events.topic.name": "DETERMINED_CHANGE",
     "sync_elastic.events.topic.name": "SYNC_ELASTIC",
     "exception.events.topic.name": "DEAD_LETTER_BOX",
+    "sync_elastic.events.topic.name": "SYNC_ELASTIC",
 
     "elastic.search.index" : "atlas-dev-test",
     "elastic.app.search.engine.name" : "atlas-dev-test",
