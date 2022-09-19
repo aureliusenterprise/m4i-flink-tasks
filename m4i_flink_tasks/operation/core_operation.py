@@ -9,7 +9,7 @@ import jsonpickle
 import traceback
 import sys
 import json
-
+from ..synchronize_app_search import get_direct_child_entity_docs, make_elastic_app_search_connect, update_dq_score_fields
 class AbstractProcessor(ABC):
     """All processors of the workflow inherit from this AbstractProcessor class.
     The only purpose of this class is to distinguish classes which are intended to be processors
@@ -135,8 +135,6 @@ class WorkflowEngine:
 # end of class WorkflowEngine
 
 
-###################################################################################
-
 class UpdateListEntryProcessor(AbstractProcessor):
     """UpdateListEntryProcessor is an processor which updates the a given value in a list with another provided value
     scores of a local instance.
@@ -156,7 +154,7 @@ class UpdateListEntryProcessor(AbstractProcessor):
     def __init__(self,
                 name:str,
                 key: str, 
-                old_value : str,  # Charif: I could also provide the index and the new value only...
+                old_value : str,  
                 new_value : str
                 ):
         super().__init__(name)
@@ -164,10 +162,15 @@ class UpdateListEntryProcessor(AbstractProcessor):
         self.old_value = old_value
         self.new_value = new_value
 
-
     # end of __init__
+
     def process(self, input_data:Dict) -> Dict:
-        # check whether the key and old value exists in the input data 
+        if not self.key in input_data.keys():
+            raise Exception(f"Key {self.key} not in input data")
+        
+        if not self.old_value in input_data[self.key]:
+            raise Exception(f"Value {self.old_value} not in input data")
+            
         index = input_data[self.key].index(self.old_value)
         input_data[index] = self.new_value
         return input_data
@@ -177,95 +180,217 @@ class UpdateListEntryProcessor(AbstractProcessor):
 
 
 # always provide a generic name and description 
-class InsertPrefixBreadcrumbProcessor(AbstractProcessor):
-    """InsertPrefixBreadcrumbProcessor is an processor which updates the a name in breadcrumb
-    scores of a local instance.
+class InsertPrefixToList(AbstractProcessor):
+    """InsertPrefixToList is an processor which updates a provided list by inserting a provided input list as prefix
 
     Parameters
     ----------
     name: str
         Name of the processor
     key: str
-        This is the name of the field in the app search schema: breadcrumbname (is this wise to add or unneccessary?)
-    old_value: str
-        This is the value to be changed in the provided field
+        This is the name of the field in the app search schema
     new_value: str 
     """
     
     def __init__(self,
                 name:str, 
                 key : str,
-    
+                input_list: list
                 ):
         super().__init__(name)
         self.key = key
+        self.input_list = input_list
     # end of __init__
 
-    def process(self, input_data:Dict, parent_entity_document : Dict) -> Dict:
+    def process(self, input_data:Dict) -> Dict:
 
-        # option A 
-        
-        # input_data["breadcrumbguids"] = parent_entity_document["breadcrumbguids"] + input_data["breadcrumbguids"] # is this ok? 
-        # input_data["breadcrumbname"] =  parent_entity_document["breadcrumbname"] + input_data["breadcrumbname"]
-        # input_data["breadcrumbtype"] =  parent_entity_document["breadcrumbtype"] + input_data["breadcrumbtype"] 
+        if not self.key in input_data.keys():
+            raise Exception(f"Key {self.key} not in input data")
 
+        if not type(input_data[self.key] == list):
+            raise Exception(f"App search field {self.key} is of unexpected type.")
 
-        # option B keep this option
-        # in this case I would have to call this function several times 
-        input_data[self.key] = parent_entity_document[self.key]  + input_data[self.key] 
+        input_data[self.key] = self.input_list  + input_data[self.key] 
 
-       
-    # option C 
-    def process(self, input_data: Dict, prefix: List) -> Dict:
-
-  
-        input_data[self.key] =  prefix + input_data[self.key] 
-
-        
-
-        return input_data
     # end of process
 
-# end of class InsertPrefixBreadcrumbProcessor
+# end of class InsertPrefixToList
 
-class DeletePrefixBreadcrumbProcessor(AbstractProcessor):
-
-    
-    """DeletePrefixBreadcrumbProcessor is an processor which updates the a name in breadcrumb
-    scores of a local instance.
+class DeletePrefixFromList(AbstractProcessor):
+    """DeletePrefixFromList is an processor which updates a provided list by deleting a all entries from list before provided index
 
     Parameters
     ----------
     name: str
         Name of the processor
     key: str
-        This is the name of the field in the app search schema: breadcrumbname (is this wise to add or unneccessary?)
-    old_value: str
-        This is the value to be changed in the provided field
+        This is the name of the field in the app search schema
     new_value: str 
     """
+    # Charif: I make use of index because names and types are not guaranteed to be unique in all lists
     
     def __init__(self,
-        name:str, 
-        key : str,
-
-        ):
+                name:str, 
+                key : str,
+                index: list
+                ):
         super().__init__(name)
         self.key = key
+        self.index = index
     # end of __init__
 
+    def process(self, input_data:Dict) -> Dict:
 
-    def  process(self, input_data: Dict, parent_entity_document: Dict) -> Dict:
-        guid_index = input_data["breadcrumbguid"].index(parent_entity_document["guid"])
-        input_data["breadcrumbguids"] = input_data["breadcrumbguids"][guid_index::] 
-        input_data["breadcrumbname"] = input_data["breadcrumbname"][guid_index::] 
-        input_data["breadcrumbtype"] = input_data["breadcrumbtype"][guid_index::] 
+        if not self.key in input_data.keys():
+            raise Exception(f"Key {self.key} not in input data")
+
+        if not type(input_data[self.key] == list):
+
+            raise Exception(f"App search field {self.key} is of unexpected type.")
+
+
+        if (not self.index < 0) or (not self.index < len(input_data[self.key])):
+            
+            raise Exception(f"Provided index {self.index} is invalid considering the list .")
+
+        input_data[self.index] = input_data[self.index+1::] 
+
+    # end of process
+
+# end of class DeletePrefixFromList
+
+
+class ComputeDqScoresProcessor(AbstractProcessor):
+    """UpdateDqScoresProcessor is an processor which updates all data quality 
+    scores of a local instance.
+
+    Parameters
+    ----------
+    name :str
+        Name of the processor
+    """
+    def __init__(self,
+                name:str):
+        super().__init__(name)
+    # end of __init__
+
+    def process(self, input_data:Dict) -> Dict:
+        child_entity_dicts = get_direct_child_entity_docs(input_data["guid"], make_elastic_app_search_connect())
+        input_data = update_dq_score_fields(input_data, child_entity_dicts)
+        return input_data
+    # end of process
+
+# end of class ComputeDqScoresProcessor
+
+class ResetDqScoresProcessor(AbstractProcessor):
+    """UpdateDqScoresProcessor is an processor which updates all data quality 
+    scores of a local instance.
+
+    Parameters
+    ----------
+    name :str
+        Name of the processor
+    """
+    def __init__(self,
+                name:str):
+        super().__init__(name)
+    # end of __init__
+
+    def process(self, input_data:Dict) -> Dict:
+        for key in input_data.keys():
+            if key.startswith("dqscore"):
+                input_data[key] = 0
+        return input_data
+        
+    # end of process
+
+# end of class ResetDqScoresProcessor
+
+class InsertElementInList(AbstractProcessor):
+    """InsertElementInList is an processor which updates the a name in breadcrumb
+    scores of a local instance.
+
+    Parameters
+    ----------
+    name :str
+        Name of the processor
+    """
+
+
+    def __init__(self,
+                name:str,
+                key: str,
+                index : int,
+                value
+                ):
+        super().__init__(name)
+        self.key = key
+        self.index = index
+        self.value = value
+    # end of __init__
+
+    def process(self, input_data:Dict) -> Dict:
+
+        if not self.key in input_data.keys():
+            raise Exception(f"Key {self.key} not in input data")
+
+        if not type(input_data[self.key] == list):
+
+            raise Exception(f"App search field {self.key} is of unexpected type.")
+
+        if (not self.index < 0) or (not self.index < len(input_data[self.key])):
+            
+            raise Exception(f"Provided index {self.index} is invalid considering the list .")
+
+        input_data[self.key][:self.index] + self.value + input_data[self.key][self.index:]
+        return input_data
+    # end of process
+
+# end of class InsertElementInList
+
+class DeleteElementFromList(AbstractProcessor):
+    """DeleteElementFromList is an processor which updates the a name in breadcrumb
+    scores of a local instance.
+
+    Parameters
+    ----------
+    name :str
+        Name of the processor
+    """
+
+
+    def __init__(self,
+                name:str,
+                key: str,
+                index : int,
+                ):
+        super().__init__(name)
+        self.key = key
+        self.index = index
+    # end of __init__
+
+    def process(self, input_data:Dict) -> Dict:
+
+        if not self.key in input_data.keys():
+            raise Exception(f"Key {self.key} not in input data")
+
+        if not type(input_data[self.key] == list):
+
+            raise Exception(f"App search field {self.key} is of unexpected type.")
+
+
+        if (not self.index < 0) or (not self.index < len(input_data[self.key])):
+            
+            raise Exception(f"Provided index {self.index} is invalid considering the list .")
+
+        del input_data[self.key][self.index] 
 
         return input_data
     # end of process
 
-# end of class DeletePrefixBreadcrumbProcessor
+# end of class DeleteElementFromList
 
+#################################################################
 
 class UpdateDerivedEntityOfChildEntities(AbstractProcessor):
     """UpdateBreadcrumbValueProcessor is an processor which updates the a name in breadcrumb
@@ -293,51 +418,3 @@ class UpdateDerivedEntityOfChildEntities(AbstractProcessor):
     # end of process
 
 # end of class UpdateBreadcrumbValueProcessor
-
-
-class ComputeDqScoresProcessor(AbstractProcessor):
-    """UpdateDqScoresProcessor is an processor which updates all data quality 
-    scores of a local instance.
-
-    Parameters
-    ----------
-    name :str
-        Name of the processor
-    """
-    def __init__(self,
-                name:str):
-        super().__init__(name)
-    # end of __init__
-
-    def process(self, input_data:Dict, child_entity_docs: List) -> Dict:
-        # TODO: add semantics
-        # for child_entity_doc in child_entity_docs:
-        #     child_entity_doc[]
-        return input_data
-    # end of process
-
-# end of class ComputeDqScoresProcessor
-
-class ResetDqScoresProcessor(AbstractProcessor):
-    """UpdateDqScoresProcessor is an processor which updates all data quality 
-    scores of a local instance.
-
-    Parameters
-    ----------
-    name :str
-        Name of the processor
-    """
-    def __init__(self,
-                name:str):
-        super().__init__(name)
-    # end of __init__
-
-    def process(self, input_data:Dict) -> Dict:
-        for key in input_data.keys:
-            if key.startswith("dqscore"):
-                input_data[key] = 0
-        return input_data
-        
-    # end of process
-
-# end of class UpdateDqScoresProcessor
