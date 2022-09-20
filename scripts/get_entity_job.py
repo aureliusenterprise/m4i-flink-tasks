@@ -37,7 +37,7 @@ class GetEntityLocal(object):
         return self.access_token
 
     def map_local(self, kafka_notification: str):
-        
+
         async def get_entity(kafka_notification, access_token):
 
             logging.info(repr(kafka_notification))
@@ -72,7 +72,7 @@ class GetEntityLocal(object):
         # END func
 
         logging.info(repr(store))
-        
+
         retry = 0
         while retry < 3:
             try:
@@ -86,7 +86,7 @@ class GetEntityLocal(object):
             retry = retry+1
         raise Exception("Failed to lookup entity for kafka notification {kafka_notification}")
 # end of class GetEntityLocal
-        
+
 
 class GetEntity(MapFunction,GetEntityLocal):
     deadletter = None
@@ -94,14 +94,14 @@ class GetEntity(MapFunction,GetEntityLocal):
     bootstrap_server_port=None
     producer = None
     store = None
-    
-    
+
+
     def open(self, runtime_context: RuntimeContext):
         store.load({**config, **credentials})
-    
+
         self.bootstrap_server_hostname, self.bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
         self.dead_lettter_box_topic = store.get("exception.events.topic.name")
-            
+
 
     def get_deadletter(self):
         if self.producer==None:
@@ -116,7 +116,7 @@ class GetEntity(MapFunction,GetEntityLocal):
         return self.producer
 
 
-        
+
     def map(self, kafka_notification: str):
         try:
             res = self.map_local(kafka_notification)
@@ -132,7 +132,7 @@ class GetEntity(MapFunction,GetEntityLocal):
             event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=repr(kafka_notification), job="get_entity", description = (e))
             logging.error("this goes into dead letter box: ")
             logging.error(repr(event))
-            
+
             retry = 0
             while retry <2:
                 try:
@@ -140,6 +140,7 @@ class GetEntity(MapFunction,GetEntityLocal):
                     producer.send(topic=self.dead_lettter_box_topic, value=event.to_json())
                 except Exception as e2:
                     logging.error("error dumping data into deadletter topic "+repr(e2))
+                    retry = retry + 1
 
 
 def run_get_entity_job():

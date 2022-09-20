@@ -33,7 +33,7 @@ class PublishStateLocal(object):
     def open_local(self):
         self.elastic_search_index = config_store.get("elastic.search.index")
         self.elastic = make_elastic_connection()
-        
+
     def map_local(self, kafka_notification: str):
         kafka_notification_json = json.loads(kafka_notification)
 
@@ -92,7 +92,7 @@ class PublishStateLocal(object):
 class PublishState(MapFunction,PublishStateLocal):
     bootstrap_server_hostname=None
     bootstrap_server_port=None
-    
+
     def open(self, runtime_context: RuntimeContext):
         config_store.load({**config, **credentials})
         self.bootstrap_server_hostname, self.bootstrap_server_port =  config_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
@@ -115,7 +115,7 @@ class PublishState(MapFunction,PublishStateLocal):
         try:
             res = self.map_local(kafka_notification)
             logging.info("received result: "+repr(res))
-            return res            
+            return res
         except Exception as e:
             logging.error("Exception during processing:")
             logging.error(repr(e))
@@ -126,7 +126,7 @@ class PublishState(MapFunction,PublishStateLocal):
             event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="publish_state", description = (e))
             logging.error("this goes into dead letter box: ")
             logging.error(repr(event))
-            
+
             retry = 0
             while retry <2:
                 try:
@@ -134,6 +134,7 @@ class PublishState(MapFunction,PublishStateLocal):
                     producer.send(topic=self.dead_lettter_box_topic, value=event.to_json())
                 except Exception as e2:
                     logging.error("error dumping data into deadletter topic "+repr(e2))
+                    retry = retry + 1
 # end of class PublishState
 
 
@@ -146,8 +147,8 @@ def run_publish_state_job():
     path = os.path.dirname(__file__)
 
     # download JARs
-    kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
-    kafka_client = f"file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
+    kafka_jar = "file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
+    kafka_client = "file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
 
     env.add_jars(kafka_jar, kafka_client)
 
