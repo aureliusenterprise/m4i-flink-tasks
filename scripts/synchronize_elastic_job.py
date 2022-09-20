@@ -90,7 +90,8 @@ class SynchronizeAppsearch(MapFunction):
 
             if entity_message.direct_change == False:
                 logging.warning("This message is a consequence of an indirect change. No further action is taken.")
-                return
+                # return
+                pass
 
             if entity_message.changed_attributes != []:
                 logging.info("handle updated attributes.")
@@ -102,11 +103,9 @@ class SynchronizeAppsearch(MapFunction):
                         pass
 
                     seq = Sequence(name="update attribute", steps = operation_list)
-                    spec = jsonpickle.encode(seq) # what happens with this?
-                    engine = WorkflowEngine(spec) # what happens whit this?
+                    spec = jsonpickle.encode(seq) 
 
-
-                oc = OperationChange(propagate=False, propagate_down=False, operations = operation_list)
+                oc = OperationChange(propagate=False, propagate_down=False, operations = spec)
 
                 oe = OperationEvent(id=str(uuid.uuid4()), 
                                     creation_time=int(datetime.now().timestamp()*1000),

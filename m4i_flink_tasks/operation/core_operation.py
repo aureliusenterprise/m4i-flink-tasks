@@ -261,7 +261,7 @@ class DeletePrefixFromList(AbstractProcessor):
 
 
 class ComputeDqScoresProcessor(AbstractProcessor):
-    """UpdateDqScoresProcessor is an processor which updates all data quality 
+    """ComputeDqScoresProcessor is an processor which updates all data quality 
     scores of a local instance.
 
     Parameters
@@ -283,7 +283,7 @@ class ComputeDqScoresProcessor(AbstractProcessor):
 # end of class ComputeDqScoresProcessor
 
 class ResetDqScoresProcessor(AbstractProcessor):
-    """UpdateDqScoresProcessor is an processor which updates all data quality 
+    """ResetDqScoresProcessor is an processor which updates all data quality 
     scores of a local instance.
 
     Parameters
