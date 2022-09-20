@@ -125,7 +125,7 @@ class GetEntity(MapFunction,GetEntityLocal):
         
     def map(self, kafka_notification: str):
         try:
-            self.map_local(kafka_notification)
+            return self.map_local(kafka_notification)
         except Exception as e:
             logging.error("Exception during processing:")
             logging.error(repr(e))
