@@ -7,6 +7,11 @@ import os
 from pyflink.common.typeinfo import Types
 
 from m4i_atlas_core import AtlasChangeMessage, ConfigStore, EntityAuditAction, get_entity_by_guid, get_keycloak_token
+from config import config
+from credentials import credentials
+store = ConfigStore.get_instance()
+
+
 from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
@@ -15,24 +20,20 @@ from kafka import KafkaProducer
 import time
 import os
 from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
-from config import config
-from credentials import credentials
+
 import traceback
 from  aiohttp.client_exceptions import ClientResponseError
 # from set_environment import set_env
 
-store = ConfigStore.get_instance()
+
 
 class WrongOperationTypeException(Exception):
     pass
 
-class GetEntity(MapFunction):
+class GetEntityLocal(object):
     access_token = None
 
-    def open(self, runtime_context: RuntimeContext):
-        store.load({**config, **credentials})
-
-    def get_accress_token(self):
+    def get_access_token(self):
         if self.access_token==None:
             try:
                 self.access_token = get_keycloak_token()
@@ -40,7 +41,8 @@ class GetEntity(MapFunction):
                 pass
         return self.access_token
 
-    def map(self, kafka_notification: str):
+    def map_local(self, kafka_notification: str):
+        
         async def get_entity(kafka_notification, access_token):
 
             logging.info(repr(kafka_notification))
@@ -74,22 +76,58 @@ class GetEntity(MapFunction):
                 raise WrongOperationTypeException(f"message with an unexpected message operation type  received from Atlas with guid {kafka_notification_obj.message.entity.guid} and operation type {kafka_notification.message.operation_type}")
         # END func
 
-        try:
-            retry = 0
-            while retry < 3:
-                try:
-                    return asyncio.run(get_entity(kafka_notification, self.get_accress_token()))
-                except WrongOperationTypeException as e:
-                    raise e
-                except Exception as e:
-                    logging.error("failed to retrieve entity from atlas - retry")
-                    logging.error(str(e))
-                    self.access_token = None
-                retry = retry+1
-            raise Exception("Failed to lookup entity for kafka notification {kafka_notification}")
+        logging.info(repr(store))
+        
+        retry = 0
+        while retry < 3:
+            try:
+                return asyncio.run(get_entity(kafka_notification, self.get_accress_token()))
+            except WrongOperationTypeException as e:
+                raise e
+            except Exception as e:
+                logging.error("failed to retrieve entity from atlas - retry")
+                logging.error(str(e))
+                self.access_token = None
+            retry = retry+1
+        raise Exception("Failed to lookup entity for kafka notification {kafka_notification}")
+# end of class GetEntityLocal
+        
 
+class GetEntity(MapFunction,GetEntityLocal):
+    deadletter = None
+    bootstrap_server_hostname=None
+    bootstrap_server_port=None
+    producer = None
+    store = None
+    
+    
+    def open(self, runtime_context: RuntimeContext):
+        store.load({**config, **credentials})
+    
+        self.bootstrap_server_hostname, self.bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
+        self.dead_lettter_box_topic = store.get("exception.events.topic.name")
+            
+
+    def get_deadletter(self):
+        if self.producer==None:
+            self.producer = KafkaProducer(
+                    bootstrap_servers=  f"{self.bootstrap_server_hostname}:{self.bootstrap_server_port}",
+                    value_serializer=str.encode,
+                    request_timeout_ms = 1000,
+                    api_version = (2,0,2),
+                    retries = 1,
+                    linger_ms = 1000
+                )
+        return self.producer
+
+
+        
+    def map(self, kafka_notification: str):
+        try:
+            res = self.map_local(kafka_notification)
+            logging.info("received result: "+repr(res))
+            return res
         except Exception as e:
-            bootstrap_server_hostname, bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
             logging.error("Exception during processing:")
             logging.error(repr(e))
 
@@ -99,24 +137,17 @@ class GetEntity(MapFunction):
             event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=repr(kafka_notification), job="get_entity", description = (e))
             logging.error("this goes into dead letter box: ")
             logging.error(repr(event))
-
-            producer = KafkaProducer(
-                bootstrap_servers=  f"{bootstrap_server_hostname}:{bootstrap_server_port}",
-                value_serializer=str.encode,
-                request_timeout_ms = 1000,
-                api_version = (2,0,2),
-                retries = 1,
-                linger_ms = 1000
-            )
-
-            dead_lettter_box_topic = store.get("exception.events.topic.name")
-
-            producer.send(topic=dead_lettter_box_topic, value=event.to_json())
-
+            
+            retry = 0
+            while retry <2:
+                try:
+                    producer = self.get_deadletter()
+                    producer.send(topic=self.dead_lettter_box_topic, value=event.to_json())
+                except Exception as e2:
+                    logging.error("error dumping data into deadletter topic "+repr(e2))
 
 
 def run_get_entity_job():
-
     env = StreamExecutionEnvironment.get_execution_environment()
     #set_env(env)
     env.set_parallelism(1)
@@ -124,8 +155,8 @@ def run_get_entity_job():
     path = os.path.dirname(__file__)
 
     # download JARs
-    kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
-    kafka_client = f"file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
+    kafka_jar = "file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
+    kafka_client = "file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
 
     bootstrap_server_hostname = config.get("kafka.bootstrap.server.hostname")
     bootstrap_server_port = config.get("kafka.bootstrap.server.port")
@@ -150,7 +181,7 @@ def run_get_entity_job():
     kafka_source.set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
 
-    data_stream = env.add_source(kafka_source).name(f"consuming atlas events")
+    data_stream = env.add_source(kafka_source).name("consuming atlas events")
 
     data_stream = data_stream.map(GetEntity(), Types.STRING()).name("retrieve entity from atlas").filter(lambda notif: notif)
 
