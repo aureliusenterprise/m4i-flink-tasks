@@ -76,7 +76,8 @@ class GetEntityLocal(object):
         retry = 0
         while retry < 3:
             try:
-                return asyncio.run(get_entity(kafka_notification, self.get_accress_token()))
+                access__token = self.get_accress_token()
+                return asyncio.run(get_entity(kafka_notification, access__token))
             except WrongOperationTypeException as e:
                 raise e
             except Exception as e:
@@ -84,7 +85,7 @@ class GetEntityLocal(object):
                 logging.error(str(e))
                 self.access_token = None
             retry = retry+1
-        raise Exception("Failed to lookup entity for kafka notification {kafka_notification}")
+        raise Exception(f"Failed to lookup entity for kafka notification {kafka_notification}")
 # end of class GetEntityLocal
 
 
