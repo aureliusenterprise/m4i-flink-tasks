@@ -1,4 +1,6 @@
-from core_operation import UpdateLocalAttributeProcessor, Sequence, WorkflowEngine
+from symbol import pass_stmt
+from core_operation import UpdateLocalAttributeProcessor, Sequence, WorkflowEngine, UpdateDqScoresProcessor, UpdateListEntryProcessor, InsertPrefixToList, DeletePrefixFromList
+import jsonpickle
 
 def test__specify_local_update():
     op = UpdateLocalAttributeProcessor(name="update data entity with value hallo",
@@ -68,3 +70,64 @@ def test__workflowengine():
     assert(res_data['entity']=="hallo")
     assert(res_data['test']==815)
     assert(len(res_data.keys())==2)
+
+def test__UpdateListEntryProcessor():
+    data = {"breadcrumbname":["Finance", "entity"], "test":815}
+    op = UpdateListEntryProcessor(name="update list entry", key="breadcrumbname", old_value="Finance", new_value = "Finance an Control")
+    seq = Sequence("seq",[op])
+    spec = jsonpickle.encode(seq)
+    
+    engine = WorkflowEngine(spec)
+
+    res_data = engine.run(data)
+    
+    assert(res_data['breadcrumbname']==["Finance an Control", "entity"])
+    assert(res_data['test']==815)
+    assert(len(res_data.keys())==2)
+
+def test__InsertPrefixToList():
+    op = InsertPrefixToList(name="update data entity with value hallo",
+                                    key="test",
+                                    input_list=["hello"])
+    seq = Sequence("seq",[op])
+    spec = jsonpickle.encode(seq)
+    
+    engine = WorkflowEngine(spec)
+    
+    #APP SEARCH DOCUMENT
+    data = {"entity":"unknown", "test":["world"]}
+    res_data = engine.run(data)
+    
+    assert(res_data['entity']=="unknown")
+    assert(res_data['test']==["hello", "world"])
+    assert(len(res_data.keys())==2)
+
+def test__DeletePrefixFromList():
+    op = DeletePrefixFromList(name="update data entity with value hallo",
+                                    key="test",
+                                    index=["hello"])
+    seq = Sequence("seq",[op])
+    spec = jsonpickle.encode(seq)
+    
+    engine = WorkflowEngine(spec)
+    
+    #APP SEARCH DOCUMENT
+    data = {"entity":"unknown", "test":["world"]}
+    res_data = engine.run(data)
+    
+    assert(res_data['entity']=="unknown")
+    assert(res_data['test']==["hello", "world"])
+    assert(len(res_data.keys())==2)
+
+def test__ComputeDqScoresProcessor():
+    pass
+
+def test__ResetDQScoresProcessor():
+    pass
+
+def test__InsertElementInList():
+    pass
+
+def test__DeleteElementFromList():
+    pass
+

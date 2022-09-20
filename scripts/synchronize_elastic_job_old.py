@@ -26,16 +26,12 @@ from pyflink.datastream.functions import MapFunction, RuntimeContext
 
 from m4i_flink_tasks import EntityMessage
 from m4i_flink_tasks import DeadLetterBoxMesage
-from m4i_flink_tasks.operation import UpdateLocalAttributeProcessor, OperationEvent, OperationChange, Sequence, WorkflowEngine
-
 import time
 from kafka import KafkaProducer
 import traceback
 from elastic_enterprise_search import EnterpriseSearch, AppSearch
 # from set_environment import set_env
-import jsonpickle
-import uuid
-import datetime
+
 
 
 
@@ -77,49 +73,66 @@ class SynchronizeAppsearch(MapFunction):
 
     def map(self, kafka_notification: str):
         try:
-
-            operation_list = []
             logging.warning(kafka_notification)
             entity_message = EntityMessage.from_json((kafka_notification))
 
-            input_entity = entity_message.new_value
-            
-
-
-            # Charif: This if-statement does not match our new approach..
+            updated_docs = []
+            entity_doc = None
 
             if entity_message.direct_change == False:
                 logging.warning("This message is a consequence of an indirect change. No further action is taken.")
                 return
 
-            if entity_message.changed_attributes != []:
-                logging.info("handle updated attributes.")
-                for update_attribute in entity_message.changed_attributes:
-                    if update_attribute in input_entity.attributes.unmapped_attributes.keys():
-                        operation_list.append(UpdateLocalAttributeProcessor(name="update attribute", key=update_attribute, value=input_entity))
+            logging.warning("handle kafka notification start.")
 
-                    if update_attribute == "name":
-                        pass
+            if entity_message.event_type=="EntityCreated":
+                logging.warning("New document will be created.")
+                # entity_doc = asyncio.run(create_document(entity_message.new_value))
+                logging.warning("New document is created.")
+                # logging.warning(repr(entity_doc))
+            if entity_message.inserted_attributes != []:
+                logging.warning("handle inserted attributes.")
 
-                    seq = Sequence(name="update attribute", steps = operation_list)
-                    spec = jsonpickle.encode(seq) # what happens with this?
-                    engine = WorkflowEngine(spec) # what happens whit this?
-
-
-                oc = OperationChange(propagate=False, propagate_down=False, operations = operation_list)
-
-                oe = OperationEvent(id=str(uuid.uuid4()), 
-                                    creation_time=int(datetime.now().timestamp()*1000),
-                                    entity_guid=input_entity.guid,
-                                    changes=[oc])
                 
-                result = json.dump(json.loads(oe.to_json()))
+                # updated_docs = handle_updated_attributes(entity_message, entity_message.new_value,entity_message.inserted_attributes, app_search, entity_doc)
+                logging.warning("inserted attributes handled.")
 
-            return result
+            if entity_message.changed_attributes != []:
+                logging.warning("handle updated attributes.")
+                # updated_docs = handle_updated_attributes(entity_message, entity_message.new_value,entity_message.changed_attributes, app_search)
+                logging.warning("updated attributes handled.")
+
+            if entity_message.deleted_attributes != []:
+                logging.warning("handle deleted attributes.")
+                # updated_docs = handle_deleted_attributes(entity_message, entity_message.new_value,entity_message.deleted_attributes, app_search, entity_doc)
+                logging.warning("deleted attributes handled.")
+
+            # if entity_message.deleted_relationships != {}:
+            #     logging.warning("handle deleted relationships.")
+            #     updated_docs = asyncio.run(handle_deleted_relationships(entity_message, entity_message.old_value,entity_message.deleted_relationships, app_search, entity_doc))
+            #     logging.warning("deleted relationships handled.")
+
+            # if entity_message.inserted_relationships != {}:
+            #     logging.warning("handle inserted relationships.")
+            #     updated_docs = asyncio.run(handle_inserted_relationships(entity_message, entity_message.new_value, entity_message.inserted_relationships, app_search, entity_doc))
+            #     logging.warning("inserted relationships handled.")
+
+            # logging.warning("updated documents")
+            # for key, updated_doc in updated_docs.items():
+            #     logging.warning(repr(updated_doc))
+            #     res = app_search.put_documents(engine_name=engine_name, documents=updated_doc)
+            #     logging.warning(res)
+
+            if entity_message.event_type=="EntityDeleted":
+                logging.warning("entity document is deleted.")
+                # delete_document(entity_message.guid, app_search)
+            engine_name = config_store.get("elastic.app.search.engine.name")
 
 
 
-       
+            logging.warning("kafka notification is handled.")
+
+
 
 
         except Exception as e:
