@@ -1,6 +1,6 @@
-from .parameters import *
-from synchronize_app_search import *
-from elastic import *
+#from .parameters import *
+#from synchronize_app_search import *
+#from elastic import *
 
 def fill_in_dq_scores(input_document : dict) -> dict:
     """This function fills in and sets all dq scores to zero in the given document and returns the  updated document."""

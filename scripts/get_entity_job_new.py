@@ -7,6 +7,11 @@ import os
 from pyflink.common.typeinfo import Types
 
 from m4i_atlas_core import AtlasChangeMessage, ConfigStore, EntityAuditAction, get_entity_by_guid, get_keycloak_token
+from config import config
+from credentials import credentials
+store = ConfigStore.get_instance()
+
+
 from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
@@ -15,14 +20,12 @@ from kafka import KafkaProducer
 import time
 import os
 from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
-from config import config
-from credentials import credentials
+
 import traceback
 from  aiohttp.client_exceptions import ClientResponseError
 # from set_environment import set_env
 
-store = ConfigStore.get_instance()
-store.load({**config, **credentials})
+
 
 class WrongOperationTypeException(Exception):
     pass
@@ -42,6 +45,7 @@ class GetEntityLocal(object):
         return self.access_token
 
     def map_local(self, kafka_notification: str):
+        logging.info(repr(store))
         async def get_entity(kafka_notification, access_token):
 
             logging.info(repr(kafka_notification))
@@ -95,6 +99,8 @@ class GetEntity(MapFunction,GetEntityLocal):
     bootstrap_server_hostname=None
     bootstrap_server_port=None
     producer = None
+    store = None
+    
     
     def open(self, runtime_context: RuntimeContext):
         self.bootstrap_server_hostname, self.bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
@@ -134,7 +140,7 @@ class GetEntity(MapFunction,GetEntityLocal):
 
 
 def run_get_entity_job():
-
+    store.load({**config, **credentials})
     env = StreamExecutionEnvironment.get_execution_environment()
     #set_env(env)
     env.set_parallelism(1)
@@ -142,8 +148,8 @@ def run_get_entity_job():
     path = os.path.dirname(__file__)
 
     # download JARs
-    kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
-    kafka_client = f"file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
+    kafka_jar = "file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
+    kafka_client = "file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
 
     bootstrap_server_hostname = config.get("kafka.bootstrap.server.hostname")
     bootstrap_server_port = config.get("kafka.bootstrap.server.port")
@@ -168,7 +174,7 @@ def run_get_entity_job():
     kafka_source.set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
 
-    data_stream = env.add_source(kafka_source).name(f"consuming atlas events")
+    data_stream = env.add_source(kafka_source).name("consuming atlas events")
 
     data_stream = data_stream.map(GetEntity(), Types.STRING()).name("retrieve entity from atlas").filter(lambda notif: notif)
 
