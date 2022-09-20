@@ -6,24 +6,19 @@ import os
 
 from pyflink.common.typeinfo import Types
 
-from m4i_atlas_core import AtlasChangeMessage, ConfigStore, EntityAuditAction, get_entity_by_guid, get_keycloak_token
 from config import config
 from credentials import credentials
+from m4i_atlas_core import AtlasChangeMessage, ConfigStore, EntityAuditAction, get_entity_by_guid, get_keycloak_token
 store = ConfigStore.get_instance()
 
-
+import time
+import traceback
+from kafka import KafkaProducer
 from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
 from pyflink.datastream.functions import MapFunction, RuntimeContext
-from kafka import KafkaProducer
-import time
-import os
 from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
-
-import traceback
-from  aiohttp.client_exceptions import ClientResponseError
-# from set_environment import set_env
 
 
 

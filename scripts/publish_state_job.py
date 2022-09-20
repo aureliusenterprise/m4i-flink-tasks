@@ -1,52 +1,27 @@
-import asyncio
 import json
 import logging
 import sys
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import List, Optional
-from pyflink.common.typeinfo import Types
 
-from m4i_atlas_core import AtlasChangeMessage, ConfigStore, EntityAuditAction, get_entity_by_guid, Entity
-from pyflink.common.serialization import SimpleStringSchema, JsonRowSerializationSchema
-from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
-from pyflink.datastream.functions import MapFunction, RuntimeContext
 # from set_environment import set_env
 
 from config import config
 from credentials import credentials
+from m4i_flink_tasks.synchronize_app_search import make_elastic_connection
+from m4i_atlas_core import ConfigStore, Entity
+config_store = ConfigStore.get_instance()
 
-# from m4i_data_management import make_elastic_connection
-# from m4i_data_management import ConfigStore as m4i_ConfigStore
 from kafka import KafkaProducer
 import time
-from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 import traceback
 import os
-from elasticsearch import Elasticsearch
-from m4i_flink_tasks.synchronize_app_search import make_elastic_connection
-config_store = ConfigStore.get_instance()
-# config_store = m4i_ConfigStore.get_instance()
+from pyflink.common.serialization import SimpleStringSchema, JsonRowSerializationSchema
+from pyflink.datastream import StreamExecutionEnvironment
+from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
+from pyflink.datastream.functions import MapFunction, RuntimeContext
+from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 
-# from synchronize_elastic
 
-# def make_elastic_connection() -> Elasticsearch:
-#     """
-#     Returns a connection with the ElasticSearch database
-#     """
-
-#     elastic_search_endpoint, username, password = config_store.get_many(
-#         "elastic.search.endpoint",
-#         "elastic.cloud.username",
-#         "elastic.cloud.password"
-#     )
-
-#     connection = Elasticsearch(elastic_search_endpoint, basic_auth=(username, password))
-
-#     return connection
-
-class PublishState(MapFunction):
+class PublishStateLocal(object):
     elastic = None
     elastic_search_index = None
     doc_id = 0
@@ -55,86 +30,111 @@ class PublishState(MapFunction):
         self.doc_id = self.doc_id + 1
         return self.doc_id
 
-    def open(self, runtime_context: RuntimeContext):
-        config_store.load({**config, **credentials})
+    def open_local(self):
         self.elastic_search_index = config_store.get("elastic.search.index")
         self.elastic = make_elastic_connection()
+        
+    def map_local(self, kafka_notification: str):
+        kafka_notification_json = json.loads(kafka_notification)
+
+        if "kafka_notification" not in kafka_notification_json.keys() or "atlas_entity" not in kafka_notification_json.keys():
+            raise Exception("Kafka event does not match the predefined structure: {\"kafka_notification\" : {}, \"atlas_entity\" : {}}")
+
+        if not kafka_notification_json.get("kafka_notification"):
+            logging.warning(kafka_notification)
+            logging.warning("No kafka notification.")
+            raise Exception("Original Kafka notification which is produced by Atlas is missing")
+
+        if not kafka_notification_json.get("atlas_entity"):
+            logging.warning(kafka_notification)
+            logging.warning("No atlas entity.")
+            return kafka_notification
+
+        msg_creation_time = kafka_notification_json.get("msg_creation_time")
+
+        atlas_entity_json = kafka_notification_json["atlas_entity"]
+        atlas_entity = json.dumps(atlas_entity_json)
+        logging.warning(atlas_entity)
+
+        atlas_entity = Entity.from_json(atlas_entity)
+
+        # turns out update_time for an import of data into atlas is the same for all events. Does not work for us!
+        # doc_id = "{}_{}".format(atlas_entity.guid, atlas_entity.update_time)
+        doc_id_ = "{}_{}".format(atlas_entity.guid, msg_creation_time)
+        doc = json.loads(json.dumps({"msg_creation_time": msg_creation_time, "body": atlas_entity_json }))
+
+        logging.info(kafka_notification)
+        retry = 0
+        success = False
+        while not success and retry<3:
+            try:
+                res = self.elastic.index(index=self.elastic_search_index, id = doc_id_, document=doc)
+                logging.warning(str(res))
+                if res['result'] in ['updated','created','deleted']:
+                    success = True
+                    logging.info("successfully submitted the document")
+                else:
+                    logging.error(f"errornouse result state {res['result']}")
+            except Exception as e:
+                logging.error("failed to submit the document")
+                logging.warning(str(e))
+                try:
+                    self.elastic = make_elastic_connection()
+                except:
+                    pass
+            retry = retry + 1
+        # elastic.close()
+        return kafka_notification
+
+# end of class PublishStateLocal
+
+
+class PublishState(MapFunction,PublishStateLocal):
+    bootstrap_server_hostname=None
+    bootstrap_server_port=None
+    
+    def open(self, runtime_context: RuntimeContext):
+        config_store.load({**config, **credentials})
+        self.bootstrap_server_hostname, self.bootstrap_server_port =  config_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
+        self.open_local()
+
+    def get_deadletter(self):
+        if self.producer==None:
+            self.producer = KafkaProducer(
+                    bootstrap_servers=  f"{self.bootstrap_server_hostname}:{self.bootstrap_server_port}",
+                    value_serializer=str.encode,
+                    request_timeout_ms = 1000,
+                    api_version = (2,0,2),
+                    retries = 1,
+                    linger_ms = 1000
+                )
+        return self.producer
+
 
     def map(self, kafka_notification: str):
         try:
-            kafka_notification_json = json.loads(kafka_notification)
-
-            if "kafka_notification" not in kafka_notification_json.keys() or "atlas_entity" not in kafka_notification_json.keys():
-                raise Exception("Kafka event does not match the predefined structure: {\"kafka_notification\" : {}, \"atlas_entity\" : {}}")
-
-            if not kafka_notification_json.get("kafka_notification"):
-                logging.warning(kafka_notification)
-                logging.warning("No kafka notification.")
-                raise Exception("Original Kafka notification which is produced by Atlas is missing")
-
-            if not kafka_notification_json.get("atlas_entity"):
-                logging.warning(kafka_notification)
-                logging.warning("No atlas entity.")
-                return kafka_notification
-
-            msg_creation_time = kafka_notification_json.get("msg_creation_time")
-
-            atlas_entity_json = kafka_notification_json["atlas_entity"]
-            atlas_entity = json.dumps(atlas_entity_json)
-            logging.warning(atlas_entity)
-
-            atlas_entity = Entity.from_json(atlas_entity)
-
-            # turns out update_time for an import of data into atlas is the same for all events. Does not work for us!
-            # doc_id = "{}_{}".format(atlas_entity.guid, atlas_entity.update_time)
-            doc_id_ = "{}_{}".format(atlas_entity.guid, msg_creation_time)
-            doc = json.loads(json.dumps({"msg_creation_time": msg_creation_time, "body": atlas_entity_json }))
-
-            logging.warning(kafka_notification)
-
-            # elastic_search_index = config_store.get("elastic.search.index")
-            # elastic = make_elastic_connection()
-            # elastic.index(index=elastic_search_index, id = doc_id, document=atlas_entity_json)
-            # elastic.close()
-            retry = 0
-            success = False
-            while not success and retry<3:
-                try:
-                    res = self.elastic.index(index=self.elastic_search_index, id = doc_id_, document=doc)
-                    logging.warning(str(res))
-                    if res['result'] in ['updated','created','deleted']:
-                        success = True
-                        logging.warning("successfully submitted the document")
-                    else:
-                        logging.warning(f"errornouse result state {res['result']}")
-                except Exception as e:
-                    logging.warning("failed to submit the document")
-                    logging.warning(str(e))
-                    try:
-                        self.elastic = make_elastic_connection()
-                    except:
-                        pass
-                retry = retry + 1
-            # elastic.close()
-            return kafka_notification
-
+            res = self.map_local(kafka_notification)
+            logging.info("received result: "+repr(res))
+            return res            
         except Exception as e:
+            logging.error("Exception during processing:")
+            logging.error(repr(e))
+
             exc_info = sys.exc_info()
             e = (''.join(traceback.format_exception(*exc_info)))
-            logging.error(e)
 
             event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="publish_state", description = (e))
-            bootstrap_server_hostname, bootstrap_server_port =  config_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
-            producer = KafkaProducer(
-                bootstrap_servers=  f"{bootstrap_server_hostname}:{bootstrap_server_port}",
-                value_serializer=str.encode,
-                request_timeout_ms = 1000,
-                api_version = (2,0,2),
-                retries = 1,
-                linger_ms = 1000
-            )
-            dead_lettter_box_topic = config_store.get("exception.events.topic.name")
-            producer.send(topic = dead_lettter_box_topic, value=event.to_json())
+            logging.error("this goes into dead letter box: ")
+            logging.error(repr(event))
+            
+            retry = 0
+            while retry <2:
+                try:
+                    producer = self.get_deadletter()
+                    producer.send(topic=self.dead_lettter_box_topic, value=event.to_json())
+                except Exception as e2:
+                    logging.error("error dumping data into deadletter topic "+repr(e2))
+# end of class PublishState
 
 
 def run_publish_state_job():
