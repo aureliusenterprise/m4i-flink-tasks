@@ -2,10 +2,10 @@
 import asyncio
 import json
 import logging
-from config import config
-from credentials import credentials
-from m4i_atlas_core import AtlasChangeMessage, ConfigStore, EntityAuditAction, get_entity_by_guid, get_keycloak_token
-from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
+#from config import config
+#from credentials import credentials
+from m4i_atlas_core import AtlasChangeMessage, EntityAuditAction, get_entity_by_guid, get_keycloak_token
+#from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 #store = ConfigStore.get_instance()
 
 
@@ -63,7 +63,8 @@ class GetEntityLocal(object):
         while retry < 3:
             try:
                 access__token = self.get_accress_token()
-                return asyncio.run(get_entity(kafka_notification, access__token))
+                logging.info(f"access tokenL: {access__token}")
+                return asyncio.run(cl.get_entity(kafka_notification, access__token))
             except WrongOperationTypeException as e:
                 raise e
             except Exception as e:
