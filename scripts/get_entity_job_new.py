@@ -103,6 +103,8 @@ class GetEntity(MapFunction,GetEntityLocal):
     
     
     def open(self, runtime_context: RuntimeContext):
+        store.load({**config, **credentials})
+    
         self.bootstrap_server_hostname, self.bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
         self.dead_lettter_box_topic = store.get("exception.events.topic.name")
             
@@ -140,7 +142,6 @@ class GetEntity(MapFunction,GetEntityLocal):
 
 
 def run_get_entity_job():
-    store.load({**config, **credentials})
     env = StreamExecutionEnvironment.get_execution_environment()
     #set_env(env)
     env.set_parallelism(1)
