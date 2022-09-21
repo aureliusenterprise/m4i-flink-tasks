@@ -215,7 +215,7 @@ class DetermineChangeLocal():
                 },
                 {
                     "range": {
-                    "msg_creation_time": {
+                    "msgCreationTime": {
                         "lt": msg_creation_time
                     }
                     }
@@ -225,7 +225,7 @@ class DetermineChangeLocal():
         }
 
         sort = {
-            "msg_creation_time": {"numeric_type" : "long", "order": "desc"}
+            "msgCreationTime": {"numeric_type" : "long", "order": "desc"}
         }
 
         retry = 0
@@ -251,7 +251,7 @@ class DetermineChangeLocal():
         logging.warning(repr(kafka_notification))
 
         kafka_notification_json = json.loads(kafka_notification)
-        msg_creation_time = kafka_notification_json.get("msg_creation_time")
+        msg_creation_time = kafka_notification_json.get("kafka_notification").get("msgCreationTime")
      
         	    # check whether notification or entity is missing
         if not kafka_notification_json.get("kafka_notification") or not kafka_notification_json.get("atlas_entity"):

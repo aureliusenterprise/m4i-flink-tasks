@@ -76,7 +76,9 @@ class SynchronizeAppsearch(MapFunction):
 
 
     def map(self, kafka_notification: str):
-        try:
+        try:    
+
+            result = None
 
             operation_list = []
             logging.warning(kafka_notification)
@@ -97,7 +99,9 @@ class SynchronizeAppsearch(MapFunction):
                 logging.info("handle updated attributes.")
                 for update_attribute in entity_message.changed_attributes:
                     if update_attribute in input_entity.attributes.unmapped_attributes.keys():
-                        operation_list.append(UpdateLocalAttributeProcessor(name="update attribute", key=update_attribute, value=input_entity))
+
+                        value = input_entity.attributes.unmapped_attributes[update_attribute]
+                        operation_list.append(UpdateLocalAttributeProcessor(name="update attribute", key=update_attribute, value=value))
 
                     if update_attribute == "name":
                         pass
@@ -108,7 +112,7 @@ class SynchronizeAppsearch(MapFunction):
                 oc = OperationChange(propagate=False, propagate_down=False, operations = spec)
 
                 oe = OperationEvent(id=str(uuid.uuid4()), 
-                                    creation_time=int(datetime.now().timestamp()*1000),
+                                    creation_time=int(datetime.datetime.now().timestamp()*1000),
                                     entity_guid=input_entity.guid,
                                     changes=[oc])
                 
