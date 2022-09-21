@@ -187,6 +187,7 @@ class LocalOperation(MapFunction, LocalOperationLocal):
                 try:
                     producer_ = self.get_producer()
                     producer_.send(topic = self.dead_lettter_box_topic, value=event.to_json())
+                    return 
                 except Exception as e:
                     logging.error(f"Problems sending a deadletter message : {str(e)}")
                     retry = retry+1
