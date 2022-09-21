@@ -44,6 +44,8 @@ import datetime
 class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
     bootstrap_server_hostname=None
     bootstrap_server_port=None
+    dead_lettter_box_topic = None
+    producer = None
 
     def open(self, runtime_context: RuntimeContext):
         config_store.load({**config, **credentials})
@@ -90,7 +92,7 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
                     return
                 except Exception as e2:
                     logging.error("error dumping data into deadletter topic "+repr(e2))
-                    retry = retry + 1
+                retry = retry + 1
                     
 
     # def open(self, runtime_context: RuntimeContext):

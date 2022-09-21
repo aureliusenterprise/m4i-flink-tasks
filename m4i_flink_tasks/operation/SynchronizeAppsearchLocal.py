@@ -73,16 +73,13 @@ class SynchronizeAppsearchLocal(object):
                 for update_attribute in entity_message.changed_attributes:
                     if update_attribute in input_entity.attributes.keys():
     
-                        value = input_entity.attributes[update_attribute]
+                        value = input_entity.attributes.unmapped_attributes[update_attribute]
                         local_operation_list.append(UpdateLocalAttributeProcessor(name=f"update attribute {update_attribute}", key=update_attribute, value=value))
 
             if entity_message.deleted_attributes != []:
                 logging.info("handle deleted attributes.")
                 for delete_attribute in entity_message.deleted_attributes:
-                    if delete_attribute in input_entity.attributes.keys():
-    
-                        value = input_entity.attributes[delete_attribute]
-                        local_operation_list.append(UpdateLocalAttributeProcessor(name=f"delete attribute {delete_attribute}", key=delete_attribute, value=value))
+                    local_operation_list.append(DeleteLocalAttributeProcessor(name=f"delete attribute {delete_attribute}", key=delete_attribute, value=value))
 
             if len(local_operation_list)>0:
                 seq = Sequence(name="update and inser attributes", steps = local_operation_list)

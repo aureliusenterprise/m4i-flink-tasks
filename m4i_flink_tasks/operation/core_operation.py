@@ -93,11 +93,9 @@ class DeleteLocalAttributeProcessor(AbstractProcessor):
     """
     def __init__(self,
                 name:str,
-                key:str,
-                value):
+                key:str):
         super().__init__(name)
         self.key = key
-        self.value = value
     # end of __init__
 
     def process(self, input_data:Dict) -> Dict:
