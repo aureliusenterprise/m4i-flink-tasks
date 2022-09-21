@@ -33,7 +33,7 @@ class PublishState(MapFunction,PublishStateLocal):
         self.bootstrap_server_hostname, self.bootstrap_server_port =  config_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
         self.dead_lettter_box_topic = config_store.get("exception.events.topic.name")
 
-        self.open_local()
+        self.open_local(config, credentials, config_store)
 
     def get_deadletter(self):
         if self.producer==None:
