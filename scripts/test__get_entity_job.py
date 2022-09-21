@@ -21,7 +21,7 @@ def store():
     
     
 def test__get_entity():
-    msg = '{"version":{"version":"1.0.0","versionParts":[1]},"msgCompressionKind":"NONE","msgSplitIdx":1,"msgSplitCount":1,"msgSourceIP":"10.244.2.233","msgCreatedBy":"","msgCreationTime":1663702503306,"spooled":false,"message":{"type":"ENTITY_NOTIFICATION_V2","entity":{"typeName":"hdfs_path","attributes":{"path":"gfhj","createTime":1663624800000,"qualifiedName":"fghj","name":"fghj"},"guid":"8732e707-7a0c-417e-882a-6ac4017c8d15","displayText":"fghj","isIncomplete":false},"operationType":"ENTITY_CREATE","eventTime":1663702503065}}'
+    msg = '{"version":{"version":"1.0.0","versionParts":[1]},"msgCompressionKind":"NONE","msgSplitIdx":1,"msgSplitCount":1,"msgSourceIP":"10.244.2.233","msgCreatedBy":"","msgCreationTime":1663702503306,"spooled":false,"message":{"type":"ENTITY_NOTIFICATION_V2","entity":{"typeName":"hdfs_path","attributes":{"path":"gfhj","createTime":1663624800000,"qualifiedName":"fghj","name":"fghj"},"guid":"1fe2234e-1925-4296-bf7e-a3bf6bfc4d75","displayText":"fghj","isIncomplete":false},"operationType":"ENTITY_CREATE","eventTime":1663702503065}}'
     cl = GetEntityLocal()
     res= cl.map_local(msg)
     cl.get_access_token()

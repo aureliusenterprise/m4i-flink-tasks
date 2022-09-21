@@ -26,17 +26,17 @@ class GetEntityLocal(object):
 
     def map_local(self, kafka_notification: str):
 
-        async def get_entity(kafka_notification, access_token):
+        async def get_entity(kafka_notification, access_token_):
 
             logging.info(repr(kafka_notification))
             kafka_notification_obj = AtlasChangeMessage.from_json(kafka_notification)
-            logging.info(access_token)
+            logging.info(access_token_)
 
             if kafka_notification_obj.message.operation_type in [EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE]:
                 msg_creation_time = kafka_notification_obj.msg_creation_time
                 entity_guid = kafka_notification_obj.message.entity.guid
                 await get_entity_by_guid.cache.clear()
-                event_entity = await get_entity_by_guid(guid=entity_guid, ignore_relationships=False, access_token=access_token)
+                event_entity = await get_entity_by_guid(guid=entity_guid, ignore_relationships=False, access_token=access_token_)
                 # event_entity = await get_entity_by_guid(guid=entity_guid, ignore_relationships=False)
                 if not event_entity:
                     raise Exception(f"No entity could be retreived from Atlas with guid {entity_guid}")
