@@ -62,9 +62,9 @@ class GetEntityLocal(object):
         retry = 0
         while retry < 3:
             try:
-                access__token = self.get_accress_token()
+                access__token = self.get_access_token()
                 logging.info(f"access tokenL: {access__token}")
-                return asyncio.run(cl.get_entity(kafka_notification, access__token))
+                return asyncio.run(get_entity(kafka_notification, access__token))
             except WrongOperationTypeException as e:
                 raise e
             except Exception as e:
