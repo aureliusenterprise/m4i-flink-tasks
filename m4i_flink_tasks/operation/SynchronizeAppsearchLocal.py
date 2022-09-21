@@ -54,12 +54,12 @@ class SynchronizeAppsearchLocal(object):
             return
             #pass
         local_operation_list = []
-        if entity_message["originalEventType"]=="ENTITY_CREATE":
+        if entity_message.original_event_type=="ENTITY_CREATE":
             local_operation_list.append(CreateLocalEntityProcessor(name=f"create entity with guid {input_entity.guid} of type {input_entity.type_name}", 
                                                                       entity_guid = input_entity.guid,
                                                                       entity_type = input_entity.type_name))
         
-        if entity_message["originalEventType"] in ["ENTITY_UPDATE","ENTITY_CREATE"]:
+        if entity_message.original_event_type in ["ENTITY_UPDATE","ENTITY_CREATE"]:
             if entity_message.inserted_attributes != []:
                 logging.info("handle inserted attributes.")
                 for insert_attribute in entity_message.inserted_attributes:
