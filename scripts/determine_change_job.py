@@ -196,7 +196,7 @@ class DetermineChangeLocal():
     elastic_search_index = None
     elastic = None
 
-    def open_local(self, runtime_context: RuntimeContext):
+    def open_local(self):
         store.load({**config, **credentials})
         self.elastic_search_index = store.get("elastic.search.index")
         self.elastic = make_elastic_connection()
@@ -247,7 +247,7 @@ class DetermineChangeLocal():
                     pass
             retry = retry + 1
 
-    def map(self, kafka_notification: str):
+    def map_local(self, kafka_notification: str):
         logging.warning(repr(kafka_notification))
 
         kafka_notification_json = json.loads(kafka_notification)
@@ -429,6 +429,8 @@ class DetermineChange(MapFunction,DetermineChangeLocal):
     def open(self, runtime_context: RuntimeContext):
         store.load({**config, **credentials})
         self.bootstrap_server_hostname, self.bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
+        self.dead_lettter_box_topic = store.get("exception.events.topic.name")
+
         self.open_local()
 
     def get_deadletter(self):
@@ -443,6 +445,9 @@ class DetermineChange(MapFunction,DetermineChangeLocal):
                 )
         return self.producer
 
+    # def map_local(self, kafka_notification: str):
+    #     kafka_notification_json = json.loads(kafka_notification)
+    #     return kafka_notification_json
 
     def map(self, kafka_notification: str):
         try:
@@ -524,7 +529,7 @@ def determine_change():
 
     data_stream = data_stream.flat_map(GetResult(), Types.STRING()).name("parse change")
 
-    # data_stream.print()
+    data_stream.print()
 
     data_stream.add_sink(FlinkKafkaProducer(topic = sink_topic_name,
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id},

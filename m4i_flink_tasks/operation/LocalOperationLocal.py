@@ -92,6 +92,16 @@ class LocalOperationLocal(object):
         
         # write back the entity into appsearch
         
+        retry_ = 0
+        while retry_<3:
+            try:
+                res = self.app_search.put_documents(engine_name=self.engine_name, documents=entity)
+
+            except Exception as e:
+                logging.error("connection to app search could not be established "+str(e))
+                self.app_search = make_elastic_app_search_connect()
+                retry_ = retry_+1
+        
         # calculate the resulting events to be propagated
         for id_ in new_changes.keys():
             op = OperationEvent(id=str(uuid.uuid4()), 

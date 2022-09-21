@@ -50,7 +50,7 @@ class PublishStateLocal(object):
             logging.warning("No atlas entity.")
             return kafka_notification
 
-        msg_creation_time = kafka_notification_json.get("msg_creation_time")
+        msg_creation_time = kafka_notification_json["kafka_notification"].get("msgCreationTime")
 
         atlas_entity_json = kafka_notification_json["atlas_entity"]
         atlas_entity = json.dumps(atlas_entity_json)
@@ -96,6 +96,8 @@ class PublishState(MapFunction,PublishStateLocal):
     def open(self, runtime_context: RuntimeContext):
         config_store.load({**config, **credentials})
         self.bootstrap_server_hostname, self.bootstrap_server_port =  config_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
+        self.dead_lettter_box_topic = config_store.get("exception.events.topic.name")
+
         self.open_local()
 
     def get_deadletter(self):
