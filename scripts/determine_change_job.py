@@ -25,7 +25,7 @@ import traceback
 import re
 from m4i_atlas_core import get_entity_audit
 from m4i_atlas_core import AtlasChangeMessage, EntityAuditAction, get_entity_by_guid, get_keycloak_token
-from atlas_flink_tasks.operation.DetermineChangeLocal import DetermineChangeLocal
+from m4i_flink_tasks.operation.DetermineChangeLocal import DetermineChangeLocal
 from pyflink.datastream.functions import FlatMapFunction
 
 store = m4i_ConfigStore.get_instance()
