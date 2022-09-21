@@ -22,8 +22,6 @@ from pyflink.datastream.functions import MapFunction, RuntimeContext
 from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 
 
-
-
 class PublishState(MapFunction,PublishStateLocal):
     bootstrap_server_hostname=None
     bootstrap_server_port=None

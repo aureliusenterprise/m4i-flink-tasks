@@ -30,6 +30,32 @@ class AbstractProcessor(ABC):
 
 # end of class AbstractProcessor
 
+class CreateLocalEntityProcessor(AbstractProcessor):
+    """CreateLocalEntityProcessor is a processot to create an entity with
+        basic values and attributes.
+
+    Parameters
+    ----------
+    name :str
+        Name of the processor
+    """
+    def __init__(self,
+                name:str,
+                entity_type:str,
+                entity_guid:str):
+        super().__init__(name)
+        self.entity_guid = entity_guid
+        self.entity_type = entity_type
+    # end of __init__
+
+    def process(self, input_data:Dict) -> Dict:        
+        new_data = {}
+        new_data["guid"] = self.entity_guid
+        new_data["typeName"] = self.entity_type
+        return new_data
+    # end of process
+
+# end of class CreateLocalEntityProcessor
 
 class UpdateLocalAttributeProcessor(AbstractProcessor):
     """UpdateLocalAttributeProcessor is a processot to update a single key
@@ -55,6 +81,31 @@ class UpdateLocalAttributeProcessor(AbstractProcessor):
     # end of process
 
 # end of class UpdateLocalAttributeProcessor
+
+class DeleteLocalAttributeProcessor(AbstractProcessor):
+    """DeleteLocalAttributeProcessor is a processot to delete the value of a 
+        single key in the data.
+
+    Parameters
+    ----------
+    name :str
+        Name of the processor
+    """
+    def __init__(self,
+                name:str,
+                key:str,
+                value):
+        super().__init__(name)
+        self.key = key
+        self.value = value
+    # end of __init__
+
+    def process(self, input_data:Dict) -> Dict:
+       del input_data[self.key] 
+       return input_data
+    # end of process
+
+# end of class DeleteLocalAttributeProcessor
 
 
 class UpdateDqScoresProcessor(AbstractProcessor):

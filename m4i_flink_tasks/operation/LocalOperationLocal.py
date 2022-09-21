@@ -25,6 +25,7 @@ class LocalOperationLocal(object):
         self.engine_name = self.app_search_engine_name
         self.app_search = make_elastic_app_search_connect()
 
+
     def map_local(self, kafka_notification: str):
         events = []
         logging.warning(repr(kafka_notification))
@@ -36,7 +37,8 @@ class LocalOperationLocal(object):
         # retrieve the app search document
         retry = 0
         entity = None
-        while retry<3:
+        success = False
+        while (retry<3) and not success:
             try:
                 doc = list(self.app_search.get_documents(
                                             engine_name=self.engine_name,
@@ -47,11 +49,12 @@ class LocalOperationLocal(object):
                 # handling of missing guids
                 if len(doc)>0:
                     entity = (doc[0])
+                success = True
             except Exception as e:
                 logging.error("connection to app search could not be established "+str(e))
                 self.app_search = make_elastic_app_search_connect()
-                retry = retry+1
-        if entity==None:
+            retry = retry+1
+        if not success:
             raise Exception(f"Could not find document with guid {entity_guid} for event id {oe.id}")
         
         # execute the different changes
@@ -96,22 +99,28 @@ class LocalOperationLocal(object):
         # write back the entity into appsearch
         
         retry_ = 0
-        while retry_<3:
+        success = False
+        while not success and retry_<3:
             try:
-                res = self.app_search.put_documents(engine_name=self.engine_name, documents=entity)
-
+                if entity==None:
+                    res = self.app_search.delete_documents(engine_name=self.engine_name, document_ids=[entity_guid])
+                    logging.info(f"removed entity {entity_guid} from app search with result {repr(res)}")
+                else:
+                    res = self.app_search.put_documents(engine_name=self.engine_name, documents=entity)
+                    logging.info(f"published changes to app search with result {repr(res)}")
+                success  = True
             except Exception as e:
                 logging.error("connection to app search could not be established "+str(e))
                 self.app_search = make_elastic_app_search_connect()
                 retry_ = retry_+1
-        
-        # calculate the resulting events to be propagated
-        for id_ in new_changes.keys():
-            op = OperationEvent(id=str(uuid.uuid4()), 
-                           creation_time=int(datetime.datetime.now().timestamp()*1000),
-                           entity_guid=id_,
-                           changes=new_changes[id_])
-            events.append(op)
-            
+        if success:
+            # calculate the resulting events to be propagated
+            for id_ in new_changes.keys():
+                op = OperationEvent(id=str(uuid.uuid4()), 
+                               creation_time=int(datetime.datetime.now().timestamp()*1000),
+                               entity_guid=id_,
+                               changes=new_changes[id_])
+                events.append(op)
+                
         return events
 # end of class LocalOperationLocal
