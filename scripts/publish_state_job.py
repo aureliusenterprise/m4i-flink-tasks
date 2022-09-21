@@ -181,6 +181,7 @@ def run_publish_state_job():
 
     #data_stream.print()
 
+
     env.execute("publish_state_to_elastic_search")
 
 

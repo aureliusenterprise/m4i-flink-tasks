@@ -216,12 +216,12 @@ def local_operation():
 
     env.add_jars(kafka_jar, kafka_client)
 
-    bootstrap_server_hostname = m4i_store.get("kafka.bootstrap.server.hostname")
-    bootstrap_server_port = m4i_store.get("kafka.bootstrap.server.port")
-    source_topic_name = m4i_store.get("sync_elastic.events.topic.name")
+    bootstrap_server_hostname = config.get("kafka.bootstrap.server.hostname")
+    bootstrap_server_port = config.get("kafka.bootstrap.server.port")
+    source_topic_name = config.get("sync_elastic.events.topic.name")
     sink_topic_name = source_topic_name
-    dead_lettter_box_topic = m4i_store.get("exception.events.topic.name")
-    kafka_consumer_group_id = m4i_store.get("kafka.consumer.group.id")
+    dead_lettter_box_topic = config.get("exception.events.topic.name")
+    kafka_consumer_group_id = config.get("kafka.consumer.group.id")
 
     kafka_source = FlinkKafkaConsumer(topics = source_topic_name,
                                       properties={'bootstrap.servers':  f"{bootstrap_server_hostname}:{bootstrap_server_port}",

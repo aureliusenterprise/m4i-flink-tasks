@@ -21,7 +21,7 @@ from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import FlinkKafkaConsumer
 from pyflink.datastream.functions import MapFunction, RuntimeContext
-
+from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
 
 
 from m4i_flink_tasks import EntityMessage
@@ -103,20 +103,23 @@ class SynchronizeAppsearch(MapFunction):
                         value = input_entity.attributes.unmapped_attributes[update_attribute]
                         operation_list.append(UpdateLocalAttributeProcessor(name="update attribute", key=update_attribute, value=value))
 
+
+
                     if update_attribute == "name":
                         pass
+                seq = Sequence(name="update attribute", steps = operation_list)
+                spec = jsonpickle.encode(seq) 
 
-                    seq = Sequence(name="update attribute", steps = operation_list)
-                    spec = jsonpickle.encode(seq) 
-
-                oc = OperationChange(propagate=False, propagate_down=False, operations = spec)
+                oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
+                logging.warning("Operation Change has been created")
 
                 oe = OperationEvent(id=str(uuid.uuid4()), 
                                     creation_time=int(datetime.datetime.now().timestamp()*1000),
                                     entity_guid=input_entity.guid,
                                     changes=[oc])
+                logging.warning("Operation event has been created")
                 
-                result = json.dump(json.loads(oe.to_json()))
+                result = json.dumps(json.loads(oe.to_json()))
 
             return result
 
@@ -163,10 +166,10 @@ def synchronize_app_search():
 
     env.add_jars(kafka_jar, kafka_client)
 
-
     bootstrap_server_hostname = config.get("kafka.bootstrap.server.hostname")
     bootstrap_server_port = config.get("kafka.bootstrap.server.port")
     source_topic_name = config.get("determined.events.topic.name")
+    sink_topic_name = config.get("sync_elastic.events.topic.name")
     kafka_consumer_group_id = config.get("kafka.consumer.group.id")
 
 
@@ -182,6 +185,11 @@ def synchronize_app_search():
     data_stream = data_stream.map(SynchronizeAppsearch(), Types.STRING()).name("determine change").filter(lambda notif: notif)
 
     data_stream.print()
+
+    data_stream.add_sink(FlinkKafkaProducer(topic = sink_topic_name,
+        producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id},
+        serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink")
+
 
     env.execute("synchronize app search")
 
