@@ -3,7 +3,9 @@ import logging
 import sys
 
 from m4i_flink_tasks.synchronize_app_search import get_child_entity_guids,make_elastic_app_search_connect
-from m4i_flink_tasks.operation import OperationEvent, WorkflowEngine
+from m4i_flink_tasks.operation.OperationEvent import OperationEvent
+from m4i_flink_tasks.operation.core_operation import WorkflowEngine
+
 from m4i_flink_tasks import DeadLetterBoxMesage
 import time
 from kafka import KafkaProducer
@@ -20,6 +22,7 @@ class LocalOperationLocal(object):
         self.m4i_store = m4i_store
         self.m4i_store.load({**config, **credentials})
         self.app_search_engine_name = m4i_store.get("operations.appsearch.engine.name")
+        self.engine_name = self.app_search_engine_name
         self.app_search = make_elastic_app_search_connect()
 
     def map_local(self, kafka_notification: str):
@@ -105,7 +108,7 @@ class LocalOperationLocal(object):
         # calculate the resulting events to be propagated
         for id_ in new_changes.keys():
             op = OperationEvent(id=str(uuid.uuid4()), 
-                           creation_time=int(datetime.now().timestamp()*1000),
+                           creation_time=int(datetime.datetime.now().timestamp()*1000),
                            entity_guid=id_,
                            changes=new_changes[id_])
             events.append(op)

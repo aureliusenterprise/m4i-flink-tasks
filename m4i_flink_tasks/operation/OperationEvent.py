@@ -23,15 +23,19 @@ class OperationEvent(DataClassJsonMixin):
     entity_guid: str
     
     changes: List[OperationChange]
-    
+
+# import uuid
+# import datetime
 
 # oc = OperationChange(propagate=True, propagate_down=True, operation = {"hello": "workld"})
 # ocj = oc.to_json()
 
 # oe = OperationEvent(id=str(uuid.uuid4()), 
-#                     creation_time=int(datetime.now().timestamp()*1000),
+#                     creation_time=int(datetime.datetime.now().timestamp()*1000),
 #                     entity_guid="d56db187-2627-41a6-8698-f74d4b76227e",
 #                     changes=[oc])
 # oej = oe.to_json()
 
 # oe2 = OperationEvent.from_json(oej)
+
+# print(oe2)
