@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import logging
 import sys
+import json
 
-from m4i_flink_tasks.synchronize_app_search import get_child_entity_guids,make_elastic_app_search_connect
+from m4i_flink_tasks.synchronize_app_search.elastic import get_child_entity_guids,make_elastic_app_search_connect
 from m4i_flink_tasks.operation.OperationEvent import OperationEvent
 from m4i_flink_tasks.operation.core_operation import WorkflowEngine
 
@@ -45,7 +46,8 @@ class LocalOperationLocal(object):
                                             document_ids=[entity_guid]))
                 # keep it on the dictionary and not the object, beasue then it is applicabel to variouse app search documents
                 # and the sync elastic job is independent of a specific data model
-                
+                logging.info("received documents")
+                logging.info(doc)
                 # handling of missing guids
                 if len(doc)>0:
                     entity = (doc[0])
@@ -93,7 +95,7 @@ class LocalOperationLocal(object):
                         new_changes[id_].append(change)
             # apply local changes
             operation = change.operation
-            engine = WorkflowEngine(operation)
+            engine = WorkflowEngine(json.dumps(operation))
             entity = engine.run(entity)
         
         # write back the entity into appsearch
@@ -121,6 +123,7 @@ class LocalOperationLocal(object):
                                entity_guid=id_,
                                changes=new_changes[id_])
                 events.append(op)
-                
+        else: 
+            raise Exception(f"Retrieving the documents from app search failed for entity_guid {entity_guid}")                
         return events
 # end of class LocalOperationLocal
