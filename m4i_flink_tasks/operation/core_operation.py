@@ -50,6 +50,7 @@ class CreateLocalEntityProcessor(AbstractProcessor):
 
     def process(self, input_data:Dict) -> Dict:        
         new_data = {}
+        new_data["id"] = self.entity_guid
         new_data["guid"] = self.entity_guid
         new_data["typename"] = self.entity_type
         return new_data
