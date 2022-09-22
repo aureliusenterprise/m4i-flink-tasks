@@ -39,6 +39,7 @@ class LocalOperationLocal(object):
         retry = 0
         entity = None
         success_retrieve = False
+        retrieved_empty_document = True
         while (retry<3) and not success_retrieve:
             try:
                 doc = list(self.app_search.get_documents(
@@ -53,17 +54,20 @@ class LocalOperationLocal(object):
                 # handling of missing guids
                 if len(doc)>0:
                     entity = (doc[0])
+                    if entity!=None:
+                        retrieved_empty_document = False
                 success_retrieve = True
             except Exception as e:
                 logging.error("connection to app search could not be established "+str(e))
                 self.app_search = make_elastic_app_search_connect()
             retry = retry+1
         logging.info(f"retrieved entity {entity}")
-        if not success_retrieve:
-            raise Exception(f"Could not find document with guid {entity_guid} for event id {oe.id}")
+        # if not success_retrieve:
+        #     raise Exception(f"Could not find document with guid {entity_guid} for event id {oe.id}")
         
         # execute the different changes
         new_changes={}
+        errors = []
         for change in oe.changes:
             # change = oe.changes[0]
             # first propagation has to be determined before local changes are applied.
@@ -110,17 +114,29 @@ class LocalOperationLocal(object):
         while not success_update and retry_<3:
             try:
                 logging.info("writing back data")
+                res = None
                 if entity==None:
                     res = self.app_search.delete_documents(engine_name=self.engine_name, document_ids=[entity_guid])
                     # res = app_search.delete_documents(engine_name=engine_name, document_ids=[entity_guid])
                     logging.info(f"removed entity {entity_guid} from app search with result {repr(res)}")
-                elif success_retrieve:
-                    res = self.app_search.put_documents(engine_name=self.engine_name, documents=entity)
-                else:
+                elif retrieved_empty_document:
                     res = self.app_search.index_documents(engine_name=self.engine_name, documents=entity)
                     # res = app_search.index_documents(engine_name=engine_name, documents=entity)
-                    logging.info(f"published changes to app search with result {repr(res)}")
-                success_update  = True
+                    logging.info(f"inserted entity {entity_guid} to app search with result {repr(res)}")
+                else:
+                    res = self.app_search.put_documents(engine_name=self.engine_name, documents=entity)
+                    # res = app_search.put_documents(engine_name=engine_name, documents=entity)
+                    logging.info(f"updated entity {entity_guid} from app search with result {repr(res)}")
+                if res==None or len(res)==0:
+                    logging.warning(f"no updates performed for event {kafka_notification}")
+                elif len(res)>0:
+                    for res_ in res:
+                        # res_ = res[0]
+                        error = res_['errors']
+                        if len(error)>0:
+                            errors.extend(error)
+                if len(errors)==0:
+                    success_update = True
             except Exception as e:
                 logging.error("connection to app search could not be established "+str(e))
                 self.app_search = make_elastic_app_search_connect()
@@ -134,6 +150,6 @@ class LocalOperationLocal(object):
                                changes=new_changes[id_])
                 events.append(op)
         else: 
-            raise Exception(f"Retrieving the documents from app search failed for entity_guid {entity_guid}")                
+            raise Exception(f"Retrieving the documents from app search failed for entity_guid {entity_guid} with the following errors: {repr(errors)}")                
         return events
 # end of class LocalOperationLocal

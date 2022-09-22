@@ -24,14 +24,15 @@ config = {
 
 credentials = {
     "elastic.user": "elastic",
-    "elastic.passwd": "09NMCUQW5v69Cz21e4ZTSo65",
+    "elastic.passwd": "1aYh9R16np9KWjz96v5x3J1Z",
 }
 
 test_engine_name = "test_synchronize_app_search_engine"
 
-kafka_notification = '''{"id": "9bea1d2f-a397-43a0-80cc-a9b6558f6bcf",
-	"creationTime": 1663832965568,
-	"entityGuid": "d3e7fe15-9863-4d14-b895-081ecd282591",
+kafka_notification = '''{
+	"id": "9bac6d0f-e883-4900-93ed-c7f9a8e996ea",
+	"creationTime": 1663848414993,
+	"entityGuid": "871dfdf5-fe98-4673-b5bc-75037bb1ca3b",
 	"changes": [
 		{
 			"propagate": false,
@@ -42,16 +43,17 @@ kafka_notification = '''{"id": "9bea1d2f-a397-43a0-80cc-a9b6558f6bcf",
 				"steps": [
 					{
 						"py/object": "m4i_flink_tasks.operation.core_operation.CreateLocalEntityProcessor",
-						"name": "create entity with guid d3e7fe15-9863-4d14-b895-081ecd282591 of type hdfs_path",
-						"entity_guid": "d3e7fe15-9863-4d14-b895-081ecd282591",
+						"name": "create entity with guid 871dfdf5-fe98-4673-b5bc-75037bb1ca3b of type hdfs_path",
+						"entity_guid": "871dfdf5-fe98-4673-b5bc-75037bb1ca3b",
 						"entity_type": "hdfs_path"
 					},
 					{
 						"py/object": "m4i_flink_tasks.operation.core_operation.UpdateLocalAttributeProcessor",
 						"name": "insert attribute name",
 						"key": "name",
-						"value": "asd"
-					}]}}]}'''
+						"value": "asdfasd3333"
+					}]}}]}
+'''
 
 @pytest.fixture(autouse=True)
 def store():
@@ -64,7 +66,7 @@ def store():
 # END store
 
 def test_map_local():
-    kafka_message = '{"id": "3ff49d7a-0c7e-4b56-a354-fb689547e502", "creationTime": 1663762643749, "entityGuid": "b6044c9a-61b3-4a02-acec-e028e1f2c951", "changes": [{"propagate": false, "propagateDown": false, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update attribute", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.UpdateLocalAttributeProcessor", "name": "update attribute", "key": "definition", "value": "This domain contains data related to Finance & Control which is relevant for budgeting, forecasting and monitoring on employee level. (update 21 September 2022 14:17)"}]}}]}' 
+#    kafka_message = '{"id": "3ff49d7a-0c7e-4b56-a354-fb689547e502", "creationTime": 1663762643749, "entityGuid": "b6044c9a-61b3-4a02-acec-e028e1f2c951", "changes": [{"propagate": false, "propagateDown": false, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update attribute", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.UpdateLocalAttributeProcessor", "name": "update attribute", "key": "definition", "value": "This domain contains data related to Finance & Control which is relevant for budgeting, forecasting and monitoring on employee level. (update 21 September 2022 14:17)"}]}}]}' 
     local_operation_local = LocalOperationLocal()
     local_operation_local.open_local(config, credentials,config_store  )
    
