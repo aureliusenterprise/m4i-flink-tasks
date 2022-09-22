@@ -5,16 +5,19 @@ import uuid
 import datetime
 
 from m4i_flink_tasks import EntityMessage
-from m4i_flink_tasks.operation import UpdateLocalAttributeProcessor, OperationEvent
-from m4i_flink_tasks.operation import OperationChange, Sequence,CreateLocalEntityProcessor,DeleteLocalAttributeProcessor
+from m4i_flink_tasks.operation.core_operation import UpdateLocalAttributeProcessor
+from m4i_flink_tasks.operation.OperationEvent import OperationEvent, OperationChange
+from m4i_flink_tasks.operation.core_operation import Sequence,CreateLocalEntityProcessor,DeleteLocalAttributeProcessor
+from m4i_atlas_core import EntityAuditAction
 from elastic_enterprise_search import EnterpriseSearch, AppSearch
+from scripts.init.app_search_engine_setup import engines
 
 class SynchronizeAppsearchLocal(object):
     app_search = None
     elastic_base_endpoint = None
     elastic_user = None
     elastic_passwd = None
-    
+    schema_names = None
     
     def open_local(self, config, credentials, config_store):
         config_store.load({**config, **credentials})
@@ -28,6 +31,7 @@ class SynchronizeAppsearchLocal(object):
             "elastic.passwd"
         )
         self.app_search = self.get_app_search()
+        self.schema_names = engines[0]['schema'].keys()
 
 
     def get_app_search(self):
@@ -54,32 +58,36 @@ class SynchronizeAppsearchLocal(object):
             return
             #pass
         local_operation_list = []
-        if entity_message.original_event_type=="ENTITY_CREATE":
+        if entity_message.original_event_type==EntityAuditAction.ENTITY_CREATE:
             local_operation_list.append(CreateLocalEntityProcessor(name=f"create entity with guid {input_entity.guid} of type {input_entity.type_name}", 
                                                                       entity_guid = input_entity.guid,
                                                                       entity_type = input_entity.type_name))
         
-        if entity_message.original_event_type in ["ENTITY_UPDATE","ENTITY_CREATE"]:
+        if entity_message.original_event_type in [EntityAuditAction.ENTITY_CREATE,EntityAuditAction.ENTITY_IMPORT_CREATE,
+                                                  EntityAuditAction.ENTITY_UPDATE,EntityAuditAction.ENTITY_IMPORT_UPDATE ]:
             if entity_message.inserted_attributes != []:
                 logging.info("handle inserted attributes.")
                 for insert_attribute in entity_message.inserted_attributes:
-                     if insert_attribute in input_entity.attributes.unmapped_attributes.keys():
+                     if ((insert_attribute in input_entity.attributes.unmapped_attributes.keys()) and
+                         (insert_attribute.lower() in self.schema_names)):
 
                         value = input_entity.attributes.unmapped_attributes[insert_attribute]
-                        local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {insert_attribute}", key=insert_attribute, value=value))
+                        local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {insert_attribute}", key=insert_attribute.lower(), value=value))
             
             if entity_message.changed_attributes != []:
                 logging.info("handle updated attributes.")
                 for update_attribute in entity_message.changed_attributes:
-                    if update_attribute in input_entity.attributes.keys():
+                    if ((update_attribute in input_entity.attributes.keys()) and
+                         (update_attribute.lower() in self.schema_names)):
     
                         value = input_entity.attributes.unmapped_attributes[update_attribute]
-                        local_operation_list.append(UpdateLocalAttributeProcessor(name=f"update attribute {update_attribute}", key=update_attribute, value=value))
+                        local_operation_list.append(UpdateLocalAttributeProcessor(name=f"update attribute {update_attribute}", key=update_attribute.lower(), value=value))
 
             if entity_message.deleted_attributes != []:
                 logging.info("handle deleted attributes.")
                 for delete_attribute in entity_message.deleted_attributes:
-                    local_operation_list.append(DeleteLocalAttributeProcessor(name=f"delete attribute {delete_attribute}", key=delete_attribute, value=value))
+                    if delete_attribute.lower() in self.schema_names:
+                        local_operation_list.append(DeleteLocalAttributeProcessor(name=f"delete attribute {delete_attribute}", key=delete_attribute.lower(), value=value))
 
             if len(local_operation_list)>0:
                 seq = Sequence(name="update and inser attributes", steps = local_operation_list)
