@@ -29,7 +29,7 @@ class LocalOperationLocal(object):
 
     def map_local(self, kafka_notification: str):
         events = []
-        logging.warning(repr(kafka_notification))
+        logging.warning("kafka notification: "+repr(kafka_notification))
 
         oe = OperationEvent.from_json(kafka_notification)
         entity_guid = oe.entity_guid
@@ -56,6 +56,7 @@ class LocalOperationLocal(object):
                 logging.error("connection to app search could not be established "+str(e))
                 self.app_search = make_elastic_app_search_connect()
             retry = retry+1
+        logging.info(f"retrieved entity {entity}")
         if not success:
             raise Exception(f"Could not find document with guid {entity_guid} for event id {oe.id}")
         
@@ -97,13 +98,15 @@ class LocalOperationLocal(object):
             operation = change.operation
             engine = WorkflowEngine(json.dumps(operation))
             entity = engine.run(entity)
-        
+            logging.info(f"modified entity {entity}")
+        # end of if change.propagate
+            
         # write back the entity into appsearch
-        
         retry_ = 0
         success = False
         while not success and retry_<3:
             try:
+                logging.info("writing back data")
                 if entity==None:
                     res = self.app_search.delete_documents(engine_name=self.engine_name, document_ids=[entity_guid])
                     logging.info(f"removed entity {entity_guid} from app search with result {repr(res)}")

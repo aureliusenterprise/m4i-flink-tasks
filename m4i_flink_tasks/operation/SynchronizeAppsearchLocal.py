@@ -77,7 +77,7 @@ class SynchronizeAppsearchLocal(object):
             if entity_message.changed_attributes != []:
                 logging.info("handle updated attributes.")
                 for update_attribute in entity_message.changed_attributes:
-                    if ((update_attribute in input_entity.attributes.keys()) and
+                    if ((update_attribute in input_entity.attributes.unmapped_attributes.keys()) and
                          (update_attribute.lower() in self.schema_names)):
     
                         value = input_entity.attributes.unmapped_attributes[update_attribute]
