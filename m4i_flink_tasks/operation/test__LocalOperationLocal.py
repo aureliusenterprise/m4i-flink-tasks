@@ -72,10 +72,3 @@ def test_map_local():
     assert  local_operation_local.map_local(kafka_message) == None
     
     
-    
-from m4i_flink_tasks.synchronize_app_search import get_child_entity_guids,make_elastic_app_search_connect
-
-app_search = make_elastic_app_search_connect()
-entity_guid = "b6044c9a-61b3-4a02-acec-e028e1f2c951"
-doc = list(app_search.get_documents(engine_name="atlas-dev",
-                                    document_ids=[entity_guid]))
