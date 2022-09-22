@@ -39,7 +39,7 @@ class LocalOperationLocal(object):
         retry = 0
         entity = None
         success_retrieve = False
-        while (retry<3) and not success:
+        while (retry<3) and not success_retrieve:
             try:
                 doc = list(self.app_search.get_documents(
                                             engine_name=self.engine_name,
