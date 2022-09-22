@@ -19,11 +19,11 @@ class LocalOperationLocal(object):
 
     app_search = None
 
-    def open_local(self, config, credentials, m4i_store):
-        self.m4i_store = m4i_store
-        self.m4i_store.load({**config, **credentials})
-        self.app_search_engine_name = m4i_store.get("operations.appsearch.engine.name")
-        self.engine_name = self.app_search_engine_name
+    def open_local(self, config, credentials, config_store):
+        self.config_store = config_store
+        self.config_store.load({**config, **credentials})
+        self.app_search_engine_name = config_store.get("operations.appsearch.engine.name")
+        self.engine_name = config_store.get("operations.appsearch.engine.name")
         self.app_search = make_elastic_app_search_connect()
 
 
@@ -38,12 +38,14 @@ class LocalOperationLocal(object):
         # retrieve the app search document
         retry = 0
         entity = None
-        success = False
+        success_retrieve = False
         while (retry<3) and not success:
             try:
                 doc = list(self.app_search.get_documents(
                                             engine_name=self.engine_name,
                                             document_ids=[entity_guid]))
+                # doc = list(app_search.get_documents(engine_name=engine_name,document_ids=[entity_guid]))
+ 
                 # keep it on the dictionary and not the object, beasue then it is applicabel to variouse app search documents
                 # and the sync elastic job is independent of a specific data model
                 logging.info("received documents")
@@ -51,18 +53,19 @@ class LocalOperationLocal(object):
                 # handling of missing guids
                 if len(doc)>0:
                     entity = (doc[0])
-                success = True
+                success_retrieve = True
             except Exception as e:
                 logging.error("connection to app search could not be established "+str(e))
                 self.app_search = make_elastic_app_search_connect()
             retry = retry+1
         logging.info(f"retrieved entity {entity}")
-        if not success:
+        if not success_retrieve:
             raise Exception(f"Could not find document with guid {entity_guid} for event id {oe.id}")
         
         # execute the different changes
         new_changes={}
         for change in oe.changes:
+            # change = oe.changes[0]
             # first propagation has to be determined before local changes are applied.
             # Otherwise propagation can not be determined properly anymore
             # propagation required?
@@ -103,22 +106,26 @@ class LocalOperationLocal(object):
             
         # write back the entity into appsearch
         retry_ = 0
-        success = False
-        while not success and retry_<3:
+        success_update = False
+        while not success_update and retry_<3:
             try:
                 logging.info("writing back data")
                 if entity==None:
                     res = self.app_search.delete_documents(engine_name=self.engine_name, document_ids=[entity_guid])
+                    # res = app_search.delete_documents(engine_name=engine_name, document_ids=[entity_guid])
                     logging.info(f"removed entity {entity_guid} from app search with result {repr(res)}")
-                else:
+                elif success_retrieve:
                     res = self.app_search.put_documents(engine_name=self.engine_name, documents=entity)
+                else:
+                    res = self.app_search.index_documents(engine_name=self.engine_name, documents=entity)
+                    # res = app_search.index_documents(engine_name=engine_name, documents=entity)
                     logging.info(f"published changes to app search with result {repr(res)}")
-                success  = True
+                success_update  = True
             except Exception as e:
                 logging.error("connection to app search could not be established "+str(e))
                 self.app_search = make_elastic_app_search_connect()
                 retry_ = retry_+1
-        if success:
+        if success_update:
             # calculate the resulting events to be propagated
             for id_ in new_changes.keys():
                 op = OperationEvent(id=str(uuid.uuid4()), 
