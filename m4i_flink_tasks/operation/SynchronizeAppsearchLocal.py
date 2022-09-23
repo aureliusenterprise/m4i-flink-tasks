@@ -53,7 +53,7 @@ class SynchronizeAppsearchLocal(object):
         return self.app_search
 
 
-    def map_local(self, kafka_notification: str):
+    async def map_local(self, kafka_notification: str):
         result = None
 
         change_list=[]   
@@ -105,8 +105,9 @@ class SynchronizeAppsearchLocal(object):
                         if name == update_attribute:
 
                             propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update breadcrumb name {update_attribute}", key=breadcrumb_name, old_value=old_value, new_value=value))
-
-                            # derived_guids, derived_types = get_relevant_entity_fields(input_entity.type_name)
+                            # super_types = await get_super_types_names(input_entity.type_name)
+                            # m4isourcetype = get_m4i_source_types(super_types)
+                            # derived_guids, derived_types = get_relevant_entity_fields(m4isourcetype)
 
 
                             # propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update attribute {update_attribute}", key=derived_types, old_value=old_value, new_value=value))
@@ -117,6 +118,33 @@ class SynchronizeAppsearchLocal(object):
                 for delete_attribute in entity_message.deleted_attributes:
                     if delete_attribute.lower() in self.schema_names:
                         local_operation_list.append(DeleteLocalAttributeProcessor(name=f"delete attribute {delete_attribute}", key=delete_attribute.lower(), value=value))
+
+            
+            if entity_message.deleted_relationships != {}:
+                logging.warning("handle deleted relationships.")
+                for deleted_relationship in entity_message.deleted_relationships:
+                    super_types = await get_super_types_names(input_entity.type_name)
+                    m4isourcetype = get_m4i_source_types(super_types)
+
+                    if await is_parent_child_relationship(m4isourcetype, deleted_relationship):
+                        pass
+
+                  
+                    #     if input_entity_guid == child_entity_guid:
+                    #         doc = delete_breadcrumb(
+                    #             doc, parent_entity_guid, app_search)
+
+
+                logging.warning("deleted relationships handled.")
+
+           
+            # if entity_message.inserted_relationships != {}:
+            #     logging.warning("handle inserted relationships.")
+            #     updated_docs = asyncio.run(handle_inserted_relationships(entity_message, entity_message.new_value, entity_message.inserted_relationships, app_search, entity_doc))
+            #     logging.warning("inserted relationships handled.")
+
+
+
 
             if len(propagated_operation_downwards_list)>0:
                 seq = Sequence(name="update and inser attributes", steps = propagated_operation_downwards_list)
