@@ -141,6 +141,13 @@ def get_child_entity_guids(entity_guid : str, app_search : AppSearch, engine_nam
     guid_list = send_query(app_search=app_search, body = body, engine_name = engine_name)
     return guid_list
 
+def get_direct_child_entity_guids(entity_guid : str, app_search : AppSearch, engine_name : str = None):
+    result = []
+    direct_child_entity_docs = get_direct_child_entity_docs(entity_guid, app_search, engine_name)
+    for child_entity_document in direct_child_entity_docs:
+        result.append(child_entity_document["guid"])
+    return result
+
 
 
 

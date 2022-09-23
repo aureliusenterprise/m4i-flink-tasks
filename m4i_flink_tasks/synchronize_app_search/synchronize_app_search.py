@@ -283,6 +283,43 @@ def update_name_in_breadcrumbs(new_input_entity_name: str, input_document : dict
     return updated_documents
 
 
+def get_relevant_entity_fields(input_entity_data_type):
+    if input_entity_data_type == data_domain:
+        derived_types = [derived_data_domain]
+        derived_guids = [derived_data_domain_guid]
+
+    elif input_entity_data_type == data_entity:
+        derived_types = [derived_data_entity, derived_entity_names]
+        derived_guids = [derived_data_entity_guid, derived_entity_guids]
+
+    elif input_entity_data_type == data_attribute:
+        derived_types = [derived_data_attribute]
+        derived_guids = [derived_data_attribute_guid]
+
+    elif input_entity_data_type == system:
+        derived_types = [derived_system]
+        derived_guids = [derived_system_guid]
+
+    elif input_entity_data_type == collection:
+        derived_types = [derived_collection]
+        derived_guids = [derived_collection_guid]
+
+    elif input_entity_data_type == dataset:
+        derived_types = [derived_dataset, derived_dataset_names]
+        derived_guids = [derived_dataset_guid, derived_dataset_guids]
+
+    elif input_entity_data_type == field:
+        derived_types = [derived_field]
+        derived_guids = [derived_field_guid]
+
+    elif input_entity_data_type == person:
+        derived_types = [derived_person]
+        derived_guids = [derived_person_guid]
+
+    return derived_guids, derived_types
+
+
+
 def update_name_in_derived_entity_fields(new_input_entity_name: str, input_document : dict, app_search: AppSearch, updated_documents : List[dict]) -> List[dict]:
     """This function inserts newly defined name or an updated name to all documents inheriting this name"""
 
@@ -351,7 +388,7 @@ def update_name_in_derived_entity_fields(new_input_entity_name: str, input_docum
 
 
     retrieved_documents = []
-
+    # check whether documents are already updated 
     for document_guid in copy(derived_entity_guid_list):
         if document_guid in updated_documents.keys():
             derived_entity_guid_list.remove(document_guid)

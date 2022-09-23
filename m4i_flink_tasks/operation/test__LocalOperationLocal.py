@@ -71,6 +71,6 @@ def test_map_local():
     local_operation_local.open_local(config, credentials,config_store  )
    
     res = local_operation_local.map_local(kafka_notification)
-    assert  local_operation_local.map_local(kafka_message) == None
+    # assert  local_operation_local.map_local(kafka_message) == None
     
     
