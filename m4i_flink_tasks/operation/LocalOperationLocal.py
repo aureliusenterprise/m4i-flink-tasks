@@ -79,7 +79,7 @@ class LocalOperationLocal(object):
                 if change.propagate_down:
                     # propagae downwards
                     retry = 0
-                    while retry<3:
+                    while retry<3 and not propagate_ids:
                         try:
                             propagate_ids = get_child_entity_guids(entity_guid=entity_guid,
                                                            app_search=self.app_search,

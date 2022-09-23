@@ -9,23 +9,28 @@ from elastic_app_search import Client
 
 from m4i_flink_tasks.operation.LocalOperationLocal import LocalOperationLocal
 from m4i_atlas_core import ConfigStore, Entity
-from scripts.config import config
-from scripts.credentials import credentials
+# from scripts.config import config
+# from scripts.credentials import credentials
+
+from .config import config
+from .credentials import credentials
+
+
 config_store = ConfigStore.get_instance()
 
-config = {
-    "elastic.search.index" : "atlas-dev-test",
-    "elastic.app.search.engine.name" : "atlas-dev-test",
-    "operations.appsearch.engine.name": "atlas-dev",
-    "elastic.base.endpoint" : "https://aureliusdev.westeurope.cloudapp.azure.com:443/anwo/elastic/api/as/v1",
-    "elastic.search.endpoint" : "https://aureliusdev.westeurope.cloudapp.azure.com:443/anwo/elastic",
-    "elastic.enterprise.search.endpoint": "https://aureliusdev.westeurope.cloudapp.azure.com:443/anwo/app-search",
-    }
+# config = {
+#     "elastic.search.index" : "atlas-dev-test",
+#     "elastic.app.search.engine.name" : "atlas-dev-test",
+#     "operations.appsearch.engine.name": "atlas-dev",
+#     "elastic.base.endpoint" : "https://aureliusdev.westeurope.cloudapp.azure.com:443/anwo/elastic/api/as/v1",
+#     "elastic.search.endpoint" : "https://aureliusdev.westeurope.cloudapp.azure.com:443/anwo/elastic",
+#     "elastic.enterprise.search.endpoint": "https://aureliusdev.westeurope.cloudapp.azure.com:443/anwo/app-search",
+#     }
 
-credentials = {
-    "elastic.user": "elastic",
-    "elastic.passwd": "1aYh9R16np9KWjz96v5x3J1Z",
-}
+# credentials = {
+#     "elastic.user": "elastic",
+#     "elastic.passwd": "1aYh9R16np9KWjz96v5x3J1Z",
+# }
 
 test_engine_name = "test_synchronize_app_search_engine"
 
@@ -65,7 +70,7 @@ def store():
     config_store.reset()
 # END store
 
-def test_map_local():
+def test__map_local0(store):
 #    kafka_message = '{"id": "3ff49d7a-0c7e-4b56-a354-fb689547e502", "creationTime": 1663762643749, "entityGuid": "b6044c9a-61b3-4a02-acec-e028e1f2c951", "changes": [{"propagate": false, "propagateDown": false, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update attribute", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.UpdateLocalAttributeProcessor", "name": "update attribute", "key": "definition", "value": "This domain contains data related to Finance & Control which is relevant for budgeting, forecasting and monitoring on employee level. (update 21 September 2022 14:17)"}]}}]}' 
     local_operation_local = LocalOperationLocal()
     local_operation_local.open_local(config, credentials,config_store  )
@@ -73,4 +78,12 @@ def test_map_local():
     res = local_operation_local.map_local(kafka_notification)
     # assert  local_operation_local.map_local(kafka_message) == None
     
-    
+
+def test__map_local1(store):
+	kafka_message = '{"id":"f006810a-84ba-4c4b-a145-9d70a6d7da68","creationTime":1663923271838,"entityGuid":"b6044c9a-61b3-4a02-acec-e028e1f2c951","changes":[{"propagate":true,"propagateDown":true,"operation":{"py/object":"m4i_flink_tasks.operation.core_operation.Sequence","name":"update and inser attributes","steps":[{"py/object":"m4i_flink_tasks.operation.core_operation.UpdateListEntryProcessor","name":"update attribute name","key":"breadcrumbname","old_value":"Finance and Control (16:36)","new_value":"Finance and Control"}]}},{"propagate":false,"propagateDown":false,"operation":{"py/object":"m4i_flink_tasks.operation.core_operation.Sequence","name":"update and inser attributes","steps":[{"py/object":"m4i_flink_tasks.operation.core_operation.UpdateLocalAttributeProcessor","name":"update attribute name","key":"name","value":"Finance and Control"}]}}]}'
+	local_operation_local = LocalOperationLocal()
+	local_operation_local.open_local(config, credentials,store)
+   
+	res = local_operation_local.map_local(kafka_message)
+
+	assert len(res) == 1 

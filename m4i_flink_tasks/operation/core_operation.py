@@ -219,8 +219,8 @@ class UpdateListEntryProcessor(AbstractProcessor):
             raise Exception(f"Key {self.key} not in input data")
         
         if not self.old_value in input_data[self.key]:
-            raise Exception(f"Value {self.old_value} not in input data")
-            
+        # raise Exception(f"Value {self.old_value} not in input data")  # I commented this out, so no exception is failed when the breadcrumbname is updated.
+            pass  
         index = input_data[self.key].index(self.old_value)
         input_data[index] = self.new_value
         return input_data

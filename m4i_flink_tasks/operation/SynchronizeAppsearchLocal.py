@@ -56,7 +56,9 @@ class SynchronizeAppsearchLocal(object):
     def map_local(self, kafka_notification: str):
         result = None
 
-        change_list=[]        
+        change_list=[]   
+        propagated_change_list = []   # This is a list of ditionaries {id: change}  
+
         logging.warning(kafka_notification)
         entity_message = EntityMessage.from_json((kafka_notification))
 
@@ -102,12 +104,12 @@ class SynchronizeAppsearchLocal(object):
 
                         if name == update_attribute:
 
-                            propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update attribute {update_attribute}", key=breadcrumb_name, old_value=old_value, new_value=value))
+                            propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update breadcrumb name {update_attribute}", key=breadcrumb_name, old_value=old_value, new_value=value))
 
-                            derived_guids, derived_types = get_relevant_entity_fields(input_entity.type_name)
+                            # derived_guids, derived_types = get_relevant_entity_fields(input_entity.type_name)
 
 
-                            propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update attribute {update_attribute}", key=derived_types, old_value=old_value, new_value=value))
+                            # propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update attribute {update_attribute}", key=derived_types, old_value=old_value, new_value=value))
 
 
             if entity_message.deleted_attributes != []:
