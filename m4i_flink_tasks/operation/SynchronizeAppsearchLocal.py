@@ -3,7 +3,7 @@ import logging
 import jsonpickle
 import uuid
 import datetime
-
+from .parameters import *
 from m4i_flink_tasks import EntityMessage
 from m4i_flink_tasks.operation.core_operation import UpdateLocalAttributeProcessor, UpdateListEntryProcessor
 from m4i_flink_tasks.operation.OperationEvent import OperationEvent, OperationChange
@@ -39,7 +39,9 @@ class SynchronizeAppsearchLocal(object):
         )
         self.app_search = self.get_app_search()
         self.schema_names = engines[0]['schema'].keys()
-        self.engine_name = config_store.get("")
+        self.engine_name = config_store.get("elastic.app.search.engine.name")
+        # "operations.appsearch.engine.name" 
+
 
 
     def get_app_search(self):
@@ -66,8 +68,10 @@ class SynchronizeAppsearchLocal(object):
             logging.warning("This message is a consequence of an indirect change. No further action is taken.")
             return
             #pass
+            
         local_operation_list = []
         propagated_operation_downwards_list = []
+        propagated_operation_upwards_list = []
 
         if entity_message.original_event_type==EntityAuditAction.ENTITY_CREATE:
             local_operation_list.append(CreateLocalEntityProcessor(name=f"create entity with guid {input_entity.guid} of type {input_entity.type_name}", 
@@ -98,11 +102,10 @@ class SynchronizeAppsearchLocal(object):
 
                         if name == update_attribute:
 
-                            propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update attribute {update_attribute}", key=update_attribute.lower(), old_value=old_value, new_value=value))
-                            propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update attribute {update_attribute}", key=update_attribute.lower(), old_value=old_value, new_value=value))
+                            propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update attribute {update_attribute}", key=breadcrumb_name, old_value=old_value, new_value=value))
 
                             derived_guids, derived_types = get_relevant_entity_fields(input_entity.type_name)
-                            
+
 
                             propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update attribute {update_attribute}", key=derived_types, old_value=old_value, new_value=value))
 
