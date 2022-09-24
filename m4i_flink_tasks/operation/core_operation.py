@@ -303,7 +303,7 @@ class DeletePrefixFromList(AbstractProcessor):
             
             raise Exception(f"Provided index {self.index} is invalid considering the list .")
 
-        input_data[self.index] = input_data[self.index+1::] 
+        input_data[self.key] = input_data[self.index+1::] 
 
     # end of process
 

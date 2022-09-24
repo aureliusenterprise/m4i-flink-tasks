@@ -197,15 +197,44 @@ def delete_derived_entity_attribute_field_fields(data_attribute_document: dict, 
 
     return data_attribute_document, field_document
 
-async def get_parent_child_entity_guid(input_document, key, input_relationship):
+# async def get_parent_child_entity_guid(input_document, key, input_relationship):
+#     """This function determines the hierarchy between the input entities and rerturns the guids ordered: parent_guid, child_guid"""
+#     super_types = await get_super_types_names(input_relationship["typeName"])
+#     target_entity_source_types = get_m4i_source_types(super_types)
+
+#     target_entity_guid = input_relationship[guid]
+#     input_entity_guid = input_document[guid]
+
+#     if set(target_entity_source_types) == set(input_document["m4isourcetype"]):
+#         if key.startswith("child"):
+#             return input_entity_guid, target_entity_guid
+#         if key.startswith("parent"):
+#             return target_entity_guid, input_entity_guid
+#         else:
+#             logging.warning("The parent and child entity could not be determined of a relatonship that is classified as a parent-child relationship.")
+
+#     for current_entity_source_type in input_document["m4isourcetype"]:
+#         for target_entity_source_type in target_entity_source_types:
+#             if hierarchy_mapping.get(current_entity_source_type) == target_entity_source_type:
+#                 return target_entity_guid, input_entity_guid
+
+#             if hierarchy_mapping.get(target_entity_source_type) == current_entity_source_type:
+#                 return input_entity_guid, target_entity_guid
+
+#     logging.warning("The parent and child entity could not be determined of a relatonship that is classified as a parent-child relationship.")
+
+
+async def get_parent_child_entity_guid(input_entity_guid, input_entity_typename, key, input_relationship):
     """This function determines the hierarchy between the input entities and rerturns the guids ordered: parent_guid, child_guid"""
     super_types = await get_super_types_names(input_relationship["typeName"])
     target_entity_source_types = get_m4i_source_types(super_types)
 
-    target_entity_guid = input_relationship[guid]
-    input_entity_guid = input_document[guid]
+    super_types = await get_super_types_names(input_entity_typename)
+    source_entity_source_types = get_m4i_source_types(super_types)
 
-    if set(target_entity_source_types) == set(input_document["m4isourcetype"]):
+    target_entity_guid = input_relationship[guid]
+
+    if set(target_entity_source_types) == set(source_entity_source_types):
         if key.startswith("child"):
             return input_entity_guid, target_entity_guid
         if key.startswith("parent"):
@@ -213,7 +242,7 @@ async def get_parent_child_entity_guid(input_document, key, input_relationship):
         else:
             logging.warning("The parent and child entity could not be determined of a relatonship that is classified as a parent-child relationship.")
 
-    for current_entity_source_type in input_document["m4isourcetype"]:
+    for current_entity_source_type in source_entity_source_types:
         for target_entity_source_type in target_entity_source_types:
             if hierarchy_mapping.get(current_entity_source_type) == target_entity_source_type:
                 return target_entity_guid, input_entity_guid

@@ -5,7 +5,7 @@ import uuid
 import datetime
 from .parameters import *
 from m4i_flink_tasks import EntityMessage
-from m4i_flink_tasks.operation.core_operation import UpdateLocalAttributeProcessor, UpdateListEntryProcessor
+from m4i_flink_tasks.operation.core_operation import UpdateLocalAttributeProcessor, UpdateListEntryProcessor, DeletePrefixFromList
 from m4i_flink_tasks.operation.OperationEvent import OperationEvent, OperationChange
 from m4i_flink_tasks.operation.core_operation import Sequence,CreateLocalEntityProcessor,DeleteLocalAttributeProcessor
 from m4i_atlas_core import EntityAuditAction
@@ -122,18 +122,19 @@ class SynchronizeAppsearchLocal(object):
             
             if entity_message.deleted_relationships != {}:
                 logging.warning("handle deleted relationships.")
-                for deleted_relationship in entity_message.deleted_relationships:
+                for key, deleted_relationship in entity_message.deleted_relationships.items():
                     super_types = await get_super_types_names(input_entity.type_name)
                     m4isourcetype = get_m4i_source_types(super_types)
 
                     if await is_parent_child_relationship(m4isourcetype, deleted_relationship):
-                        pass
+                        parent_entity_guid, child_entity_guid = get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, deleted_relationship)
 
                   
-                    #     if input_entity_guid == child_entity_guid:
-                    #         doc = delete_breadcrumb(
-                    #             doc, parent_entity_guid, app_search)
-
+                        if input_entity.guid == child_entity_guid:
+                            propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update attribute {update_attribute}", key="breadcrumbguid", index = -1))
+                            propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update attribute {update_attribute}", key="breadcrumbname", index = -1))
+                            propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update attribute {update_attribute}", key="breadcrumbtype", index = -1))
+                            # This will give problems with the propagation: in each layer the index value needs to go up 
 
                 logging.warning("deleted relationships handled.")
 
