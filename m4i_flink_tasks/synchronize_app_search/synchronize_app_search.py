@@ -319,40 +319,40 @@ def update_name_in_breadcrumbs(new_input_entity_name: str, input_document : dict
     return updated_documents
 
 
-def get_relevant_entity_fields(input_entity_data_type):
+def get_relevant_hierarchy_entity_fields(input_entity_data_type):
     if input_entity_data_type == data_domain:
-        derived_types = [derived_data_domain]
-        derived_guids = [derived_data_domain_guid]
+        derived_type = derived_data_domain
+        derived_guid = derived_data_domain_guid
 
     elif input_entity_data_type == data_entity:
-        derived_types = [derived_data_entity, derived_entity_names]
-        derived_guids = [derived_data_entity_guid, derived_entity_guids]
+        derived_type = derived_data_entity
+        derived_guid = derived_data_entity_guid
 
     elif input_entity_data_type == data_attribute:
-        derived_types = [derived_data_attribute]
-        derived_guids = [derived_data_attribute_guid]
+        derived_type = derived_data_attribute
+        derived_guid = derived_data_attribute_guid
 
     elif input_entity_data_type == system:
-        derived_types = [derived_system]
-        derived_guids = [derived_system_guid]
+        derived_type = derived_system
+        derived_guid = derived_system_guid
 
     elif input_entity_data_type == collection:
-        derived_types = [derived_collection]
-        derived_guids = [derived_collection_guid]
+        derived_type = derived_collection
+        derived_guid = derived_collection_guid
 
     elif input_entity_data_type == dataset:
-        derived_types = [derived_dataset, derived_dataset_names]
-        derived_guids = [derived_dataset_guid, derived_dataset_guids]
+        derived_type = derived_dataset
+        derived_guid = derived_dataset_guid
 
     elif input_entity_data_type == field:
-        derived_types = [derived_field]
-        derived_guids = [derived_field_guid]
+        derived_type = derived_field
+        derived_guid = derived_field_guid
 
     elif input_entity_data_type == person:
-        derived_types = [derived_person]
-        derived_guids = [derived_person_guid]
+        derived_type = derived_person
+        derived_guid = derived_person_guid
 
-    return derived_guids, derived_types
+    return derived_guid, derived_type
 
 
 
@@ -368,35 +368,35 @@ def update_name_in_derived_entity_fields(new_input_entity_name: str, input_docum
     # This is the old approach. An alternative approach is to loop over all document fiels having "derived"as prefix. Adjusting this has the lowest priorty.
     if input_entity_data_type == data_domain:
         derived_types = [derived_data_domain]
-        derived_guids = [derived_data_domain_guid]
+        derived_guid = [derived_data_domain_guid]
 
     elif input_entity_data_type == data_entity:
         derived_types = [derived_data_entity, derived_entity_names]
-        derived_guids = [derived_data_entity_guid, derived_entity_guids]
+        derived_guid = [derived_data_entity_guid, derived_entity_guids]
 
     elif input_entity_data_type == data_attribute:
         derived_types = [derived_data_attribute]
-        derived_guids = [derived_data_attribute_guid]
+        derived_guid = [derived_data_attribute_guid]
 
     elif input_entity_data_type == system:
         derived_types = [derived_system]
-        derived_guids = [derived_system_guid]
+        derived_guid = [derived_system_guid]
 
     elif input_entity_data_type == collection:
         derived_types = [derived_collection]
-        derived_guids = [derived_collection_guid]
+        derived_guid = [derived_collection_guid]
 
     elif input_entity_data_type == dataset:
         derived_types = [derived_dataset, derived_dataset_names]
-        derived_guids = [derived_dataset_guid, derived_dataset_guids]
+        derived_guid = [derived_dataset_guid, derived_dataset_guids]
 
     elif input_entity_data_type == field:
         derived_types = [derived_field]
-        derived_guids = [derived_field_guid]
+        derived_guid = [derived_field_guid]
 
     elif input_entity_data_type == person:
         derived_types = [derived_person]
-        derived_guids = [derived_person_guid]
+        derived_guid = [derived_person_guid]
 
     body = {
         "query":"",
@@ -438,7 +438,7 @@ def update_name_in_derived_entity_fields(new_input_entity_name: str, input_docum
 
         for index in range(len(derived_types)):
             derived_type_field = derived_types[index]
-            derived_guid_field = derived_guids[index]
+            derived_guid_field = derived_guid[index]
 
             if derived_guid_field in retrieved_document.keys() and isinstance(retrieved_document[derived_guid_field], list) and document_entity_guid in retrieved_document[derived_guid_field]:
                 entity_guid_index = retrieved_document[derived_guid_field].index(

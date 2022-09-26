@@ -105,12 +105,11 @@ class SynchronizeAppsearchLocal(object):
                         if name == update_attribute:
 
                             propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update breadcrumb name {update_attribute}", key=breadcrumb_name, old_value=old_value, new_value=value))
-                            # super_types = await get_super_types_names(input_entity.type_name)
-                            # m4isourcetype = get_m4i_source_types(super_types)
-                            # derived_guids, derived_types = get_relevant_entity_fields(m4isourcetype)
+                            super_types = await get_super_types_names(input_entity.type_name)
+                            m4isourcetype = get_m4i_source_types(super_types)
+                            derived_guid, derived_type = get_relevant_hierarchy_entity_fields(m4isourcetype)
 
-
-                            # propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update attribute {update_attribute}", key=derived_types, old_value=old_value, new_value=value))
+                            propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update attribute {update_attribute}", key=derived_type, old_value=old_value, new_value=value))
 
 
             if entity_message.deleted_attributes != []:
@@ -139,7 +138,6 @@ class SynchronizeAppsearchLocal(object):
                                 propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update breadcrumb guid", key="breadcrumbguid", index = -1,  incremental=True)) # Charif: use more descriptive names here
                                 propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update breadcrumb name", key="breadcrumbname", index = -1,  incremental=True))
                                 propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update breadcrumb type", key="breadcrumbtype", index = -1,  incremental=True))
-                                # This will give problems with the propagation: in each layer the index value needs to go up 
 
                             
 
@@ -155,7 +153,6 @@ class SynchronizeAppsearchLocal(object):
 
                     for inserted_relationship in inserted_relationships_:
 
-     
                         if await is_parent_child_relationship(input_entity.type_name, key, inserted_relationship):
                             parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, inserted_relationship)
 
@@ -173,7 +170,7 @@ class SynchronizeAppsearchLocal(object):
 
 
 
-
+                logging.warning("inserted relationships handled.")
 
             if len(propagated_operation_downwards_list)>0:
                 seq = Sequence(name="update and inser attributes", steps = propagated_operation_downwards_list)
