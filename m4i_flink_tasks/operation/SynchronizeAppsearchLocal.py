@@ -5,7 +5,7 @@ import uuid
 import datetime
 from .parameters import *
 from m4i_flink_tasks import EntityMessage
-from m4i_flink_tasks.operation.core_operation import UpdateLocalAttributeProcessor, UpdateListEntryProcessor, DeletePrefixFromList
+from m4i_flink_tasks.operation.core_operation import UpdateLocalAttributeProcessor, UpdateListEntryProcessor, DeletePrefixFromList, InsertPrefixToList
 from m4i_flink_tasks.operation.OperationEvent import OperationEvent, OperationChange
 from m4i_flink_tasks.operation.core_operation import Sequence,CreateLocalEntityProcessor,DeleteLocalAttributeProcessor
 from m4i_atlas_core import EntityAuditAction
@@ -68,8 +68,8 @@ class SynchronizeAppsearchLocal(object):
         # Charif: This if-statement does not match our new approach..
         if entity_message.direct_change == False:
             logging.warning("This message is a consequence of an indirect change. No further action is taken.")
-            return
-            #pass
+            # return
+            pass
             
         local_operation_list = []
         propagated_operation_downwards_list = []
@@ -122,27 +122,55 @@ class SynchronizeAppsearchLocal(object):
             
             if entity_message.deleted_relationships != {}:
                 logging.warning("handle deleted relationships.")
-                for key, deleted_relationship in entity_message.deleted_relationships.items():
-                    super_types = await get_super_types_names(input_entity.type_name)
-                    m4isourcetype = get_m4i_source_types(super_types)
+                for key, deleted_relationships_ in entity_message.deleted_relationships.items():
+                    if deleted_relationships_ == []:
+                        continue
 
-                    if await is_parent_child_relationship(m4isourcetype, deleted_relationship):
-                        parent_entity_guid, child_entity_guid = get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, deleted_relationship)
+                    for deleted_relationship in deleted_relationships_:
+                        super_types = await get_super_types_names(input_entity.type_name)
+                        m4isourcetype = get_m4i_source_types(super_types)
 
-                  
-                        if input_entity.guid == child_entity_guid:
-                            propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update attribute {update_attribute}", key="breadcrumbguid", index = -1))
-                            propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update attribute {update_attribute}", key="breadcrumbname", index = -1))
-                            propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update attribute {update_attribute}", key="breadcrumbtype", index = -1))
-                            # This will give problems with the propagation: in each layer the index value needs to go up 
+                        if await is_parent_child_relationship(m4isourcetype, key, deleted_relationship):
+                            parent_entity_guid, child_entity_guid = get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, deleted_relationship)
+
+                    
+                            if input_entity.guid == child_entity_guid:
+
+                                propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update breadcrumb guid", key="breadcrumbguid", index = -1,  incremental=True)) # Charif: use more descriptive names here
+                                propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update breadcrumb name", key="breadcrumbname", index = -1,  incremental=True))
+                                propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update breadcrumb type", key="breadcrumbtype", index = -1,  incremental=True))
+                                # This will give problems with the propagation: in each layer the index value needs to go up 
+
+                            
 
                 logging.warning("deleted relationships handled.")
 
            
-            # if entity_message.inserted_relationships != {}:
-            #     logging.warning("handle inserted relationships.")
-            #     updated_docs = asyncio.run(handle_inserted_relationships(entity_message, entity_message.new_value, entity_message.inserted_relationships, app_search, entity_doc))
-            #     logging.warning("inserted relationships handled.")
+            if entity_message.inserted_relationships != {}:
+                logging.warning("handle inserted relationships.")
+                for key, inserted_relationships_ in entity_message.inserted_relationships.items():
+
+                    if inserted_relationships_ == []:
+                        continue
+
+                    for inserted_relationship in inserted_relationships_:
+
+     
+                        if await is_parent_child_relationship(input_entity.type_name, key, inserted_relationship):
+                            parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, inserted_relationship)
+
+                    
+                            if input_entity.guid == child_entity_guid:
+                                breadcrumbguid_prefix = get_prefix(parent_entity_guid, "breadcrumbguid", "guid", self.app_search)
+                                breadcrumbname_prefix = get_prefix(parent_entity_guid, "breadcrumbname", "name",  self.app_search)
+                                breadcrumbtype_prefix = get_prefix(parent_entity_guid, "breadcrumbtype", "typename",  self.app_search)
+
+
+                                propagated_operation_downwards_list.append(InsertPrefixToList(name=f"update breadcrumb guid", key="breadcrumbguid", input_list=breadcrumbguid_prefix)) # Charif: use more descriptive names here
+                                propagated_operation_downwards_list.append(InsertPrefixToList(name=f"update breadcrumb name", key="breadcrumbname", input_list=breadcrumbname_prefix))
+                                propagated_operation_downwards_list.append(InsertPrefixToList(name=f"update breadcrumb type", key="breadcrumbtype", input_list=breadcrumbtype_prefix))
+
+
 
 
 
@@ -176,3 +204,5 @@ class SynchronizeAppsearchLocal(object):
         return result
             
 # end of class SynchronizeAppsearchLocal
+
+

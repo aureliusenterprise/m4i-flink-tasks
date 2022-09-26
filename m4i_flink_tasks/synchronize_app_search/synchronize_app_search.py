@@ -1,4 +1,5 @@
 import asyncio
+# from itertools import pairwise
 import logging
 from typing import Callable, Dict, List, Optional, Union
 
@@ -140,7 +141,8 @@ async def is_parent_child_relationship(input_type : str, relationship_key :str, 
     if relationship_key.startswith("child") or relationship_key.startswith("parent"):
         return True
 
-    m4i_source_types = get_super_types_names(input_type)
+    m4i_source_types = await get_super_types_names(input_type)
+    
     for current_entity_source_type in m4i_source_types:
         for target_entity_source_type in target_entity_source_types:
             if hierarchy_mapping.get(current_entity_source_type) == target_entity_source_type or hierarchy_mapping.get(target_entity_source_type) == current_entity_source_type:
@@ -252,6 +254,11 @@ async def get_parent_child_entity_guid(input_entity_guid, input_entity_typename,
 
     logging.warning("The parent and child entity could not be determined of a relatonship that is classified as a parent-child relationship.")
 
+def get_prefix(parent_entity_guid, first_key : str, second_key: str, app_search: AppSearch):
+    parent_entity_document = get_document(parent_entity_guid, app_search)
+    return parent_entity_document[first_key] + [parent_entity_document[second_key]]
+
+    
 
 def insert_prefix_to_breadcrumbs_of_child_entities(input_document : dict, child_entity_documents : List[dict]) -> List[dict]:
     """This function updates the breadcrumb of all child entity documents and returns the updated documents in case of an inserted relationship."""

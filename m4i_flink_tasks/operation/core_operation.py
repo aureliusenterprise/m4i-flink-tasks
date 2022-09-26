@@ -229,17 +229,19 @@ class UpdateListEntryProcessor(AbstractProcessor):
 # end of class UpdateListEntryProcessor
 
 
+
+
 # always provide a generic name and description 
 class InsertPrefixToList(AbstractProcessor):
     """InsertPrefixToList is an processor which updates a provided list by inserting a provided input list as prefix
-
+DeletePrefixFromList
     Parameters
     ----------
     name: str
         Name of the processor
     key: str
         This is the name of the field in the app search schema
-    new_value: str 
+    new_valueDeletePrefixFromList: str 
     """
     
     def __init__(self,
@@ -262,9 +264,13 @@ class InsertPrefixToList(AbstractProcessor):
 
         input_data[self.key] = self.input_list  + input_data[self.key] 
 
+        return input_data
+
     # end of process
 
 # end of class InsertPrefixToList
+
+
 
 class DeletePrefixFromList(AbstractProcessor):
     """DeletePrefixFromList is an processor which updates a provided list by deleting a all entries from list before provided index
@@ -282,14 +288,24 @@ class DeletePrefixFromList(AbstractProcessor):
     def __init__(self,
                 name:str, 
                 key : str,
-                index: list
+                index: list,
+                incremental: bool = False
                 ):
         super().__init__(name)
         self.key = key
         self.index = index
+        self.incremental = incremental
     # end of __init__
 
+    def translate_index(self, input_data: Dict):
+        if self.index == -1:
+            self.index = len(input_data[self.key])
+           
+    
+
     def process(self, input_data:Dict) -> Dict:
+
+        
 
         if not self.key in input_data.keys():
             raise Exception(f"Key {self.key} not in input data")
@@ -298,12 +314,18 @@ class DeletePrefixFromList(AbstractProcessor):
 
             raise Exception(f"App search field {self.key} is of unexpected type.")
 
+        self.translate_index(input_data)
 
         if (not self.index < 0) or (not self.index < len(input_data[self.key])):
             
             raise Exception(f"Provided index {self.index} is invalid considering the list .")
 
         input_data[self.key] = input_data[self.index+1::] 
+
+        if self.incremental:
+            self.index +=1
+
+        return input_data
 
     # end of process
 
@@ -331,6 +353,8 @@ class ComputeDqScoresProcessor(AbstractProcessor):
     # end of process
 
 # end of class ComputeDqScoresProcessor
+
+
 
 class ResetDqScoresProcessor(AbstractProcessor):
     """ResetDqScoresProcessor is an processor which updates all data quality 
