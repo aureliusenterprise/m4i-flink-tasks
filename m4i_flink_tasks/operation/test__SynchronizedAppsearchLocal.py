@@ -124,12 +124,16 @@ def test_msg1():
     assert(res == expected_res)
     
 
-def test_msg2():
+
+
+
+@pytest.mark.asyncio
+async def test_msg2():
 	config_store.load({**config, **credentials})
 	asl = SynchronizeAppsearchLocal()
 	asl.open_local(config, credentials, config_store)
-	res = asl.map_local(kafka_msg2)
-	expected_res = '{"id": "9c6a3d1d-ca84-4125-a5ce-4249a9f9818d", "creationTime": 1663923390185, "entityGuid": "b6044c9a-61b3-4a02-acec-e028e1f2c951", "changes": [{"propagate": true, "propagateDown": true, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update and inser attributes", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.UpdateListEntryProcessor", "name": "update attribute name", "key": "breadcrumbname", "old_value": "Finance and Control (16:36)", "new_value": "Finance and Control"}, {"py/object": "m4i_flink_tasks.operation.core_operation.UpdateListEntryProcessor", "name": "update attribute name", "key": ["deriveddatadomain"], "old_value": "Finance and Control (16:36)", "new_value": "Finance and Control"}]}}, {"propagate": false, "propagateDown": false, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update and inser attributes", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.UpdateLocalAttributeProcessor", "name": "update attribute name", "key": "name", "value": "Finance and Control"}]}}]}'
+	res = await asl.map_local(kafka_msg2)
+	expected_res = '{"id": "9c6a3d1d-ca84-4125-a5ce-4249a9f9818d", "creationTime": 1663923390185, "entityGuid": "b6044c9a-61b3-4a02-acec-e028e1f2c951", "changes": [{"propagate": true, "propagateDown": true, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update and inser attributes", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.UpdateListEntryProcessor", "name": "update attribute name", "key": "breadcrumbname", "old_value": "Finance and Control (16:36)", "new_value": "Finance and Control"}, {"py/object": "m4i_flink_tasks.operation.core_operation.UpdateListEntryProcessor", "name": "update derived entity field {deriveddatadomain", "key": "deriveddatadomain", "old_value": "Finance and Control (16:36)", "new_value": "Finance and Control"}]}}, {"propagate": false, "propagateDown": false, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update and inser attributes", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.UpdateLocalAttributeProcessor", "name": "update attribute name", "key": "name", "value": "Finance and Control"}]}}]}'
 	expected_res = json.loads(expected_res)
 	res = json.loads(res)
 

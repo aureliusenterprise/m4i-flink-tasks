@@ -9,7 +9,10 @@ import jsonpickle
 import traceback
 import sys
 import json
+
+from m4i_flink_tasks.synchronize_app_search.elastic import get_document
 from ..synchronize_app_search import get_direct_child_entity_docs, make_elastic_app_search_connect, update_dq_score_fields
+
 class AbstractProcessor(ABC):
     """All processors of the workflow inherit from this AbstractProcessor class.
     The only purpose of this class is to distinguish classes which are intended to be processors
@@ -58,6 +61,77 @@ class CreateLocalEntityProcessor(AbstractProcessor):
 
 # end of class CreateLocalEntityProcessor
 
+class UpdateListEntryBasedOnUniqueValueList(AbstractProcessor):
+    """UpdateListEntryBasedOnUniqueValueList is a processot to update a single key
+        in the data.
+
+    Parameters
+    ----------
+    name :str
+        Name of the processor
+    """
+
+    def __init__(self,
+                name:str,
+                unique_list_key:str,
+                target_list_key:str,
+                unique_value:str,
+                target_value:str):
+
+        super().__init__(name)
+        self.unqiue_list_key = unique_list_key
+        self.target_list_key = target_list_key
+        self.unqiue_value = unique_value
+        self.target_value = target_value
+    # end of __init__
+
+    def process(self, input_data:Dict) -> Dict:
+
+        index = input_data[self.unqiue_list_key].index(self.unqiue_value)
+        input_data = InsertElementInList(name=self.name, key=self.target_list_key, index = index, value=self.target_value).process(input_data)
+        
+        return input_data
+    # end of process
+
+# end of class UpdateLocalAttributeProcessor
+
+class DeleteListEntryBasedOnUniqueValueList(AbstractProcessor):
+    """DeleteListEntryBasedOnUniqueValueList is a processot
+        in the data.
+
+    Parameters
+    ----------
+    name :str
+        Name of the processor
+    """
+
+    def __init__(self,
+                name:str,
+                unique_list_key:str,
+                target_list_key:str,
+                unique_value:str):
+
+        super().__init__(name)
+        self.unqiue_list_key = unique_list_key
+        self.target_list_key = target_list_key
+        self.unqiue_value = unique_value
+    # end of __init__
+
+    def process(self, input_data:Dict) -> Dict:
+
+        index = input_data[self.unqiue_list_key].index(self.unqiue_value)
+        input_data = DeleteElementFromList(name=self.name, key=self.target_list_key, index = index).process(input_data)
+        
+        return input_data
+    # end of process
+
+# end of class UpdateLocalAttributeProcessor
+
+
+
+
+
+
 class UpdateLocalAttributeProcessor(AbstractProcessor):
     """UpdateLocalAttributeProcessor is a processot to update a single key
         in the data.
@@ -100,8 +174,11 @@ class DeleteLocalAttributeProcessor(AbstractProcessor):
     # end of __init__
 
     def process(self, input_data:Dict) -> Dict:
-       del input_data[self.key] 
-       return input_data
+        if type(input_data[self.key]) == list:
+            input_data[self.key] = []
+        else:
+            input_data[self.key] = None 
+        return input_data
     # end of process
 
 # end of class DeleteLocalAttributeProcessor
@@ -223,6 +300,46 @@ class UpdateListEntryProcessor(AbstractProcessor):
             pass  
         index = input_data[self.key].index(self.old_value)
         input_data[index] = self.new_value
+        return input_data
+    # end of process
+
+# end of class UpdateListEntryProcessor
+
+class DeleteListEntryProcessor(AbstractProcessor):
+    """UpdateListEntryProcessor is an processor which updates the a given value in a list with another provided value
+    scores of a local instance.
+
+    Parameters
+    ----------
+    name: str
+        Name of the processor
+    key: str
+        This is the name of the field in the app search schema
+    old_value: str
+        This is the value to be changed in the provided field
+    new_value: str 
+        This is the new value that will be inserted in the provided field with the index that corresponds to the old_value
+    """
+    
+    def __init__(self,
+                name:str,
+                key: str, 
+                value : str,  
+                ):
+        super().__init__(name)
+        self.key = key
+        self.value = value
+
+    # end of __init__
+
+    def process(self, input_data:Dict) -> Dict:
+        if not self.key in input_data.keys():
+            raise Exception(f"Key {self.key} not in input data")
+        
+        if not self.value in input_data[self.key]:
+        # raise Exception(f"Value {self.old_value} not in input data")  # I commented this out, so no exception is failed when the breadcrumbname is updated.
+            pass  
+        input_data[self.key].remove(self.value)
         return input_data
     # end of process
 
@@ -466,7 +583,7 @@ class DeleteElementFromList(AbstractProcessor):
 
 #################################################################
 
-class UpdateDerivedEntityOfChildEntities(AbstractProcessor):
+class InheritDerviedEntitiesFromParentEntity(AbstractProcessor):
     """UpdateBreadcrumbValueProcessor is an processor which updates the a name in breadcrumb
     scores of a local instance.
 
@@ -477,18 +594,53 @@ class UpdateDerivedEntityOfChildEntities(AbstractProcessor):
     """
     def __init__(self,
                 name:str,
-                key: str,
-                value : Optional[str],
-                index : int,
-                operation 
+                parent_entity_guid: str,
                 ):
         super().__init__(name)
+        self.parent_entity_guid = parent_entity_guid
     # end of __init__
 
     def process(self, input_data:Dict) -> Dict:
-
+        # input_data[] = self.parent_entity_guid
+        # get_document(self.parent_entity_guid, make_elastic_app_search_connect()) # This is bad practice .. think of an alternaive
+        pass
        #TODO: do something meaningful here 
-       return input_data
+    #    return input_data
     # end of process
 
 # end of class UpdateBreadcrumbValueProcessor
+
+#################################################################
+
+class DeleteElemtsFromLists(AbstractProcessor):
+    """DeleteValuesFromLists is an processor which deletes elements from lists corresponding to the provided key set
+    scores of a local instance.
+
+    Parameters
+    ----------
+    name :str
+        Name of the processor
+    """
+    def __init__(self,
+                name:str,
+                element_list_key: list,
+                key_list: list
+                ):
+        super().__init__(name)
+        self.element_list_key = element_list_key
+        self.key_list = key_list
+    # end of __init__
+
+    def process(self, input_data:Dict) -> Dict:
+        for key in self.key_list:
+            for element in self.element_list_key:
+                if element in input_data[key]:
+                    # input_data[key].remove(element)
+                    DeleteListEntryBasedOnUniqueValueList(name=f"update derived entity field", unique_list_key=key, target_list_key=derived_type, unique_value=value)
+
+        return input_data
+                
+    # end of process
+
+# end of class DeleteValuesFromLists
+

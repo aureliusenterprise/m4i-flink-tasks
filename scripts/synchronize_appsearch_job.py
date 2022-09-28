@@ -70,7 +70,7 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
 
     def map(self, kafka_notification: str):        
         try:
-            res = self.map_local(kafka_notification)
+            res = asyncio.run(self.map_local(kafka_notification))
             logging.info("received result: "+repr(res))
             return res
         except Exception as e:

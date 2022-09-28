@@ -319,7 +319,7 @@ def update_name_in_breadcrumbs(new_input_entity_name: str, input_document : dict
     return updated_documents
 
 
-def get_relevant_hierarchy_entity_fields(input_entity_data_type):
+def get_relevant_hierarchy_entity_fields(input_entity_data_type : str):
     if input_entity_data_type == data_domain:
         derived_type = derived_data_domain
         derived_guid = derived_data_domain_guid
@@ -354,6 +354,7 @@ def get_relevant_hierarchy_entity_fields(input_entity_data_type):
 
     return derived_guid, derived_type
 
+   
 
 
 def update_name_in_derived_entity_fields(new_input_entity_name: str, input_document : dict, app_search: AppSearch, updated_documents : List[dict]) -> List[dict]:
@@ -869,3 +870,8 @@ def get_parent_entity_guid(input_entity : Entity):
                 # The code should never reach this part!
             else:
                 return val[0]["guid"]
+
+
+def get_parent_guids(input_entity_guid):
+    input_entity_guid
+    pass
