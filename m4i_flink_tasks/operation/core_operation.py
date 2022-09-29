@@ -9,6 +9,7 @@ import jsonpickle
 import traceback
 import sys
 import json
+import asyncio
 
 from m4i_flink_tasks.synchronize_app_search.elastic import get_document
 from ..synchronize_app_search import get_direct_child_entity_docs, make_elastic_app_search_connect, update_dq_score_fields
@@ -54,7 +55,7 @@ class CreateLocalEntityProcessor(AbstractProcessor):
     # end of __init__
 
     def process(self, input_data:Dict) -> Dict:        
-        super_types = await get_super_types_names(self.entity_type)
+        super_types = asyncio.run( get_super_types_names(self.entity_type))
         app_search_document = AppSearchDocument(id=self.entity_guid,
             guid = self.entity_guid,
             sourcetype = get_source_type(super_types),

@@ -835,7 +835,7 @@ async def create_document(input_entity : Entity) -> dict:
     super_types = await get_super_types_names(input_entity.type_name)
     app_search_document = AppSearchDocument(id=input_entity.guid,
         guid = input_entity.guid,
-        sourcetype = get_source_type(super_types),
+        sourcetype = asyncio.run(get_source_type(super_types)),
         referenceablequalifiedname = input_entity.attributes.unmapped_attributes["qualifiedName"],
         typename = input_entity.type_name,
         m4isourcetype = get_m4i_source_types(super_types),
