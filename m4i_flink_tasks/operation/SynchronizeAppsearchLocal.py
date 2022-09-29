@@ -155,7 +155,7 @@ class SynchronizeAppsearchLocal(object):
                             propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update breadcrumb type", key="breadcrumbtype", index = -1,  incremental=True))
 
                             # delete parent guid -> relevant for child 
-                            local_operation_list.append(DeleteLocalAttributeProcessor(name=f"delete attribute {parent_guid}", key=parent_guid, value=parent_entity_guid))
+                            local_operation_list.append(DeleteLocalAttributeProcessor(name=f"delete attribute {parent_guid}", key=parent_guid))
                              
                             # delete derived entity guid -> relevant for child
                             if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
