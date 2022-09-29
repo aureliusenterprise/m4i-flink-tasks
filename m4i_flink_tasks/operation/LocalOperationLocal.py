@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
 import logging
-import sys
 import json
+import uuid
+import datetime
 
 from m4i_flink_tasks.synchronize_app_search.elastic import get_child_entity_guids,make_elastic_app_search_connect
 from m4i_flink_tasks.operation.OperationEvent import OperationEvent
 from m4i_flink_tasks.operation.core_operation import WorkflowEngine
+#from .parameters import *
+#from m4i_flink_tasks.synchronize_app_search import get_super_types,get_source_type,
 
-from m4i_flink_tasks import DeadLetterBoxMesage
-import time
-from kafka import KafkaProducer
-import traceback
-import uuid
-import datetime
+#from m4i_flink_tasks import DeadLetterBoxMesage
+#import time
+#from kafka import KafkaProducer
+#import traceback
 
 
 class LocalOperationLocal(object):

@@ -4,7 +4,6 @@ from dataclasses_json import DataClassJsonMixin, LetterCase, dataclass_json
 from typing import List, Optional
 
 
-@dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass
 class AppSearchDocument(DataClassJsonMixin):
     id: str
