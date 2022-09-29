@@ -155,8 +155,6 @@ class SynchronizeAppsearchLocal(object):
                             operation_event_guid = child_entity_guid # validate whether this goes right in all cases.
 
                             # breadcrumb updates -> relevant for child entity 
-                    
-
                             propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update breadcrumb guid", key="breadcrumbguid", index = -1,  incremental=True))
                             propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update breadcrumb name", key="breadcrumbname", index = -1,  incremental=True))
                             propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update breadcrumb type", key="breadcrumbtype", index = -1,  incremental=True))
@@ -165,8 +163,6 @@ class SynchronizeAppsearchLocal(object):
                             local_operation_list.append(DeleteLocalAttributeProcessor(name=f"delete attribute {parent_guid}", key=parent_guid, value=parent_entity_guid))
                              
                             # delete derived entity guid -> relevant for child
-
-                            
                             if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
                                 index = conceptual_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
                                 to_be_deleted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index+1]   
@@ -179,8 +175,6 @@ class SynchronizeAppsearchLocal(object):
                             for to_be_deleted_derived_guid_field in to_be_deleted_derived_guid_fields:
                                 propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {to_be_deleted_derived_guid_field}", key = to_be_deleted_derived_guid_field))
                                 propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]))
-
-
 
                             
 
@@ -195,11 +189,14 @@ class SynchronizeAppsearchLocal(object):
                         continue
 
                     for inserted_relationship in inserted_relationships_:
-                       
+
 
                         if await is_parent_child_relationship(input_entity.type_name, key, inserted_relationship):
+
                             parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, inserted_relationship)
                             operation_event_guid = child_entity_guid # validate whether this goes right in all cases.
+
+                            parent_entity_document = get_document(parent_entity_guid, self.app_search)
 
                             super_types = await get_super_types_names(child_entity_guid)
                             m4isourcetype = get_m4i_source_types(super_types)
@@ -208,14 +205,29 @@ class SynchronizeAppsearchLocal(object):
                                 m4isourcetype = m4isourcetype[0]
                             derived_guid, derived_type = get_relevant_hierarchy_entity_fields(m4isourcetype)
 
-                            # derived entity fields
+                            # derived entity fields -> relevant for child entity
 
-                            # add logic here 
-                    
+                            if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
+                                index = conceptual_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
+                                to_be_inserted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index+1] 
+
+
+                            if derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
+                                index = technical_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
+                                to_be_inserted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index+1]   
+
+                            for to_be_inserted_derived_guid_field in to_be_inserted_derived_guid_fields:
+
+                                propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {to_be_inserted_derived_guid_field}", key = to_be_inserted_derived_guid_field))
+                                propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]))
+
+                            
+                            # define parent guid -> relevant for child 
+                            local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {parent_guid}", key=parent_guid, value=parent_entity_guid))
+                            local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {derived_guid}", key=derived_guid, value=[parent_entity_guid]))
+                            local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {derived_type}", key=derived_type, value=parent_entity_document[name])) # what goes in here?
+
                             # breadcrumb updates -> relevant for child entity 
-
-                            parent_entity_document = get_document(parent_entity_guid, self.app_search)
-
                             breadcrumbguid_prefix = parent_entity_document["breadcrumbguid"] + [parent_entity_document["guid"]]
                             breadcrumbname_prefix = parent_entity_document["breadcrumbname"] + [parent_entity_document["name"]]
                             breadcrumbtype_prefix = parent_entity_document["breadcrumbtype"] + [parent_entity_document["typename"]]
@@ -223,29 +235,6 @@ class SynchronizeAppsearchLocal(object):
                             propagated_operation_downwards_list.append(InsertPrefixToList(name=f"update breadcrumb guid", key="breadcrumbguid", input_list=breadcrumbguid_prefix)) 
                             propagated_operation_downwards_list.append(InsertPrefixToList(name=f"update breadcrumb name", key="breadcrumbname", input_list=breadcrumbname_prefix))
                             propagated_operation_downwards_list.append(InsertPrefixToList(name=f"update breadcrumb type", key="breadcrumbtype", input_list=breadcrumbtype_prefix))
-
-                            # define parent guid -> relevant for child 
-                            local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {parent_guid}", key=parent_guid, value=parent_entity_guid))
-                            local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {derived_guid}", key=derived_guid, value=parent_entity_guid))
-                            local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {derived_type}", key=derived_type, value="")) # what goes in here?
-
-                            if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
-                                index = conceptual_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
-                                to_be_inserted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index+1] 
-                                
-
-
-                            if derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
-                                index = technical_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
-                                to_be_inserted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index+1]   
-
-
-
-
-
-
-
-            
 
 
 
