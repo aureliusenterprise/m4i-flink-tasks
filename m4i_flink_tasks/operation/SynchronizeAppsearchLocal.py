@@ -3,7 +3,7 @@ import logging
 import jsonpickle
 import uuid
 import datetime
-from .parameters import *
+from m4i_flink_tasks.parameters import *
 from m4i_flink_tasks import EntityMessage
 from m4i_flink_tasks.operation.core_operation import *
 from m4i_flink_tasks.operation.OperationEvent import OperationEvent, OperationChange
@@ -12,15 +12,8 @@ from m4i_atlas_core import EntityAuditAction
 from elastic_enterprise_search import EnterpriseSearch, AppSearch
 from scripts.init.app_search_engine_setup import engines
 
-from m4i_flink_tasks.synchronize_app_search import *
+from m4i_flink_tasks.synchronize_app_search import get_m4i_source_types, get_super_types_names, get_relevant_hierarchy_entity_fields, is_parent_child_relationship, get_parent_child_entity_guid, get_document
 
-hierarchical_derived_entity_fields_mapping = {derived_data_domain_guid : derived_data_domain, derived_data_entity_guid : derived_data_entity, derived_data_attribute_guid : derived_data_attribute, derived_system_guid : derived_system, derived_collection_guid : derived_collection, derived_dataset_guid : derived_dataset, derived_field_guid : derived_field}
-
-conceptual_hierarchical_derived_entity_fields_mapping = {derived_data_domain_guid : derived_data_domain, derived_data_entity_guid : derived_data_entity, derived_data_attribute_guid : derived_data_attribute, derived_system_guid : derived_system, derived_collection_guid : derived_collection, derived_dataset_guid : derived_dataset, derived_field_guid : derived_field}
-technical_hierarchical_derived_entity_fields_mapping = {derived_system_guid : derived_system, derived_collection_guid : derived_collection, derived_dataset_guid : derived_dataset, derived_field_guid : derived_field}
-
-conceptual_hierarchical_derived_entity_guid_fields_list= list(conceptual_hierarchical_derived_entity_fields_mapping.keys())
-technical_hierarchical_derived_entity_guid_fields_list= list(technical_hierarchical_derived_entity_fields_mapping.keys())
 
 class SynchronizeAppsearchLocal(object):
     app_search = None
@@ -88,6 +81,8 @@ class SynchronizeAppsearchLocal(object):
             local_operation_list.append(CreateLocalEntityProcessor(name=f"create entity with guid {input_entity.guid} of type {input_entity.type_name}", 
                                                                       entity_guid = input_entity.guid,
                                                                       entity_type = input_entity.type_name))
+
+
         
         if entity_message.original_event_type in [EntityAuditAction.ENTITY_CREATE,EntityAuditAction.ENTITY_IMPORT_CREATE,
                                                   EntityAuditAction.ENTITY_UPDATE,EntityAuditAction.ENTITY_IMPORT_UPDATE ]:
@@ -173,7 +168,8 @@ class SynchronizeAppsearchLocal(object):
                                 to_be_deleted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index+1]   
 
                             for to_be_deleted_derived_guid_field in to_be_deleted_derived_guid_fields:
-                                propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {to_be_deleted_derived_guid_field}", key = to_be_deleted_derived_guid_field))
+
+                                propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {to_be_inserted_derived_guid_field}", key = to_be_inserted_derived_guid_field))
                                 propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]))
 
                             
@@ -198,7 +194,13 @@ class SynchronizeAppsearchLocal(object):
 
                             parent_entity_document = get_document(parent_entity_guid, self.app_search)
 
-                            super_types = await get_super_types_names(child_entity_guid)
+                            if input_entity.guid == parent_entity_guid:
+                                child_entity_type = inserted_relationship["typeName"]
+                                super_types = await get_super_types_names(child_entity_type)
+
+                            else:
+                               super_types = await get_super_types_names(input_entity.type_name)
+
                             m4isourcetype = get_m4i_source_types(super_types)
 
                             if len(m4isourcetype) > 0:
@@ -218,10 +220,9 @@ class SynchronizeAppsearchLocal(object):
 
                             for to_be_inserted_derived_guid_field in to_be_inserted_derived_guid_fields:
 
-                                propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {to_be_inserted_derived_guid_field}", key = to_be_inserted_derived_guid_field))
-                                propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]))
+                                propagated_operation_downwards_list.append(UpdateLocalAttributeProcessor(name=f"insert derived entity field {to_be_inserted_derived_guid_field}", key = to_be_inserted_derived_guid_field, value = parent_entity_document[to_be_inserted_derived_guid_field]))
+                                propagated_operation_downwards_list.append(UpdateLocalAttributeProcessor(name=f"insert derived entity field {hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field], value = parent_entity_document[hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]]))
 
-                            
                             # define parent guid -> relevant for child 
                             local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {parent_guid}", key=parent_guid, value=parent_entity_guid))
                             local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {derived_guid}", key=derived_guid, value=[parent_entity_guid]))

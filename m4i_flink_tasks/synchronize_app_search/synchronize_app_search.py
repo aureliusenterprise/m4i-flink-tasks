@@ -170,8 +170,6 @@ def get_attribute_field_guid(input_document : dict, input_relationship : dict):
         return input_relationship[guid], input_document[guid]
 
 
-
-
 def define_derived_entity_attribute_field_fields(data_attribute_document: dict, field_document : dict) -> List[dict]:
     """This function defines the derived entity fields for the documents provided which should correspond to a data attribute and field.
     The documents updated are returned as a result."""
