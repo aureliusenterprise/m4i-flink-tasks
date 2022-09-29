@@ -80,15 +80,17 @@ class LocalOperationLocal(object):
                 if change.propagate_down:
                     # propagae downwards
                     retry = 0
-                    while retry<3 and not propagate_ids:
+                    while retry<3 and propagate_ids==None:
                         try:
+                            
                             propagate_ids = get_child_entity_guids(entity_guid=entity_guid,
                                                            app_search=self.app_search,
                                                            engine_name=self.app_search_engine_name)
+                            logging.info(f"derived ids to be propagated: {propagate_ids}")
                         except Exception as e:
                             logging.error("connection to app search could not be established "+str(e))
                             self.app_search = make_elastic_app_search_connect()
-                            retry = retry+1
+                        retry = retry+1
                     if propagate_ids==None:
                         raise Exception(f"Could not find document with guid {entity_guid} for event id {oe.id}")     
                 else:
