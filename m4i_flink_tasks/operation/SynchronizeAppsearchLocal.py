@@ -169,7 +169,7 @@ class SynchronizeAppsearchLocal(object):
 
                             for to_be_deleted_derived_guid_field in to_be_deleted_derived_guid_fields:
 
-                                propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {to_be_inserted_derived_guid_field}", key = to_be_inserted_derived_guid_field))
+                                propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {to_be_deleted_derived_guid_field}", key = to_be_deleted_derived_guid_field))
                                 propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]))
 
                             
