@@ -146,7 +146,7 @@ class SynchronizeAppsearchLocal(object):
                         
 
                         if await is_parent_child_relationship(m4isourcetype, key, deleted_relationship):
-                            parent_entity_guid, child_entity_guid = get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, deleted_relationship)
+                            parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, deleted_relationship)
                             operation_event_guid = child_entity_guid # validate whether this goes right in all cases.
 
                             # breadcrumb updates -> relevant for child entity 

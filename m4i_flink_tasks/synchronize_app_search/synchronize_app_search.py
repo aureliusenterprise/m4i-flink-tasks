@@ -7,7 +7,7 @@ from m4i_atlas_core import (ConfigStore, Entity, EntityDef, get_type_def, get_ke
 from m4i_atlas_core.entities.atlas.core.relationship.Relationship import Relationship
 from elastic_enterprise_search import AppSearch
 from .HierarchyMapping import hierarchy_mapping
-from .parameters import *
+from m4i_flink_tasks.parameters import *
 from .AppSearchDocument import AppSearchDocument
 from .elastic import get_document, send_query, get_documents, get_child_entity_docs
 import json

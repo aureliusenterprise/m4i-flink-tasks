@@ -1,4 +1,4 @@
-from .parameters import *
+from m4i_flink_tasks.parameters import *
 
 hierarchy_mapping = {
     data_entity: data_domain,
