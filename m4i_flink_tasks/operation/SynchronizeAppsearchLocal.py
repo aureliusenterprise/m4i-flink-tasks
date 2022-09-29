@@ -87,7 +87,9 @@ class SynchronizeAppsearchLocal(object):
         if entity_message.original_event_type==EntityAuditAction.ENTITY_CREATE:
             local_operation_list.append(CreateLocalEntityProcessor(name=f"create entity with guid {input_entity.guid} of type {input_entity.type_name}", 
                                                                       entity_guid = input_entity.guid,
-                                                                      entity_type = input_entity.type_name))
+                                                                      entity_type = input_entity.type_name,
+                                                                      entity_name = input_entity.name,
+                                                                      entity_qualifiedname = input_entity.qualifiedname))
         
         if entity_message.original_event_type in [EntityAuditAction.ENTITY_CREATE,EntityAuditAction.ENTITY_IMPORT_CREATE,
                                                   EntityAuditAction.ENTITY_UPDATE,EntityAuditAction.ENTITY_IMPORT_UPDATE ]:

@@ -48,7 +48,9 @@ class CreateLocalEntityProcessor(AbstractProcessor):
     def __init__(self,
                 name:str,
                 entity_type:str,
-                entity_guid:str):
+                entity_guid:str,
+                entity_name:str,
+                entity_qualifiedname:str):
         super().__init__(name)
         self.entity_guid = entity_guid
         self.entity_type = entity_type
@@ -61,7 +63,9 @@ class CreateLocalEntityProcessor(AbstractProcessor):
             sourcetype = get_source_type(super_types),
             typename = self.entity_type,
             m4isourcetype = get_m4i_source_types(super_types),
-            supertypenames = super_types
+            supertypenames = super_types,
+            name=self.entity_name,
+            referenceablequalifiedname=self.entity_qualifiedname
         )    
         return json.loads(app_search_document.to_json())
     # end of process
