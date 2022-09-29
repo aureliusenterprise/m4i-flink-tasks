@@ -54,6 +54,8 @@ class CreateLocalEntityProcessor(AbstractProcessor):
         super().__init__(name)
         self.entity_guid = entity_guid
         self.entity_type = entity_type
+        self.entity_name = entity_name
+        self.entity_qualifiedname = entity_qualifiedname
     # end of __init__
 
     def process(self, input_data:Dict) -> Dict:        
