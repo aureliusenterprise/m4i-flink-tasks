@@ -12,6 +12,8 @@ import json
 
 from m4i_flink_tasks.synchronize_app_search.elastic import get_document
 from ..synchronize_app_search import get_direct_child_entity_docs, make_elastic_app_search_connect, update_dq_score_fields
+from ..synchronize_app_search import get_super_types_names,get_m4i_source_types,get_source_type
+from ..synchronize_app_search.AppSearchDocument import AppSearchDocument
 
 class AbstractProcessor(ABC):
     """All processors of the workflow inherit from this AbstractProcessor class.
@@ -52,11 +54,15 @@ class CreateLocalEntityProcessor(AbstractProcessor):
     # end of __init__
 
     def process(self, input_data:Dict) -> Dict:        
-        new_data = {}
-        new_data["id"] = self.entity_guid
-        new_data["guid"] = self.entity_guid
-        new_data["typename"] = self.entity_type
-        return new_data
+        super_types = await get_super_types_names(self.entity_type)
+        app_search_document = AppSearchDocument(id=self.entity_guid,
+            guid = self.entity_guid,
+            sourcetype = get_source_type(super_types),
+            typename = self.entity_type,
+            m4isourcetype = get_m4i_source_types(super_types),
+            supertypenames = super_types
+        )    
+        return json.loads(app_search_document.to_json())
     # end of process
 
 # end of class CreateLocalEntityProcessor
