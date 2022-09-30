@@ -59,14 +59,10 @@ class DetermineChangeLocal():
                 entity_audit =  asyncio.run(get_entity_audit(entity_guid = entity_guid, access_token = access__token))
                 if entity_audit:
                     atlas_entiy = Entity.from_json(re.search(r"{.*}", entity_audit.details).group(0))
-
-                    
+                    logging.info(f"derived atlas_entity relationship attributes : {atlas_entiy.relationship_attributes}")
                     return atlas_entiy.relationship_attributes != None
                 else:
                     return True
-
-
-
             except Exception as e:
                 logging.error("failed to retrieve entity audit from atlas - retry")
                 logging.error(str(e))
