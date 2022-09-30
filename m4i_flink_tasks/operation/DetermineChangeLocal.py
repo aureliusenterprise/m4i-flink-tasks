@@ -56,6 +56,7 @@ class DetermineChangeLocal():
             try:
                 access__token = self.get_access_token()
                 logging.info(f"access tokenL: {access__token}")
+                asyncio.run(get_entity_audit.cache.clear())
                 entity_audit =  asyncio.run(get_entity_audit(entity_guid = entity_guid, access_token = access__token))
                 if entity_audit:
                     atlas_entiy = Entity.from_json(re.search(r"{.*}", entity_audit.details).group(0))

@@ -79,7 +79,7 @@ class SynchronizeAppsearchLocal(object):
         propagated_operation_upwards_list = []
 
         if entity_message.original_event_type==EntityAuditAction.ENTITY_DELETE:
-           local_operation_list(DeleteEntityOperator(name=f"delete entity with guid"))
+           local_operation_list.append(DeleteEntityOperator(name=f"delete entity with guid"))
 
         if entity_message.original_event_type==EntityAuditAction.ENTITY_CREATE:
             local_operation_list.append(CreateLocalEntityProcessor(name=f"create entity with guid {input_entity.guid} of type {input_entity.type_name}", 
