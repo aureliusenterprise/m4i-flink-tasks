@@ -8,6 +8,7 @@ from m4i_flink_tasks.AtlasEntityChangeMessage import EntityMessage
 from elastic_app_search import Client
 
 from m4i_flink_tasks.operation.LocalOperationLocal import LocalOperationLocal
+
 from m4i_atlas_core import ConfigStore, Entity
 # from scripts.config import config
 # from scripts.credentials import credentials
@@ -104,4 +105,5 @@ def test__map_local3(store):
 	local_operation_local.open_local(config, credentials,store)
    
 	res = local_operation_local.map_local(kafka_message)
-	
+
+

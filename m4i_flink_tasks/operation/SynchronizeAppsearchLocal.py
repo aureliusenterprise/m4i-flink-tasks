@@ -231,8 +231,10 @@ class SynchronizeAppsearchLocal(object):
 
                             # define parent guid -> relevant for child 
                             local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {parent_guid}", key=parent_guid, value=parent_entity_guid))
+
                             local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {derived_guid}", key=derived_guid, value=parent_entity_document[derived_guid] + [parent_entity_guid]))
-                            local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {derived_type}", key=derived_type, value=parent_entity_document[derived_type] + parent_entity_document[name])) # Charif: Validate whether this will work for nested structures!!
+                            
+                            local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {derived_type}", key=derived_type, value=parent_entity_document[derived_type] + [parent_entity_document[name]])) # Charif: Validate whether this will work for nested structures!!
 
                             # breadcrumb updates -> relevant for child entity 
                             breadcrumbguid_prefix = parent_entity_document["breadcrumbguid"] + [parent_entity_document["guid"]]

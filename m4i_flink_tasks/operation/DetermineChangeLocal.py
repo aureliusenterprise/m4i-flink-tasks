@@ -59,7 +59,7 @@ class DetermineChangeLocal():
                 entity_audit =  asyncio.run(get_entity_audit(entity_guid = entity_guid, access_token = access__token))
                 if entity_audit:
                     atlas_entiy = Entity.from_json(re.search(r"{.*}", entity_audit.details).group(0))
-                    
+
                     
                     return atlas_entiy.relationship_attributes != None
                 else:
@@ -159,8 +159,7 @@ class DetermineChangeLocal():
         
 
      
-    def get_previous_atlas_entity(self, atlas_entity_parsed, msg_creation_time):
-        entity_guid = atlas_entity_parsed.guid
+    def get_previous_atlas_entity(self, entity_guid, msg_creation_time):
         
         query = {
             "bool": {
@@ -211,7 +210,8 @@ class DetermineChangeLocal():
         msg_creation_time = kafka_notification_json.get("kafka_notification").get("msgCreationTime")
      
         	    # check whether notification or entity is missing
-        if not kafka_notification_json.get("kafka_notification") or not kafka_notification_json.get("atlas_entity"):
+        if not kafka_notification_json.get("kafka_notification") or (not kafka_notification_json.get("atlas_entity") and kafka_notification_json.get("atlas_entity")!={}):
+            
             logging.warning("The Kafka notification received could not be handled due to unexpected notification structure.")
             guid = kafka_notification_json.get("guid","not available")
             raise Exception(f"event with GUID {guid} does not have a kafka notification and or an atlas entity attribute.")
@@ -225,6 +225,10 @@ class DetermineChangeLocal():
         	# DELETE operation
         if atlas_kafka_notification.message.operation_type == EntityAuditAction.ENTITY_DELETE:
             logging.warning("The Kafka notification received belongs to an entity delete audit.")
+
+            entity_guid = kafka_notification_json["kafka_notification"]["message"]["entity"]["guid"]
+
+            atlas_entity_json = self.get_previous_atlas_entity(entity_guid, msg_creation_time)
      
             atlas_entity_json["attributes"] = self.delete_list_values_from_dict(atlas_entity_json["attributes"])
             atlas_entity_json["attributes"] = self.delete_null_values_from_dict(atlas_entity_json["attributes"])
@@ -282,7 +286,7 @@ class DetermineChangeLocal():
         # UPDATE operation
         if atlas_kafka_notification.message.operation_type == EntityAuditAction.ENTITY_UPDATE:
             logging.warning("The Kafka notification received belongs to an entity update audit.")
-            previous_atlas_entity_json = self.get_previous_atlas_entity(atlas_entity_parsed, msg_creation_time)
+            previous_atlas_entity_json = self.get_previous_atlas_entity(atlas_entity_parsed.guid, msg_creation_time)
             # this is not good.... need a way to handle individual states even if they have the same updatetime
             if previous_atlas_entity_json==None or not previous_atlas_entity_json:
                 logging.warning("The Kafka notification received could not be handled due to missing corresponding entity document in the audit database in elastic search.")
