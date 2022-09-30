@@ -650,35 +650,35 @@ class DeleteEntityOperator(AbstractProcessor):
 
 #################################################################
 
-class DeleteElemtsFromLists(AbstractProcessor):
-    """DeleteValuesFromLists is an processor which deletes elements from lists corresponding to the provided key set
-    scores of a local instance.
+# class DeleteElemtsFromLists(AbstractProcessor):
+#     """DeleteValuesFromLists is an processor which deletes elements from lists corresponding to the provided key set
+#     scores of a local instance.
 
-    Parameters
-    ----------
-    name :str
-        Name of the processor
-    """
-    def __init__(self,
-                name:str,
-                element_list_key: list,
-                key_list: list
-                ):
-        super().__init__(name)
-        self.element_list_key = element_list_key
-        self.key_list = key_list
-    # end of __init__
+#     Parameters
+#     ----------
+#     name :str
+#         Name of the processor
+#     """
+#     def __init__(self,
+#                 name:str,
+#                 element_list_key: list,
+#                 key_list: list
+#                 ):
+#         super().__init__(name)
+#         self.element_list_key = element_list_key
+#         self.key_list = key_list
+#     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
-        for key in self.key_list:
-            for element in self.element_list_key:
-                if element in input_data[key]:
-                    # input_data[key].remove(element)
-                    DeleteListEntryBasedOnUniqueValueList(name=f"update derived entity field", unique_list_key=key, target_list_key=derived_type, unique_value=value)
+#     def process(self, input_data:Dict) -> Dict:
+#         for key in self.key_list:
+#             for element in self.element_list_key:
+#                 if element in input_data[key]:
+#                     # input_data[key].remove(element)
+#                     DeleteListEntryBasedOnUniqueValueList(name=f"update derived entity field", unique_list_key=key, target_list_key=derived_type, unique_value=value)
 
-        return input_data
+#         return input_data
                 
-    # end of process
+#     # end of process
 
-# end of class DeleteValuesFromLists
+# # end of class DeleteValuesFromLists
 
