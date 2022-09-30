@@ -229,6 +229,7 @@ class DetermineChangeLocal():
             entity_guid = kafka_notification_json["kafka_notification"]["message"]["entity"]["guid"]
 
             atlas_entity_json = self.get_previous_atlas_entity(entity_guid, msg_creation_time)
+            atlas_entity_parsed = Entity.from_json(json.dumps(atlas_entity_json))
      
             atlas_entity_json["attributes"] = self.delete_list_values_from_dict(atlas_entity_json["attributes"])
             atlas_entity_json["attributes"] = self.delete_null_values_from_dict(atlas_entity_json["attributes"])
@@ -241,7 +242,7 @@ class DetermineChangeLocal():
                                 old_value = atlas_entity_parsed,
                                 new_value = {},
                                 original_event_type = atlas_kafka_notification.message.operation_type,
-                                direct_change = self.is_direct_change(atlas_entity_parsed.guid),
+                                direct_change = True,
                                 event_type = "EntityDeleted",
                      
                                 inserted_attributes = [],

@@ -81,3 +81,5 @@ def test__map_local(store):
 	local_operation_local.open_local(config, credentials,store)
    
 	res = local_operation_local.map_local(kafka_message)
+
+	assert True
