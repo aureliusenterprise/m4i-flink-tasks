@@ -8,6 +8,7 @@ from m4i_flink_tasks.AtlasEntityChangeMessage import EntityMessage
 from elastic_app_search import Client
 
 from m4i_flink_tasks.operation.LocalOperationLocal import LocalOperationLocal
+
 from m4i_atlas_core import ConfigStore, Entity
 # from scripts.config import config
 # from scripts.credentials import credentials
@@ -97,3 +98,12 @@ def test__map_local2(store):
 	res = local_operation_local.map_local(kafka_message)
 
 	# assert len(res) == 1 
+
+def test__map_local3(store):
+	kafka_message = '{"id": "3da9cda7-31fc-4609-b5d3-15ff301a8e87", "creationTime": 1664538044351, "entityGuid": "deff4a82-97b2-44c4-8078-71cf00be66de", "changes": [{"propagate": true, "propagateDown": true, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update and inser attributes", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.InsertPrefixToList", "name": "update breadcrumb guid", "key": "breadcrumbguid", "input_list": ["eafb7a69-80bb-41ea-a52b-e76b96376cd1"]}, {"py/object": "m4i_flink_tasks.operation.core_operation.InsertPrefixToList", "name": "update breadcrumb name", "key": "breadcrumbname", "input_list": ["test-data-domain"]}, {"py/object": "m4i_flink_tasks.operation.core_operation.InsertPrefixToList", "name": "update breadcrumb type", "key": "breadcrumbtype", "input_list": ["m4i_data_domain"]}]}}, {"propagate": false, "propagateDown": false, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update and inser attributes", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.UpdateLocalAttributeProcessor", "name": "insert attribute parentguid", "key": "parentguid", "value": "eafb7a69-80bb-41ea-a52b-e76b96376cd1"}, {"py/object": "m4i_flink_tasks.operation.core_operation.UpdateLocalAttributeProcessor", "name": "insert attribute deriveddatadomainguid", "key": "deriveddatadomainguid", "value": ["eafb7a69-80bb-41ea-a52b-e76b96376cd1"]}, {"py/object": "m4i_flink_tasks.operation.core_operation.UpdateLocalAttributeProcessor", "name": "insert attribute deriveddatadomain", "key": "deriveddatadomain", "value": "test-data-domain"}]}}]}'
+	local_operation_local = LocalOperationLocal()
+	local_operation_local.open_local(config, credentials,store)
+   
+	res = local_operation_local.map_local(kafka_message)
+
+
