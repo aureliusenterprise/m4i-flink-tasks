@@ -248,23 +248,23 @@ class SynchronizeAppsearchLocal(object):
 
 
                 logging.warning("inserted relationships handled.")
+        # Charif: Using this indent might ccause problems later: please reconsider 
+        if len(propagated_operation_downwards_list)>0:
+            seq = Sequence(name="update and inser attributes", steps = propagated_operation_downwards_list)
+            spec = jsonpickle.encode(seq) 
 
-            if len(propagated_operation_downwards_list)>0:
-                seq = Sequence(name="update and inser attributes", steps = propagated_operation_downwards_list)
-                spec = jsonpickle.encode(seq) 
-
-                oc = OperationChange(propagate=True, propagate_down=True, operation = json.loads(spec))
-                logging.warning("Operation Change has been created")
-                change_list.append(oc)
+            oc = OperationChange(propagate=True, propagate_down=True, operation = json.loads(spec))
+            logging.warning("Operation Change has been created")
+            change_list.append(oc)
 
 
-            if len(local_operation_list)>0:
-                seq = Sequence(name="update and inser attributes", steps = local_operation_list)
-                spec = jsonpickle.encode(seq) 
+        if len(local_operation_list)>0:
+            seq = Sequence(name="update and inser attributes", steps = local_operation_list)
+            spec = jsonpickle.encode(seq) 
 
-                oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
-                logging.warning("Operation Change has been created")
-                change_list.append(oc)
+            oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
+            logging.warning("Operation Change has been created")
+            change_list.append(oc)
         
         if len(change_list)>0:
             oe = OperationEvent(id=str(uuid.uuid4()), 
