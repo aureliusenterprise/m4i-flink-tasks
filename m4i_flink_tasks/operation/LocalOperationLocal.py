@@ -29,6 +29,7 @@ class LocalOperationLocal(object):
 
 
     def map_local(self, kafka_notification: str):
+        logging.info("start local operation local")
         events = []
         logging.warning("kafka notification: "+repr(kafka_notification))
 
