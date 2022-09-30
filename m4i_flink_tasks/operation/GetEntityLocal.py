@@ -32,8 +32,10 @@ class GetEntityLocal(object):
             kafka_notification_obj = AtlasChangeMessage.from_json(kafka_notification)
             logging.info(access_token_)
 
+            msg_creation_time = kafka_notification_obj.msg_creation_time
+
             if kafka_notification_obj.message.operation_type in [EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE]:
-                msg_creation_time = kafka_notification_obj.msg_creation_time
+                
                 entity_guid = kafka_notification_obj.message.entity.guid
                 await get_entity_by_guid.cache.clear()
                 event_entity = await get_entity_by_guid(guid=entity_guid, ignore_relationships=False, access_token=access_token_)
