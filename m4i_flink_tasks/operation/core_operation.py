@@ -1,4 +1,5 @@
 from abc import ABC
+from msilib.schema import AppSearch
 import pandas as pd
 import numpy as np
 import math
@@ -11,7 +12,9 @@ import sys
 import json
 import asyncio
 
-from m4i_flink_tasks.synchronize_app_search.elastic import get_document
+from m4i_flink_tasks.parameters import *
+
+from m4i_flink_tasks.synchronize_app_search.elastic import delete_document, get_document
 from ..synchronize_app_search import get_direct_child_entity_docs, make_elastic_app_search_connect, update_dq_score_fields
 from ..synchronize_app_search import get_super_types_names,get_m4i_source_types,get_source_type
 from ..synchronize_app_search.AppSearchDocument import AppSearchDocument
@@ -622,6 +625,28 @@ class InheritDerviedEntitiesFromParentEntity(AbstractProcessor):
     # end of process
 
 # end of class UpdateBreadcrumbValueProcessor
+
+
+class DeleteEntityOperator(AbstractProcessor):
+    """DeleteEntityOperator is an processor which updates all data quality 
+    scores of a local instance.
+
+    Parameters
+    ----------
+    name :str
+        Name of the processor
+    """
+    def __init__(self,
+                name:str):
+        super().__init__(name)
+    # end of __init__
+
+    def process(self, input_data:Dict) -> Dict:
+        return 
+    # end of process
+
+# end of class DeleteEntityOperator
+
 
 #################################################################
 

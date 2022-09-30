@@ -10,6 +10,7 @@ from m4i_flink_tasks.operation.OperationEvent import OperationEvent, OperationCh
 from m4i_flink_tasks.operation.core_operation import Sequence,CreateLocalEntityProcessor,DeleteLocalAttributeProcessor
 from m4i_atlas_core import EntityAuditAction
 from elastic_enterprise_search import EnterpriseSearch, AppSearch
+from m4i_flink_tasks.synchronize_app_search.elastic import delete_document
 from scripts.init.app_search_engine_setup import engines
 
 from m4i_flink_tasks.synchronize_app_search import get_m4i_source_types, get_super_types_names, get_relevant_hierarchy_entity_fields, is_parent_child_relationship, get_parent_child_entity_guid, get_document
@@ -76,6 +77,9 @@ class SynchronizeAppsearchLocal(object):
         local_operation_list = []
         propagated_operation_downwards_list = []
         propagated_operation_upwards_list = []
+
+        if entity_message.original_event_type==EntityAuditAction.ENTITY_DELETE:
+           local_operation_list(DeleteEntityOperator(name=f"delete entity with guid"))
 
         if entity_message.original_event_type==EntityAuditAction.ENTITY_CREATE:
             local_operation_list.append(CreateLocalEntityProcessor(name=f"create entity with guid {input_entity.guid} of type {input_entity.type_name}", 
@@ -195,11 +199,13 @@ class SynchronizeAppsearchLocal(object):
                             parent_entity_document = get_document(parent_entity_guid, self.app_search)
 
                             if input_entity.guid == parent_entity_guid:
-                                child_entity_type = inserted_relationship["typeName"]
-                                super_types = await get_super_types_names(child_entity_type)
+                                super_types = await get_super_types_names(input_entity.type_name)
 
                             else:
-                               super_types = await get_super_types_names(input_entity.type_name)
+
+                                parent_entity_guid = inserted_relationship["typeName"]
+                                super_types = await get_super_types_names(parent_entity_guid)
+                               
 
                             m4isourcetype = get_m4i_source_types(super_types)
 
@@ -211,12 +217,12 @@ class SynchronizeAppsearchLocal(object):
 
                             if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
                                 index = conceptual_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
-                                to_be_inserted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index+1] 
+                                to_be_inserted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index] 
 
 
                             if derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
                                 index = technical_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
-                                to_be_inserted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index+1]   
+                                to_be_inserted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index]   
 
                             for to_be_inserted_derived_guid_field in to_be_inserted_derived_guid_fields:
 
