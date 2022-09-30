@@ -10,6 +10,7 @@ import traceback
 import sys
 import json
 import asyncio
+import logging
 
 from m4i_flink_tasks.parameters import *
 
@@ -296,12 +297,14 @@ class UpdateListEntryProcessor(AbstractProcessor):
     def __init__(self,
                 name:str,
                 key: str, 
-                old_value : str,  
+                guid_key: str,
+                reference_guid:str,
                 new_value : str
                 ):
         super().__init__(name)
         self.key = key
-        self.old_value = old_value
+        self.guid_key = guid_key
+        self.reference_guid = reference_guid
         self.new_value = new_value
 
     # end of __init__
@@ -309,56 +312,64 @@ class UpdateListEntryProcessor(AbstractProcessor):
     def process(self, input_data:Dict) -> Dict:
         if not self.key in input_data.keys():
             raise Exception(f"Key {self.key} not in input data")
+
+        if not self.guid_key in input_data.keys():
+            raise Exception(f"Guid Key {self.guid_key} not in input data")
         
-        if not self.old_value in input_data[self.key]:
-        # raise Exception(f"Value {self.old_value} not in input data")  # I commented this out, so no exception is failed when the breadcrumbname is updated.
-            pass  
-        index = input_data[self.key].index(self.old_value)
-        input_data[index] = self.new_value
+        arr = input_data[self.guid_key]
+        try:
+            index = arr.index(self.reference_guid)
+            arr_to_be_changed = input_data[self.key]
+            arr_to_be_changed[index] = self.new_value
+            input_data[self.key] =  arr_to_be_changed
+        except:
+            logging.warning(f"did not find the specified reference_guid {self.reference_guid} int the array {input_data[self.guid_key]}")
+            pass
+
         return input_data
     # end of process
 
 # end of class UpdateListEntryProcessor
 
-class DeleteListEntryProcessor(AbstractProcessor):
-    """UpdateListEntryProcessor is an processor which updates the a given value in a list with another provided value
-    scores of a local instance.
+# class DeleteListEntryProcessor(AbstractProcessor):
+#     """UpdateListEntryProcessor is an processor which updates the a given value in a list with another provided value
+#     scores of a local instance.
 
-    Parameters
-    ----------
-    name: str
-        Name of the processor
-    key: str
-        This is the name of the field in the app search schema
-    old_value: str
-        This is the value to be changed in the provided field
-    new_value: str 
-        This is the new value that will be inserted in the provided field with the index that corresponds to the old_value
-    """
+#     Parameters
+#     ----------
+#     name: str
+#         Name of the processor
+#     key: str
+#         This is the name of the field in the app search schema
+#     old_value: str
+#         This is the value to be changed in the provided field
+#     new_value: str 
+#         This is the new value that will be inserted in the provided field with the index that corresponds to the old_value
+#     """
     
-    def __init__(self,
-                name:str,
-                key: str, 
-                value : str,  
-                ):
-        super().__init__(name)
-        self.key = key
-        self.value = value
+#     def __init__(self,
+#                 name:str,
+#                 key: str, 
+#                 value : str,  
+#                 ):
+#         super().__init__(name)
+#         self.key = key
+#         self.value = value
 
-    # end of __init__
+#     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
-        if not self.key in input_data.keys():
-            raise Exception(f"Key {self.key} not in input data")
+#     def process(self, input_data:Dict) -> Dict:
+#         if not self.key in input_data.keys():
+#             raise Exception(f"Key {self.key} not in input data")
         
-        if not self.value in input_data[self.key]:
-        # raise Exception(f"Value {self.old_value} not in input data")  # I commented this out, so no exception is failed when the breadcrumbname is updated.
-            pass  
-        input_data[self.key].remove(self.value)
-        return input_data
-    # end of process
+#         if not self.value in input_data[self.key]:
+#         # raise Exception(f"Value {self.old_value} not in input data")  # I commented this out, so no exception is failed when the breadcrumbname is updated.
+#             pass  
+#         input_data[self.key].remove(self.value)
+#         return input_data
+#     # end of process
 
-# end of class UpdateListEntryProcessor
+# # end of class UpdateListEntryProcessor
 
 
 
@@ -402,8 +413,6 @@ DeletePrefixFromList
 
 # end of class InsertPrefixToList
 
-
-
 class DeletePrefixFromList(AbstractProcessor):
     """DeletePrefixFromList is an processor which updates a provided list by deleting a all entries from list before provided index
 
@@ -420,48 +429,101 @@ class DeletePrefixFromList(AbstractProcessor):
     def __init__(self,
                 name:str, 
                 key : str,
-                index: list,
-                incremental: bool = False
+                guid_key: str,
+                first_guid_to_keep:str = None
                 ):
         super().__init__(name)
         self.key = key
-        self.index = index
-        self.incremental = incremental
+        self.guid_key = guid_key
+        self.first_guid_to_keep = first_guid_to_keep
     # end of __init__
 
-    def translate_index(self, input_data: Dict):
-        if self.index == -1:
-            self.index = len(input_data[self.key])
-           
     
-
     def process(self, input_data:Dict) -> Dict:
-
-        
-
         if not self.key in input_data.keys():
             raise Exception(f"Key {self.key} not in input data")
+        
+        if not self.guid_key in input_data.keys():
+            raise Exception(f"Guid_Key {self.guid_key} not in input data")
+        
+        if self.first_guid_to_keep == None:
+            raise Exception(f"first_guid_to_keep {self.first_guid_to_keep} not specified")
 
-        if not type(input_data[self.key] == list):
-
+        if not isinstance(input_data[self.key],list):
             raise Exception(f"App search field {self.key} is of unexpected type.")
 
-        self.translate_index(input_data)
-
-        if (not self.index < 0) or (not self.index < len(input_data[self.key])):
-            
-            raise Exception(f"Provided index {self.index} is invalid considering the list .")
-
-        input_data[self.key] = input_data[self.index+1::] 
-
-        if self.incremental:
-            self.index +=1
+        arr = input_data[self.guid_key]
+        try:
+            index = arr.index(self.first_guid_to_keep)
+            input_data[self.key] = input_data[self.key][index::] 
+        except:
+            input_data[self.key] = []
+            pass
 
         return input_data
 
     # end of process
 
 # end of class DeletePrefixFromList
+
+
+# class DeletePrefixFromList2(AbstractProcessor):
+#     """DeletePrefixFromList is an processor which updates a provided list by deleting a all entries from list before provided index
+
+#     Parameters
+#     ----------
+#     name: str
+#         Name of the processor
+#     key: str
+#         This is the name of the field in the app search schema
+#     new_value: str 
+#     """
+#     # Charif: I make use of index because names and types are not guaranteed to be unique in all lists
+    
+#     def __init__(self,
+#                 name:str, 
+#                 key : str,
+#                 # first position you want to keep
+#                 index: int,
+#                 incremental: bool = False
+#                 ):
+#         super().__init__(name)
+#         self.key = key
+#         self.index = index
+#         self.incremental = incremental
+#     # end of __init__
+
+#     def translate_index(self, input_data: Dict):
+#         if self.index == -1:
+#             # first position you want to keep
+#             self.index = len(input_data[self.key])
+           
+    
+
+#     def process(self, input_data:Dict) -> Dict:
+#         if not self.key in input_data.keys():
+#             raise Exception(f"Key {self.key} not in input data")
+
+#         if not isinstance(input_data[self.key],list):
+#             raise Exception(f"App search field {self.key} is of unexpected type.")
+
+#         self.translate_index(input_data)
+
+#         if (self.index < 0) or (self.index > len(input_data[self.key])):
+#             raise Exception(f"Provided index {self.index} is invalid considering the list .")
+#         elif self.index == len(input_data[self.key]):
+#             input_data[self.key] = []
+#         else:
+#             input_data[self.key] = input_data[self.index::] 
+
+#         if self.incremental:
+#             self.index +=1
+
+#         return input_data
+
+#     # end of process
+
+# # end of class DeletePrefixFromList
 
 
 class ComputeDqScoresProcessor(AbstractProcessor):

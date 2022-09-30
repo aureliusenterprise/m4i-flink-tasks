@@ -5,7 +5,8 @@ import uuid
 import datetime
 from m4i_flink_tasks.parameters import *
 from m4i_flink_tasks import EntityMessage
-from m4i_flink_tasks.operation.core_operation import *
+from m4i_flink_tasks.operation.core_operation import InsertPrefixToList,DeletePrefixFromList,DeleteLocalAttributeProcessor,UpdateListEntryBasedOnUniqueValueList
+from m4i_flink_tasks.operation.core_operation import CreateLocalEntityProcessor, DeleteEntityOperator,UpdateLocalAttributeProcessor
 from m4i_flink_tasks.operation.OperationEvent import OperationEvent, OperationChange
 from m4i_flink_tasks.operation.core_operation import Sequence,CreateLocalEntityProcessor,DeleteLocalAttributeProcessor
 from m4i_atlas_core import EntityAuditAction
@@ -79,7 +80,7 @@ class SynchronizeAppsearchLocal(object):
         propagated_operation_upwards_list = []
 
         if entity_message.original_event_type==EntityAuditAction.ENTITY_DELETE:
-           local_operation_list.append(DeleteEntityOperator(name=f"delete entity with guid"))
+           local_operation_list.append(DeleteEntityOperator(name="delete entity with guid"))
 
         if entity_message.original_event_type==EntityAuditAction.ENTITY_CREATE:
             local_operation_list.append(CreateLocalEntityProcessor(name=f"create entity with guid {input_entity.guid} of type {input_entity.type_name}", 
@@ -113,7 +114,7 @@ class SynchronizeAppsearchLocal(object):
                         if name == update_attribute:
 
                             # propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update breadcrumb name", key=breadcrumb_name, old_value=old_value, new_value=value))
-                            propagated_operation_downwards_list.append(UpdateListEntryBasedOnUniqueValueList(name=f"update breadcrumb name", unique_list_key=breadcrumb_guid, target_list_key=breadcrumb_name, unique_value=input_entity.guid, target_value= value))
+                            propagated_operation_downwards_list.append(UpdateListEntryBasedOnUniqueValueList(name="update breadcrumb name", unique_list_key=breadcrumb_guid, target_list_key=breadcrumb_name, unique_value=input_entity.guid, target_value= value))
 
                             super_types = await get_super_types_names(input_entity.type_name)
                             m4isourcetype = get_m4i_source_types(super_types)
@@ -122,7 +123,7 @@ class SynchronizeAppsearchLocal(object):
                             derived_guid, derived_type = get_relevant_hierarchy_entity_fields(m4isourcetype)
 
                             # propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update derived entity field {derived_type}", key=derived_type, old_value=old_value, new_value=value))
-                            propagated_operation_downwards_list.append(UpdateListEntryBasedOnUniqueValueList(name=f"update derived entity field", unique_list_key=derived_guid, target_list_key=derived_type, unique_value=input_entity.guid, target_value= value))
+                            propagated_operation_downwards_list.append(UpdateListEntryBasedOnUniqueValueList(name="update derived entity field", unique_list_key=derived_guid, target_list_key=derived_type, unique_value=input_entity.guid, target_value= value))
 
 
 
@@ -154,10 +155,10 @@ class SynchronizeAppsearchLocal(object):
                             operation_event_guid = child_entity_guid # validate whether this goes right in all cases.
 
                             # breadcrumb updates -> relevant for child entity 
-                            propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update breadcrumb guid", key="breadcrumbguid", index = -1,  incremental=True))
-                            propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update breadcrumb name", key="breadcrumbname", index = -1,  incremental=True))
-                            propagated_operation_downwards_list.append(DeletePrefixFromList(name=f"update breadcrumb type", key="breadcrumbtype", index = -1,  incremental=True))
-
+                            propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb name", key="breadcrumbname", guid_key="breadcrumbguid" , first_to_keep_guid=child_entity_guid))
+                            propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb type", key="breadcrumbtype", guid_key="breadcrumbguid" , first_to_keep_guid=child_entity_guid))
+                            propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb guid", key="breadcrumbguid", guid_key="breadcrumbguid" , first_to_keep_guid=child_entity_guid))
+                            
                             # delete parent guid -> relevant for child 
                             local_operation_list.append(DeleteLocalAttributeProcessor(name=f"delete attribute {parent_guid}", key=parent_guid))
                              
@@ -241,9 +242,9 @@ class SynchronizeAppsearchLocal(object):
                             breadcrumbname_prefix = parent_entity_document["breadcrumbname"] + [parent_entity_document["name"]]
                             breadcrumbtype_prefix = parent_entity_document["breadcrumbtype"] + [parent_entity_document["typename"]]
                             
-                            propagated_operation_downwards_list.append(InsertPrefixToList(name=f"update breadcrumb guid", key="breadcrumbguid", input_list=breadcrumbguid_prefix)) 
-                            propagated_operation_downwards_list.append(InsertPrefixToList(name=f"update breadcrumb name", key="breadcrumbname", input_list=breadcrumbname_prefix))
-                            propagated_operation_downwards_list.append(InsertPrefixToList(name=f"update breadcrumb type", key="breadcrumbtype", input_list=breadcrumbtype_prefix))
+                            propagated_operation_downwards_list.append(InsertPrefixToList(name="update breadcrumb guid", key="breadcrumbguid", input_list=breadcrumbguid_prefix)) 
+                            propagated_operation_downwards_list.append(InsertPrefixToList(name="update breadcrumb name", key="breadcrumbname", input_list=breadcrumbname_prefix))
+                            propagated_operation_downwards_list.append(InsertPrefixToList(name="update breadcrumb type", key="breadcrumbtype", input_list=breadcrumbtype_prefix))
 
 
 
