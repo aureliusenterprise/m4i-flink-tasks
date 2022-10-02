@@ -249,7 +249,7 @@ class SynchronizeAppsearchLocal(object):
 
 
                 logging.warning("inserted relationships handled.")
-        # Charif: Using this indent might ccause problems later: please reconsider 
+        # Charif: Using this indent might cause problems later: please reconsider 
         if len(propagated_operation_downwards_list)>0:
             seq = Sequence(name="update and inser attributes", steps = propagated_operation_downwards_list)
             spec = jsonpickle.encode(seq) 
