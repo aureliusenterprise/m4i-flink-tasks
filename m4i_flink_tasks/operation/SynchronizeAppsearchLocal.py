@@ -73,14 +73,15 @@ class SynchronizeAppsearchLocal(object):
             logging.info("This message is a consequence of an indirect change. No further action is taken.")
             return
             # pass
-        operation_event_guid = input_entity.guid
+            
+        operation_event_guid = entity_message.guid
 
         local_operation_list = []
         propagated_operation_downwards_list = []
         propagated_operation_upwards_list = []
 
         if entity_message.original_event_type==EntityAuditAction.ENTITY_DELETE:
-           local_operation_list.append(DeleteEntityOperator(name="delete entity with guid"))
+           local_operation_list.append(DeleteEntityOperator(name=f"delete entity with guid {operation_event_guid}"))
 
         if entity_message.original_event_type==EntityAuditAction.ENTITY_CREATE:
             local_operation_list.append(CreateLocalEntityProcessor(name=f"create entity with guid {input_entity.guid} of type {input_entity.type_name}", 
