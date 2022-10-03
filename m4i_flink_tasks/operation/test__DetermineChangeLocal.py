@@ -10,6 +10,9 @@ from elastic_app_search import Client
 from m4i_flink_tasks.operation.LocalOperationLocal import LocalOperationLocal
 
 from m4i_flink_tasks.operation.DetermineChangeLocal import DetermineChangeLocal
+
+from m4i_flink_tasks.operation.PublishStateLocal import PublishStateLocal
+
 from m4i_atlas_core import ConfigStore, Entity
 # from scripts.config import config
 # from scripts.credentials import credentials
@@ -92,4 +95,16 @@ def test__map_local2(store):
 	res = local_operation_local.map_local(kafka_message)
 
 	assert True
+
+def test__map_local3(store):
+	kafka_message = '{"kafka_notification": {"version": {"version": "1.0.0", "versionParts": [1]}, "msgCompressionKind": "NONE", "msgSplitIdx": 1, "msgSplitCount": 1, "msgSourceIP": "10.0.2.4", "msgCreatedBy": "", "msgCreationTime": 1664799679902, "message": {"eventTime": 1664799679823, "operationType": "ENTITY_UPDATE", "type": "ENTITY_NOTIFICATION_V2", "entity": {"typeName": "m4i_data_entity", "attributes": {"archimateReference": [], "qualifiedName": "7d325e9d-4278-4b80-a8fb-d1bd29bc0456", "name": "data-entity-14:03", "definition": "data-entity-14:03"}, "classifications": [], "createTime": null, "createdBy": null, "customAttributes": null, "guid": "c3449cb9-ea37-4d91-a54d-6034b4562181", "homeId": null, "isIncomplete": false, "labels": [], "meanings": [], "provenanceType": null, "proxy": null, "relationshipAttributes": null, "status": "ACTIVE", "updateTime": null, "updatedBy": null, "version": null}, "relationship": null}}, "atlas_entity": {"typeName": "m4i_data_entity", "attributes": {"archimateReference": [], "replicatedTo": null, "replicatedFrom": null, "steward": [], "qualifiedName": "7d325e9d-4278-4b80-a8fb-d1bd29bc0456", "parentEntity": [], "source": [], "dataDomain": [], "childEntity": [], "name": "data-entity-14:03", "definition": "data-entity-14:03", "attributes": [], "businessOwner": []}, "classifications": [], "createTime": 1664798611870, "createdBy": "atlas", "customAttributes": null, "guid": "c3449cb9-ea37-4d91-a54d-6034b4562181", "homeId": null, "isIncomplete": false, "labels": [], "meanings": [], "provenanceType": null, "proxy": null, "relationshipAttributes": {"ArchiMateReference": [], "steward": [], "dataDomain": [], "parentEntity": [], "childEntity": [], "attributes": [], "source": [], "businessOwner": [], "meanings": []}, "status": "ACTIVE", "updateTime": 1664799679823, "updatedBy": "atlas", "version": 0}, "msg_creation_time": 1664799679902}' 
+
+	local_operation_local = DetermineChangeLocal()
+	local_operation_local.open_local(config, credentials,store)
+   
+	res = local_operation_local.map_local(kafka_message)
+
+	assert True
+
+
 
