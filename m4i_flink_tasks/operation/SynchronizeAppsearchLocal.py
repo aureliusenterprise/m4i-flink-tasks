@@ -160,9 +160,9 @@ class SynchronizeAppsearchLocal(object):
                             operation_event_guid = child_entity_guid # validate whether this goes right in all cases.
 
                             # breadcrumb updates -> relevant for child entity 
-                            propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb name", key="breadcrumbname", guid_key="breadcrumbguid" , first_to_keep_guid=child_entity_guid))
-                            propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb type", key="breadcrumbtype", guid_key="breadcrumbguid" , first_to_keep_guid=child_entity_guid))
-                            propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb guid", key="breadcrumbguid", guid_key="breadcrumbguid" , first_to_keep_guid=child_entity_guid))
+                            propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb name", key="breadcrumbname", guid_key="breadcrumbguid" , first_guid_to_keep=child_entity_guid))
+                            propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb type", key="breadcrumbtype", guid_key="breadcrumbguid" , first_guid_to_keep=child_entity_guid))
+                            propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb guid", key="breadcrumbguid", guid_key="breadcrumbguid" , first_guid_to_keep=child_entity_guid))
                             
                             # delete parent guid -> relevant for child 
                             local_operation_list.append(DeleteLocalAttributeProcessor(name=f"delete attribute {parent_guid}", key=parent_guid))
