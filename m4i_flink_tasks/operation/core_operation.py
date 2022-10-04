@@ -174,6 +174,37 @@ class UpdateLocalAttributeProcessor(AbstractProcessor):
 
 # end of class UpdateLocalAttributeProcessor
 
+class AddElementToListProcessor(AbstractProcessor):
+    """UpdateLocalAttributeProcessor is a processot to update a single key
+        in the data.
+
+    Parameters
+    ----------
+    name :str
+        Name of the processor
+    """
+    def __init__(self,
+                name:str,
+                key:str,
+                value):
+        super().__init__(name)
+        self.key = key
+        self.value = value
+    # end of __init__
+
+    def process(self, input_data:Dict) -> Dict:
+
+        if isinstance(input_data[self.key], list):
+            input_data[self.key].append(self.value)
+        return input_data
+
+    
+    # end of process
+
+# end of class UpdateLocalAttributeProcessor
+
+
+
 class DeleteLocalAttributeProcessor(AbstractProcessor):
     """DeleteLocalAttributeProcessor is a processot to delete the value of a 
         single key in the data.
@@ -650,7 +681,7 @@ class DeleteElementFromList(AbstractProcessor):
             raise Exception(f"App search field {self.key} is of unexpected type.")
 
 
-        if (not self.index < 0) or (not self.index < len(input_data[self.key])):
+        if (self.index < 0) or (not self.index < len(input_data[self.key])):
             
             raise Exception(f"Provided index {self.index} is invalid considering the list .")
 

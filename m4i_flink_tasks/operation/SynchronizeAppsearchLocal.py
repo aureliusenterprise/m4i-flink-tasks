@@ -1,12 +1,13 @@
 import json
 import logging
+from aenum import unique
 import jsonpickle
 import uuid
 import datetime
 from m4i_flink_tasks.parameters import *
 from m4i_flink_tasks import EntityMessage
-from m4i_flink_tasks.operation.core_operation import InsertPrefixToList,DeletePrefixFromList,DeleteLocalAttributeProcessor,UpdateListEntryBasedOnUniqueValueList
-from m4i_flink_tasks.operation.core_operation import CreateLocalEntityProcessor, DeleteEntityOperator,UpdateLocalAttributeProcessor
+from m4i_flink_tasks.operation.core_operation import InsertPrefixToList,DeletePrefixFromList,DeleteLocalAttributeProcessor, UpdateListEntryBasedOnUniqueValueList, DeleteListEntryBasedOnUniqueValueList
+from m4i_flink_tasks.operation.core_operation import CreateLocalEntityProcessor, DeleteEntityOperator,UpdateLocalAttributeProcessor, AddElementToListProcessor
 from m4i_flink_tasks.operation.OperationEvent import OperationEvent, OperationChange
 from m4i_flink_tasks.operation.core_operation import Sequence,CreateLocalEntityProcessor,DeleteLocalAttributeProcessor
 from m4i_atlas_core import EntityAuditAction
@@ -67,10 +68,18 @@ class SynchronizeAppsearchLocal(object):
             person_name = inserted_relationship['displayText']
             operation_event_guid = input_entity.guid
         # create local operations
-        local_operation_person = [UpdateLocalAttributeProcessor(name="update attribute derivedperson",
-                                                                key="derivedperson", value=person_name),
-                                  UpdateLocalAttributeProcessor(name="update attribute derivedpersonguid", 
-                                                                key="derivedpersonguid", value=person_guid)]
+        # Charif: If these are lists, then this will not work properly. Look up guid in derivedpersonguid and then delete what needs to be deleted.
+        # local_operation_person = [UpdateLocalAttributeProcessor(name="update attribute derivedperson",
+        #                                                         key="derivedperson", value=person_name),
+        #                           UpdateLocalAttributeProcessor(name="update attribute derivedpersonguid", 
+        #                                                         key="derivedpersonguid", value=person_guid)]
+
+        local_operation_person = [AddElementToListProcessor(name="update attribute derivedperson",
+                                                        key="derivedperson", value=person_name),
+                            AddElementToListProcessor(name="update attribute derivedpersonguid", 
+                                                        key="derivedpersonguid", value=person_guid)]
+
+                                                                
         return operation_event_guid, local_operation_person
 
     def delete_person_relationship(self,input_entity, deleted_relationship):
@@ -80,11 +89,120 @@ class SynchronizeAppsearchLocal(object):
         if deleted_relationship["typeName"]=="m4i_person":
             operation_event_guid = input_entity.guid
         # create local operations
-        local_operation_person = [DeleteLocalAttributeProcessor(name="delete attribute derivedperson",
-                                                                key="derivedperson"),
-                                  DeleteLocalAttributeProcessor(name="delete attribute derivedpersonguid", 
-                                                                key="derivedpersonguid")]
+        # Charif: If these are lists, then this will not work properly. Look up guid in derivedpersonguid and then delete what needs to be deleted.
+        
+        # local_operation_person = [DeleteLocalAttributeProcessor(name="delete attribute derivedperson",
+        #                                                         key="derivedperson"),
+        #                           DeleteLocalAttributeProcessor(name="delete attribute derivedpersonguid", 
+        #                                                         key="derivedpersonguid")]
+
+        local_operation_person = [DeleteListEntryBasedOnUniqueValueList(name="delete attribute derivedperson", unique_list_key = derived_person_guid, target_list_key=derived_person, unique_value=input_entity.guid),
+                                 DeleteListEntryBasedOnUniqueValueList(name="delete attribute derivedpersonguid", unique_list_key = derived_person_guid, target_list_key=derived_person_guid, unique_value=input_entity.guid)
+        ]
         return operation_event_guid, local_operation_person
+
+
+    async def handle_deleted_relationship(self, entity_message: EntityMessage, key :str, deleted_relationship : list, derived_guid: str):
+        """This function defines all operators required to handle the deleted relationship."""
+
+        local_operation_list = []
+        propagated_operation_downwards_list = []
+
+        input_entity = entity_message.new_value
+
+        logging.warning("handle deleted relationships.")
+
+        parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, deleted_relationship)
+        operation_event_guid = child_entity_guid # validate whether this goes right in all cases.
+
+        # breadcrumb updates -> relevant for child entity 
+        propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb name", key="breadcrumbname", guid_key="breadcrumbguid" , first_guid_to_keep=child_entity_guid))
+        propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb type", key="breadcrumbtype", guid_key="breadcrumbguid" , first_guid_to_keep=child_entity_guid))
+        propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb guid", key="breadcrumbguid", guid_key="breadcrumbguid" , first_guid_to_keep=child_entity_guid))
+        
+        # delete parent guid -> relevant for child 
+        local_operation_list.append(DeleteLocalAttributeProcessor(name=f"delete attribute {parent_guid}", key=parent_guid))
+        
+        # delete derived entity guid -> relevant for child
+        if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
+            index = conceptual_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
+            to_be_deleted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index+1]   
+
+
+        if derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
+            index = technical_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
+            to_be_deleted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index+1]   
+
+        for to_be_deleted_derived_guid_field in to_be_deleted_derived_guid_fields:
+
+            propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field: {to_be_deleted_derived_guid_field}", key = to_be_deleted_derived_guid_field))
+            propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field: {hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]))
+
+        return operation_event_guid, local_operation_list, propagated_operation_downwards_list
+
+    async def handle_inserted_hierarchical_relationship(self, entity_message: EntityMessage, key :str, inserted_relationship ):
+        """This function defines all operators required to handle the inserted hierarchical relationship."""
+
+        local_operation_list = []
+        propagated_operation_downwards_list = []
+
+        input_entity = entity_message.new_value
+        
+        parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, inserted_relationship)
+        operation_event_guid = child_entity_guid # validate whether this goes right in all cases.
+
+        parent_entity_document = get_document(parent_entity_guid, self.app_search)
+
+        if input_entity.guid == parent_entity_guid:
+            super_types = await get_super_types_names(input_entity.type_name)
+
+        else:
+
+            parent_entity_type = inserted_relationship["typeName"]
+            super_types = await get_super_types_names(parent_entity_type)
+            
+
+        m4isourcetype = get_m4i_source_types(super_types)
+
+        if len(m4isourcetype) > 0:
+            m4isourcetype = m4isourcetype[0]
+        derived_guid, derived_type = get_relevant_hierarchy_entity_fields(m4isourcetype)
+
+        # derived entity fields -> relevant for child entity
+
+        if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
+            index = conceptual_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
+            to_be_inserted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index] 
+
+
+        if derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
+            index = technical_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
+            to_be_inserted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index]   
+
+        for to_be_inserted_derived_guid_field in to_be_inserted_derived_guid_fields:
+
+            propagated_operation_downwards_list.append(UpdateLocalAttributeProcessor(name=f"insert derived entity field {to_be_inserted_derived_guid_field}", key = to_be_inserted_derived_guid_field, value = parent_entity_document[to_be_inserted_derived_guid_field]))
+            propagated_operation_downwards_list.append(UpdateLocalAttributeProcessor(name=f"insert derived entity field {hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field], value = parent_entity_document[hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]]))
+
+        # define parent guid -> relevant for child 
+        local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {parent_guid}", key=parent_guid, value=parent_entity_guid))
+
+        local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {derived_guid}", key=derived_guid, value=parent_entity_document[derived_guid] + [parent_entity_guid]))
+        
+        local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {derived_type}", key=derived_type, value=parent_entity_document[derived_type] + [parent_entity_document[name]])) # Charif: Validate whether this will work for nested structures!!
+
+        # breadcrumb updates -> relevant for child entity 
+        breadcrumbguid_prefix = parent_entity_document["breadcrumbguid"] + [parent_entity_document["guid"]]
+        breadcrumbname_prefix = parent_entity_document["breadcrumbname"] + [parent_entity_document["name"]]
+        breadcrumbtype_prefix = parent_entity_document["breadcrumbtype"] + [parent_entity_document["typename"]]
+        
+        propagated_operation_downwards_list.append(InsertPrefixToList(name="update breadcrumb guid", key="breadcrumbguid", input_list=breadcrumbguid_prefix)) 
+        propagated_operation_downwards_list.append(InsertPrefixToList(name="update breadcrumb name", key="breadcrumbname", input_list=breadcrumbname_prefix))
+        propagated_operation_downwards_list.append(InsertPrefixToList(name="update breadcrumb type", key="breadcrumbtype", input_list=breadcrumbtype_prefix))
+        
+        return operation_event_guid, local_operation_list, propagated_operation_downwards_list
+
+        # end of handling an inserted hierarchical relationship
 
 
     async def map_local(self, kafka_notification: str):
@@ -182,6 +300,7 @@ class SynchronizeAppsearchLocal(object):
                     if deleted_relationships_ == []:
                         continue
 
+
                     super_types = await get_super_types_names(input_entity.type_name)
                     m4isourcetype = get_m4i_source_types(super_types)
 
@@ -194,32 +313,8 @@ class SynchronizeAppsearchLocal(object):
                         # deleted_relationship = deleted_relationships_[0]
                         # check whether the relationship is a hierarchical relationship
                         if await is_parent_child_relationship(m4isourcetype, key, deleted_relationship):
-                            parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, deleted_relationship)
-                            operation_event_guid = child_entity_guid # validate whether this goes right in all cases.
-
-                            # breadcrumb updates -> relevant for child entity 
-                            propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb name", key="breadcrumbname", guid_key="breadcrumbguid" , first_guid_to_keep=child_entity_guid))
-                            propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb type", key="breadcrumbtype", guid_key="breadcrumbguid" , first_guid_to_keep=child_entity_guid))
-                            propagated_operation_downwards_list.append(DeletePrefixFromList(name="update breadcrumb guid", key="breadcrumbguid", guid_key="breadcrumbguid" , first_guid_to_keep=child_entity_guid))
-                            
-                            # delete parent guid -> relevant for child 
-                            local_operation_list.append(DeleteLocalAttributeProcessor(name=f"delete attribute {parent_guid}", key=parent_guid))
-                             
-                            # delete derived entity guid -> relevant for child
-                            if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
-                                index = conceptual_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
-                                to_be_deleted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index+1]   
-
-
-                            if derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
-                                index = technical_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
-                                to_be_deleted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index+1]   
-
-                            for to_be_deleted_derived_guid_field in to_be_deleted_derived_guid_fields:
-
-                                propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {to_be_deleted_derived_guid_field}", key = to_be_deleted_derived_guid_field))
-                                propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]))
-                            # end of handle delete  hierarchical relationship
+                            operation_event_guid, local_operation_list, propagated_operation_downwards_list = self.handle_deleted_relationship(entity_message, key, deleted_relationship, derived_guid)
+                         
                         elif deleted_relationship["typeName"]=="m4i_person" or input_entity.type_name=="m4i_person":
                             operation_event_guid, local_operation_person = self.delete_person_relationship(input_entity, deleted_relationship)
                             local_operation_list.extend(local_operation_person)
@@ -236,62 +331,8 @@ class SynchronizeAppsearchLocal(object):
                         continue
 
                     for inserted_relationship in inserted_relationships_:
-                        # inserted_relationship = inserted_relationships_[0]
-                        # check whether the inserted relationship is a hierarchical relationship
                         if await is_parent_child_relationship(input_entity.type_name, key, inserted_relationship):
-
-                            parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, inserted_relationship)
-                            operation_event_guid = child_entity_guid # validate whether this goes right in all cases.
-
-                            parent_entity_document = get_document(parent_entity_guid, self.app_search)
-
-                            if input_entity.guid == parent_entity_guid:
-                                super_types = await get_super_types_names(input_entity.type_name)
-
-                            else:
-
-                                parent_entity_type = inserted_relationship["typeName"]
-                                super_types = await get_super_types_names(parent_entity_type)
-                               
-
-                            m4isourcetype = get_m4i_source_types(super_types)
-
-                            if len(m4isourcetype) > 0:
-                                m4isourcetype = m4isourcetype[0]
-                            derived_guid, derived_type = get_relevant_hierarchy_entity_fields(m4isourcetype)
-
-                            # derived entity fields -> relevant for child entity
-
-                            if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
-                                index = conceptual_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
-                                to_be_inserted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index] 
-
-
-                            if derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
-                                index = technical_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
-                                to_be_inserted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index]   
-
-                            for to_be_inserted_derived_guid_field in to_be_inserted_derived_guid_fields:
-
-                                propagated_operation_downwards_list.append(UpdateLocalAttributeProcessor(name=f"insert derived entity field {to_be_inserted_derived_guid_field}", key = to_be_inserted_derived_guid_field, value = parent_entity_document[to_be_inserted_derived_guid_field]))
-                                propagated_operation_downwards_list.append(UpdateLocalAttributeProcessor(name=f"insert derived entity field {hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field], value = parent_entity_document[hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]]))
-
-                            # define parent guid -> relevant for child 
-                            local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {parent_guid}", key=parent_guid, value=parent_entity_guid))
-
-                            local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {derived_guid}", key=derived_guid, value=parent_entity_document[derived_guid] + [parent_entity_guid]))
-                            
-                            local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {derived_type}", key=derived_type, value=parent_entity_document[derived_type] + [parent_entity_document[name]])) # Charif: Validate whether this will work for nested structures!!
-
-                            # breadcrumb updates -> relevant for child entity 
-                            breadcrumbguid_prefix = parent_entity_document["breadcrumbguid"] + [parent_entity_document["guid"]]
-                            breadcrumbname_prefix = parent_entity_document["breadcrumbname"] + [parent_entity_document["name"]]
-                            breadcrumbtype_prefix = parent_entity_document["breadcrumbtype"] + [parent_entity_document["typename"]]
-                            
-                            propagated_operation_downwards_list.append(InsertPrefixToList(name="update breadcrumb guid", key="breadcrumbguid", input_list=breadcrumbguid_prefix)) 
-                            propagated_operation_downwards_list.append(InsertPrefixToList(name="update breadcrumb name", key="breadcrumbname", input_list=breadcrumbname_prefix))
-                            propagated_operation_downwards_list.append(InsertPrefixToList(name="update breadcrumb type", key="breadcrumbtype", input_list=breadcrumbtype_prefix))
-                            # end of handling an inserted hierarchical relationship
+                            operation_event_guid, local_operation_list, propagated_operation_downwards_list = self.handle_inserted_hierarchical_relationship(entity_message, key, inserted_relationship)
                         elif inserted_relationship["typeName"]=="m4i_person" or input_entity.type_name=="m4i_person":
                             operation_event_guid, local_operation_person = self.insert_person_relationship(input_entity, inserted_relationship)
                             local_operation_list.extend(local_operation_person)

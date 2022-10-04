@@ -48,6 +48,7 @@ class PublishStateLocal(object):
 
         # turns out update_time for an import of data into atlas is the same for all events. Does not work for us!
         # doc_id = "{}_{}".format(atlas_entity.guid, atlas_entity.update_time)
+        
         doc_id_ = "{}_{}".format(atlas_entity.guid, msg_creation_time)
         doc = json.loads(json.dumps({"msgCreationTime": msg_creation_time, "body": atlas_entity_json }))
 
