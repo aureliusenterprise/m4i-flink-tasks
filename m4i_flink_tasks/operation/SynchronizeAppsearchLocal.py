@@ -58,6 +58,7 @@ class SynchronizeAppsearchLocal(object):
         return self.app_search
     
     def insert_person_relationship(self, input_entity, inserted_relationship, other_operations:dict):
+        logging.info("start insert_person_relationship")
         local_operation_person = []
         # check whether the inserted relationship is a Person related relationship
         person_guid = input_entity.guid
@@ -92,10 +93,14 @@ class SynchronizeAppsearchLocal(object):
                 other_operations[operation_event_guid] = operation
             else:
                 other_operations[operation_event_guid].extend(operation)
+        logging.info(f"other_operations {other_operations}")
+        logging.info(f"local_operation_person {local_operation_person}")
+        logging.info("end insert_person_relationship")
         return local_operation_person
 
 
     def delete_person_relationship(self,input_entity, deleted_relationship, other_operations:dict):
+        logging.info("start deleted_person_relationship")
         local_operation_person = []
         # check whether the inserted relationship is a Person related relationship
         operation_event_guid = deleted_relationship["guid"]
@@ -132,6 +137,7 @@ class SynchronizeAppsearchLocal(object):
                 other_operations[operation_event_guid] = operation
             else:
                 other_operations[operation_event_guid].extend(operation)
+        logging.info("end deleted_person_relationship")
         return local_operation_person
 
 
@@ -303,7 +309,6 @@ class SynchronizeAppsearchLocal(object):
                         local_operation_list.append(UpdateLocalAttributeProcessor(name=f"update attribute {update_attribute}", key=update_attribute.lower(), value=value))
 
                         if name == update_attribute:
-
                             # propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update breadcrumb name", key=breadcrumb_name, old_value=old_value, new_value=value))
                             propagated_operation_downwards_list.append(UpdateListEntryBasedOnUniqueValueList(name="update breadcrumb name", unique_list_key=breadcrumb_guid, target_list_key=breadcrumb_name, unique_value=input_entity.guid, target_value= value))
 
@@ -335,12 +340,14 @@ class SynchronizeAppsearchLocal(object):
 
 
                     super_types = await get_super_types_names(input_entity.type_name)
+                    logging.info(f"super_types {super_types}")
                     m4isourcetype = get_m4i_source_types(super_types)
-
+                    logging.info(f"m4isourcetype {m4isourcetype}")
                     if len(m4isourcetype) > 0:
                         m4isourcetype = m4isourcetype[0]
                     derived_guid, derived_type = get_relevant_hierarchy_entity_fields(m4isourcetype)
-
+                    logging.info(f"derived_guid {derived_guid}")
+                    logging.info(f"derived_type {derived_type}")
                     # iterate over all deleted relationships
                     for deleted_relationship in deleted_relationships_:
                         # deleted_relationship = deleted_relationships_[0]

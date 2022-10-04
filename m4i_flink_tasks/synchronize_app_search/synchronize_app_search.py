@@ -348,9 +348,9 @@ def get_relevant_hierarchy_entity_fields(input_entity_data_type : str):
         derived_type = derived_field
         derived_guid = derived_field_guid
 
-    # elif input_entity_data_type == person:
-    #     derived_type = derived_person
-    #     derived_guid = derived_person_guid
+    elif input_entity_data_type == person:
+        derived_type = derived_person
+        derived_guid = derived_person_guid
 
     return derived_guid, derived_type
 
