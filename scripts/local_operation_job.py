@@ -173,7 +173,9 @@ class LocalOperation(MapFunction, LocalOperationLocal):
     
     def map(self, kafka_notification: str):
         try:
-            self.map_local(kafka_notification)
+            res = self.map_local(kafka_notification)
+            return res
+            
         except Exception as e:
             logging.error("The Kafka notification received could not be handled.")
 
