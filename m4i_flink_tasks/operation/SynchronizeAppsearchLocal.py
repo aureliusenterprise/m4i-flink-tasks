@@ -114,7 +114,7 @@ class SynchronizeAppsearchLocal(object):
         operation = [DeleteListEntryBasedOnUniqueValueList(name="delete attribute derivedperson", 
                                                            unique_list_key = derived_person_guid, 
                                                            target_list_key=derived_person, 
-                                                           unique_value=person_gui),
+                                                           unique_value=person_guid),
                      DeleteListEntryBasedOnUniqueValueList(name="delete attribute derivedpersonguid", 
                                                            unique_list_key = derived_person_guid, 
                                                            target_list_key=derived_person_guid, 
