@@ -291,7 +291,7 @@ def determine_change():
         raise Exception("kafka source is empty")
     kafka_source.set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
-    data_stream = env.add_source(kafka_source).name(f"consuming enriched atlas events")
+    data_stream = env.add_source(kafka_source).name("consuming enriched atlas events")
 
     data_stream = data_stream.map(DetermineChange(), Types.LIST(element_type_info = Types.STRING())).name("determine change").filter(lambda notif: notif)
 

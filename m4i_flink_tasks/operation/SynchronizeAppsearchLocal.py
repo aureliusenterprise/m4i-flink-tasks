@@ -342,13 +342,22 @@ class SynchronizeAppsearchLocal(object):
             logging.warning("Operation event has been created")
         
         if len(other_operations.keys())>0:
+            logging.info(f"resulting other_operations {other_operations}")
             for id_ in other_operations.keys():
+                # id_ = (list(other_operations.keys()))[0]
                 operations_ = other_operations[id_]
-                oe = OperationEvent(id=str(uuid.uuid4()), 
+                if len(operations_)>0:
+                    seq = Sequence(name="update and inser attributes", steps = operations_)
+                    spec = jsonpickle.encode(seq) 
+        
+                    oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
+                    logging.warning("Operation Change has been created")
+                    
+                    oe = OperationEvent(id=str(uuid.uuid4()), 
                                 creation_time=int(datetime.datetime.now().timestamp()*1000),
                                 entity_guid=id_,
-                                changes=operations_)
-                result.append(json.dumps(json.loads(oe.to_json())))
+                                changes=oc)
+                    result.append(json.dumps(json.loads(oe.to_json())))
             logging.warning("Other Operation event has been created")
             
         return result
