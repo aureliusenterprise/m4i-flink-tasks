@@ -407,7 +407,7 @@ class SynchronizeAppsearchLocal(object):
                     oe = OperationEvent(id=str(uuid.uuid4()), 
                                 creation_time=int(datetime.datetime.now().timestamp()*1000),
                                 entity_guid=id_,
-                                changes=oc)
+                                changes=[oc])
                     result.append(json.dumps(json.loads(oe.to_json())))
             logging.warning("Other Operation event has been created")
             
