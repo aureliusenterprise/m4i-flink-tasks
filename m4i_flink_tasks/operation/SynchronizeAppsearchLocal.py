@@ -82,7 +82,6 @@ class SynchronizeAppsearchLocal(object):
 
         if entity_message.original_event_type==EntityAuditAction.ENTITY_DELETE:
            local_operation_list.append(DeleteEntityOperator(name=f"delete entity with guid {operation_event_guid}"))
-           local_operation_list.append(DeleteEntityOperator(name="delete entity with guid"))
            #TODO handle propagation of removed relationships:
            # deleting an entity with an attribute and a domain related to it requires to 
            # propagate changes to related attributes, by removing parent and removing breadcrumb prefix
