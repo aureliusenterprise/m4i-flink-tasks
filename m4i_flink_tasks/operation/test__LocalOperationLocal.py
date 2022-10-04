@@ -114,5 +114,11 @@ def test__map_local4(store):
    
 	res = local_operation_local.map_local(kafka_message)
 
+def test__map_local5(store):
+	kafka_message = '{"id": "f4071f41-9cab-4d0e-bace-cf61b85e4d57", "creationTime": 1664873957208, "entityGuid": "9eb52c56-4f60-42d4-bec5-468308a7308c", "changes": [{"propagate": true, "propagateDown": true, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update and inser attributes", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.UpdateListEntryBasedOnUniqueValueList", "name": "update breadcrumb name", "unqiue_list_key": "breadcrumbguid", "target_list_key": "breadcrumbname", "unqiue_value": "a1f871ca-c77c-47f0-94d7-9b315e4f7b89", "target_value": "test-data-domain-10:59"}, {"py/object": "m4i_flink_tasks.operation.core_operation.UpdateListEntryBasedOnUniqueValueList", "name": "update derived entity field", "unqiue_list_key": "deriveddatadomainguid", "target_list_key": "deriveddatadomain", "unqiue_value": "a1f871ca-c77c-47f0-94d7-9b315e4f7b89", "target_value": "test-data-domain-10:59"}]}}]}'
+	local_operation_local = LocalOperationLocal()
+	local_operation_local.open_local(config, credentials,store)
+   
+	res = local_operation_local.map_local(kafka_message)
 
 

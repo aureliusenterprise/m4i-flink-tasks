@@ -607,11 +607,13 @@ class InsertElementInList(AbstractProcessor):
 
             raise Exception(f"App search field {self.key} is of unexpected type.")
 
-        if (not self.index < 0) or (not self.index < len(input_data[self.key])):
+        if (self.index < 0) or (not self.index < len(input_data[self.key])):
             
             raise Exception(f"Provided index {self.index} is invalid considering the list .")
 
-        input_data[self.key][:self.index] + self.value + input_data[self.key][self.index:]
+        input_data[self.key][self.index] = self.value 
+
+        # input_data[self.key][:self.index] + self.value + input_data[self.key][self.index:] 
         return input_data
     # end of process
 
