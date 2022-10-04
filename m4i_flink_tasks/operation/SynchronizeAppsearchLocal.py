@@ -56,7 +56,7 @@ class SynchronizeAppsearchLocal(object):
                 )
         return self.app_search
     
-    def insert_person_relationship(self, input_entity, inserted_relationship):
+    def insert_person_relationship(self, input_entity, inserted_relationship, other_operations:dict):
         local_operation_person = []
         # check whether the inserted relationship is a Person related relationship
         person_guid = input_entity.guid
@@ -67,24 +67,39 @@ class SynchronizeAppsearchLocal(object):
             person_name = inserted_relationship['displayText']
             operation_event_guid = input_entity.guid
         # create local operations
-        local_operation_person = [UpdateLocalAttributeProcessor(name="update attribute derivedperson",
+        operation = [UpdateLocalAttributeProcessor(name="update attribute derivedperson",
                                                                 key="derivedperson", value=person_name),
-                                  UpdateLocalAttributeProcessor(name="update attribute derivedpersonguid", 
+                     UpdateLocalAttributeProcessor(name="update attribute derivedpersonguid", 
                                                                 key="derivedpersonguid", value=person_guid)]
-        return operation_event_guid, local_operation_person
+        if inserted_relationship["typeName"]=="m4i_person":
+            local_operation_person = operation
+        else:
+            if operation_event_guid not in other_operations.keys():
+                other_operations[operation_event_guid] = operation
+            else:
+                other_operations[operation_event_guid].extend(operation)
+        return local_operation_person
 
-    def delete_person_relationship(self,input_entity, deleted_relationship):
+
+    def delete_person_relationship(self,input_entity, deleted_relationship, other_operations:dict):
         local_operation_person = []
         # check whether the inserted relationship is a Person related relationship
         operation_event_guid = deleted_relationship["guid"]
         if deleted_relationship["typeName"]=="m4i_person":
             operation_event_guid = input_entity.guid
         # create local operations
-        local_operation_person = [DeleteLocalAttributeProcessor(name="delete attribute derivedperson",
+        operation = [DeleteLocalAttributeProcessor(name="delete attribute derivedperson",
                                                                 key="derivedperson"),
-                                  DeleteLocalAttributeProcessor(name="delete attribute derivedpersonguid", 
+                    DeleteLocalAttributeProcessor(name="delete attribute derivedpersonguid", 
                                                                 key="derivedpersonguid")]
-        return operation_event_guid, local_operation_person
+        if deleted_relationship["typeName"]=="m4i_person":
+            local_operation_person = operation
+        else:
+            if operation_event_guid not in other_operations.keys():
+                other_operations[operation_event_guid] = operation
+            else:
+                other_operations[operation_event_guid].extend(operation)
+        return local_operation_person
 
 
     async def map_local(self, kafka_notification: str):
@@ -221,8 +236,9 @@ class SynchronizeAppsearchLocal(object):
                                 propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]))
                             # end of handle delete  hierarchical relationship
                         elif deleted_relationship["typeName"]=="m4i_person" or input_entity.type_name=="m4i_person":
-                            operation_event_guid, local_operation_person = self.delete_person_relationship(input_entity, deleted_relationship)
+                            local_operation_person = self.delete_person_relationship(input_entity, deleted_relationship, other_operations)
                             local_operation_list.extend(local_operation_person)
+                
 
                 logging.warning("deleted relationships handled.")
             # end of handle delete relationships
@@ -239,7 +255,7 @@ class SynchronizeAppsearchLocal(object):
                         # inserted_relationship = inserted_relationships_[0]
                         # check whether the inserted relationship is a hierarchical relationship
                         if await is_parent_child_relationship(input_entity.type_name, key, inserted_relationship):
-
+                            
                             parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, inserted_relationship)
                             operation_event_guid = child_entity_guid # validate whether this goes right in all cases.
 
@@ -293,7 +309,7 @@ class SynchronizeAppsearchLocal(object):
                             propagated_operation_downwards_list.append(InsertPrefixToList(name="update breadcrumb type", key="breadcrumbtype", input_list=breadcrumbtype_prefix))
                             # end of handling an inserted hierarchical relationship
                         elif inserted_relationship["typeName"]=="m4i_person" or input_entity.type_name=="m4i_person":
-                            operation_event_guid, local_operation_person = self.insert_person_relationship(input_entity, inserted_relationship)
+                            local_operation_person = self.insert_person_relationship(input_entity, inserted_relationship, other_operations)
                             local_operation_list.extend(local_operation_person)
 
                 logging.warning("inserted relationships handled.")
@@ -324,6 +340,16 @@ class SynchronizeAppsearchLocal(object):
                                 changes=change_list)
             result.append(json.dumps(json.loads(oe.to_json())))
             logging.warning("Operation event has been created")
+        
+        if len(other_operations.keys())>0:
+            for id_ in other_operations.keys():
+                operations_ = other_operations[id_]
+                oe = OperationEvent(id=str(uuid.uuid4()), 
+                                creation_time=int(datetime.datetime.now().timestamp()*1000),
+                                entity_guid=id_,
+                                changes=operations_)
+                result.append(json.dumps(json.loads(oe.to_json())))
+            logging.warning("Other Operation event has been created")
             
         return result
             
