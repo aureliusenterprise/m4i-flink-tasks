@@ -88,9 +88,10 @@ class SynchronizeAppsearchLocal(object):
 
 
     async def map_local(self, kafka_notification: str):
-        result = None
+        result = []
 
         change_list=[]   
+        other_change_list = []
         propagated_change_list = []   
 
         logging.warning(kafka_notification)
@@ -107,6 +108,7 @@ class SynchronizeAppsearchLocal(object):
         operation_event_guid = entity_message.guid
 
         local_operation_list = []
+        other_operations = {}
         propagated_operation_downwards_list = []
         propagated_operation_upwards_list = []
 
@@ -320,10 +322,9 @@ class SynchronizeAppsearchLocal(object):
                                 creation_time=int(datetime.datetime.now().timestamp()*1000),
                                 entity_guid=operation_event_guid,
                                 changes=change_list)
+            result.append(json.dumps(json.loads(oe.to_json())))
             logging.warning("Operation event has been created")
             
-            result = json.dumps(json.loads(oe.to_json()))
-
         return result
             
 # end of class SynchronizeAppsearchLocal

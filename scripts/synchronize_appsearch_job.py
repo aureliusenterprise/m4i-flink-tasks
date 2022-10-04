@@ -22,6 +22,7 @@ from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import FlinkKafkaConsumer
 from pyflink.datastream.functions import MapFunction, RuntimeContext
 from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
+from pyflink.datastream.functions import FlatMapFunction
 
 
 from m4i_flink_tasks import EntityMessage
@@ -176,6 +177,12 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
     #         dead_lettter_box_topic = config_store.get("exception.events.topic.name")
     #         producer.send(topic=dead_lettter_box_topic, value=event.to_json())
 
+class GetResult(FlatMapFunction):
+
+    def flat_map(self, input_list):
+        for element in input_list:
+            yield element
+
 
 
 def synchronize_app_search():
@@ -207,9 +214,11 @@ def synchronize_app_search():
                                                   "value.deserializer": "org.apache.kafka.common.serialization.StringDeserializer"},
                                       deserialization_schema=SimpleStringSchema()).set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
-    data_stream = env.add_source(kafka_source).name(f"consuming determined change events")
+    data_stream = env.add_source(kafka_source).name("consuming determined change events")
 
-    data_stream = data_stream.map(SynchronizeAppsearch(), Types.STRING()).name("synchronize appsearch").filter(lambda notif: notif)
+    data_stream = data_stream.map(SynchronizeAppsearch(), Types.List(element_type_info = Types.STRING())).name("synchronize appsearch").filter(lambda notif: notif)
+
+    data_stream = data_stream.flat_map(GetResult(), Types.STRING()).name("parse change")
 
     data_stream.print()
 
