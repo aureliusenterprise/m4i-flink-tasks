@@ -1,6 +1,6 @@
 import json
 import logging
-from aenum import unique
+#from aenum import unique
 import jsonpickle
 import uuid
 import datetime
