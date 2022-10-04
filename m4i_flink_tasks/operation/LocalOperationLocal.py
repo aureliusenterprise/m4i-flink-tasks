@@ -147,13 +147,16 @@ class LocalOperationLocal(object):
                 retry_ = retry_+1
         if success_update:
             # calculate the resulting events to be propagated
+            logging.info("calculate the resulting events to be propagated")
             for id_ in new_changes.keys():
                 op = OperationEvent(id=str(uuid.uuid4()), 
                                creation_time=int(datetime.datetime.now().timestamp()*1000),
                                entity_guid=id_,
                                changes=new_changes[id_])
+                logging.warn(f"propagated event for id {id_}: {op}")
                 events.append(op)
         else: 
             raise Exception(f"Retrieving the documents from app search failed for entity_guid {entity_guid} with the following errors: {repr(errors)}")                
+        logging.info("return events")
         return events
 # end of class LocalOperationLocal

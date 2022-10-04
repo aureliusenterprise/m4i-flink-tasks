@@ -107,3 +107,12 @@ def test__map_local3(store):
 	res = local_operation_local.map_local(kafka_message)
 
 
+def test__map_local4(store):
+	kafka_message = '{"id": "18016d4e-f151-4597-a8f9-6a6a0cf948d3", "creationTime": 1664867605259, "entityGuid": "a1f871ca-c77c-47f0-94d7-9b315e4f7b89", "changes": [{"propagate": true, "propagateDown": true, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update and inser attributes", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.UpdateListEntryBasedOnUniqueValueList", "name": "update breadcrumb name", "unqiue_list_key": "breadcrumbguid", "target_list_key": "breadcrumbname", "unqiue_value": "a1f871ca-c77c-47f0-94d7-9b315e4f7b89", "target_value": "test-data-domain-09:13"}, {"py/object": "m4i_flink_tasks.operation.core_operation.UpdateListEntryBasedOnUniqueValueList", "name": "update derived entity field", "unqiue_list_key": "deriveddatadomainguid", "target_list_key": "deriveddatadomain", "unqiue_value": "a1f871ca-c77c-47f0-94d7-9b315e4f7b89", "target_value": "test-data-domain-09:13"}]}}, {"propagate": false, "propagateDown": false, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update and inser attributes", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.UpdateLocalAttributeProcessor", "name": "update attribute name", "key": "name", "value": "test-data-domain-09:13"}, {"py/object": "m4i_flink_tasks.operation.core_operation.UpdateLocalAttributeProcessor", "name": "update attribute definition", "key": "definition", "value": "test-data-domain-09:12 "}]}}]}'
+	local_operation_local = LocalOperationLocal()
+	local_operation_local.open_local(config, credentials,store)
+   
+	res = local_operation_local.map_local(kafka_message)
+
+
+
