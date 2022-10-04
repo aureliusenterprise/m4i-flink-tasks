@@ -73,7 +73,7 @@ class SynchronizeAppsearchLocal(object):
                                                                 key="derivedpersonguid", value=person_guid)]
         return operation_event_guid, local_operation_person
 
-    def delete_person_entity(self,input_entity, deleted_relationship):
+    def delete_person_relationship(self,input_entity, deleted_relationship):
         local_operation_person = []
         # check whether the inserted relationship is a Person related relationship
         operation_event_guid = deleted_relationship["guid"]
@@ -221,8 +221,6 @@ class SynchronizeAppsearchLocal(object):
                         elif deleted_relationship["typeName"]=="m4i_person" or input_entity.type_name=="m4i_person":
                             operation_event_guid, local_operation_person = self.delete_person_relationship(input_entity, deleted_relationship)
                             local_operation_list.extend(local_operation_person)
-
-                        
 
                 logging.warning("deleted relationships handled.")
             # end of handle delete relationships
