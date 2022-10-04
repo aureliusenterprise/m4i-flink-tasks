@@ -55,6 +55,36 @@ class SynchronizeAppsearchLocal(object):
                 basic_auth=(self.elastic_user, self.elastic_passwd)
                 )
         return self.app_search
+    
+    def insert_person_relationship(self, input_entity, inserted_relationship):
+        local_operation_person = []
+        # check whether the inserted relationship is a Person related relationship
+        person_guid = input_entity.guid
+        person_name = input_entity.attributes.unmapped_attributes["name"]
+        operation_event_guid = inserted_relationship["guid"]
+        if inserted_relationship["typeName"]=="m4i_person":
+            person_guid = inserted_relationship['guid']
+            person_name = inserted_relationship['displayText']
+            operation_event_guid = input_entity.guid
+        # create local operations
+        local_operation_person = [UpdateLocalAttributeProcessor(name="update attribute derivedperson",
+                                                                key="derivedperson", value=person_name),
+                                  UpdateLocalAttributeProcessor(name="update attribute derivedpersonguid", 
+                                                                key="derivedpersonguid", value=person_guid)]
+        return operation_event_guid, local_operation_person
+
+    def delete_person_entity(self,input_entity, deleted_relationship):
+        local_operation_person = []
+        # check whether the inserted relationship is a Person related relationship
+        operation_event_guid = deleted_relationship["guid"]
+        if deleted_relationship["typeName"]=="m4i_person":
+            operation_event_guid = input_entity.guid
+        # create local operations
+        local_operation_person = [DeleteLocalAttributeProcessor(name="delete attribute derivedperson",
+                                                                key="derivedperson"),
+                                  DeleteLocalAttributeProcessor(name="delete attribute derivedpersonguid", 
+                                                                key="derivedpersonguid")]
+        return operation_event_guid, local_operation_person
 
 
     async def map_local(self, kafka_notification: str):
@@ -85,6 +115,8 @@ class SynchronizeAppsearchLocal(object):
            #TODO handle propagation of removed relationships:
            # deleting an entity with an attribute and a domain related to it requires to 
            # propagate changes to related attributes, by removing parent and removing breadcrumb prefix
+           # check also for delete of person, which requires a whole different set of lcoal changes
+           # local_changes = self.delete_person_entity(entity)
 
         if entity_message.original_event_type==EntityAuditAction.ENTITY_CREATE:
             local_operation_list.append(CreateLocalEntityProcessor(name=f"create entity with guid {input_entity.guid} of type {input_entity.type_name}", 
@@ -95,6 +127,7 @@ class SynchronizeAppsearchLocal(object):
         
         if entity_message.original_event_type in [EntityAuditAction.ENTITY_CREATE,EntityAuditAction.ENTITY_IMPORT_CREATE,
                                                   EntityAuditAction.ENTITY_UPDATE,EntityAuditAction.ENTITY_IMPORT_UPDATE ]:
+            # handle inserted attributes
             if entity_message.inserted_attributes != []:
                 logging.info("handle inserted attributes.")
                 for insert_attribute in entity_message.inserted_attributes:
@@ -103,7 +136,8 @@ class SynchronizeAppsearchLocal(object):
 
                         value = input_entity.attributes.unmapped_attributes[insert_attribute]
                         local_operation_list.append(UpdateLocalAttributeProcessor(name=f"insert attribute {insert_attribute}", key=insert_attribute.lower(), value=value))
-            
+            # end of handle inserted attributes
+            # handle changed attributes
             if entity_message.changed_attributes != []:
                 logging.info("handle updated attributes.")
                 for update_attribute in entity_message.changed_attributes:
@@ -128,19 +162,21 @@ class SynchronizeAppsearchLocal(object):
 
                             # propagated_operation_downwards_list.append(UpdateListEntryProcessor(name=f"update derived entity field {derived_type}", key=derived_type, old_value=old_value, new_value=value))
                             propagated_operation_downwards_list.append(UpdateListEntryBasedOnUniqueValueList(name="update derived entity field", unique_list_key=derived_guid, target_list_key=derived_type, unique_value=input_entity.guid, target_value= value))
+            # end of handle change attributes
 
-
-
+            # handle deleted attributes
             if entity_message.deleted_attributes != []:
                 logging.info("handle deleted attributes.")
                 for delete_attribute in entity_message.deleted_attributes:
                     if delete_attribute.lower() in self.schema_names:
                         local_operation_list.append(DeleteLocalAttributeProcessor(name=f"delete attribute {delete_attribute}", key=delete_attribute.lower(), value=value))
-
+            # end of handle deleted attributes
             
+            # handle deleted_relationships
             if entity_message.deleted_relationships != {}:
                 logging.warning("handle deleted relationships.")
                 for key, deleted_relationships_ in entity_message.deleted_relationships.items():
+                    # key,deleted_relationships_ = (list(entity_message.deleted_relationships.items()))[0]
                     if deleted_relationships_ == []:
                         continue
 
@@ -151,9 +187,10 @@ class SynchronizeAppsearchLocal(object):
                         m4isourcetype = m4isourcetype[0]
                     derived_guid, derived_type = get_relevant_hierarchy_entity_fields(m4isourcetype)
 
+                    # iterate over all deleted relationships
                     for deleted_relationship in deleted_relationships_:
-                        
-
+                        # deleted_relationship = deleted_relationships_[0]
+                        # check whether the relationship is a hierarchical relationship
                         if await is_parent_child_relationship(m4isourcetype, key, deleted_relationship):
                             parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, deleted_relationship)
                             operation_event_guid = child_entity_guid # validate whether this goes right in all cases.
@@ -180,22 +217,27 @@ class SynchronizeAppsearchLocal(object):
 
                                 propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {to_be_deleted_derived_guid_field}", key = to_be_deleted_derived_guid_field))
                                 propagated_operation_downwards_list.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field {hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]))
+                            # end of handle delete  hierarchical relationship
+                        elif deleted_relationship["typeName"]=="m4i_person" or input_entity.type_name=="m4i_person":
+                            operation_event_guid, local_operation_person = self.delete_person_relationship(input_entity, deleted_relationship)
+                            local_operation_list.extend(local_operation_person)
 
-                            
+                        
 
                 logging.warning("deleted relationships handled.")
-
+            # end of handle delete relationships
            
             if entity_message.inserted_relationships != {}:
                 logging.warning("handle inserted relationships.")
                 for key, inserted_relationships_ in entity_message.inserted_relationships.items():
+                    # key,inserted_relationships_ = (list(entity_message.inserted_relationships.items()))[0]
 
                     if inserted_relationships_ == []:
                         continue
 
                     for inserted_relationship in inserted_relationships_:
-
-
+                        # inserted_relationship = inserted_relationships_[0]
+                        # check whether the inserted relationship is a hierarchical relationship
                         if await is_parent_child_relationship(input_entity.type_name, key, inserted_relationship):
 
                             parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, inserted_relationship)
@@ -249,11 +291,15 @@ class SynchronizeAppsearchLocal(object):
                             propagated_operation_downwards_list.append(InsertPrefixToList(name="update breadcrumb guid", key="breadcrumbguid", input_list=breadcrumbguid_prefix)) 
                             propagated_operation_downwards_list.append(InsertPrefixToList(name="update breadcrumb name", key="breadcrumbname", input_list=breadcrumbname_prefix))
                             propagated_operation_downwards_list.append(InsertPrefixToList(name="update breadcrumb type", key="breadcrumbtype", input_list=breadcrumbtype_prefix))
-
-
+                            # end of handling an inserted hierarchical relationship
+                        elif inserted_relationship["typeName"]=="m4i_person" or input_entity.type_name=="m4i_person":
+                            operation_event_guid, local_operation_person = self.insert_person_relationship(input_entity, inserted_relationship)
+                            local_operation_list.extend(local_operation_person)
 
                 logging.warning("inserted relationships handled.")
-        # Charif: Using this indent might cause problems later: please reconsider 
+                # end of handling inserted relationship
+        # Charif: Using this indent might cause problems later: please reconsider
+        
         if len(propagated_operation_downwards_list)>0:
             seq = Sequence(name="update and inser attributes", steps = propagated_operation_downwards_list)
             spec = jsonpickle.encode(seq) 
