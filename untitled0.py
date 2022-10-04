@@ -120,3 +120,9 @@ entity_audit =  asyncio.run(get_entity_audit(entity_guid = "85222630-dccb-4509-b
 # data entity
 entity_audit2 =  asyncio.run(get_entity_audit(entity_guid = "56dce48a-1bea-49c3-95a7-58083c6d2208", access_token = access__token))
 
+#%%
+kafka_notification = """
+{"id": "766fe40c-8ce8-4d83-b563-a468f97895d0", "creationTime": 1664899578266, "entityGuid": "55d25b6b-d219-4392-bb35-5332c1aa8e47", "changes": {"propagate": false, "propagateDown": false, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update and inser attributes", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.AddElementToListProcessor", "name": "update attribute derivedperson", "key": "derivedperson", "value": "asd"}, {"py/object": "m4i_flink_tasks.operation.core_operation.AddElementToListProcessor", "name": "update attribute derivedpersonguid", "key": "derivedpersonguid", "value": "2678b2aa-21cb-47b0-978c-fca2429cb511"}]}}}
+"""
+oe = OperationEvent.from_json(kafka_notification)
+        

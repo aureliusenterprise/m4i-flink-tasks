@@ -76,7 +76,7 @@ class SynchronizeAppsearchLocal(object):
 
         operation = [AddElementToListProcessor(name="update attribute derivedperson",
                                                         key="derivedperson", value=person_name),
-                            AddElementToListProcessor(name="update attribute derivedpersonguid", 
+                     AddElementToListProcessor(name="update attribute derivedpersonguid", 
                                                         key="derivedpersonguid", value=person_guid)]
 
                                                                 
@@ -99,8 +99,10 @@ class SynchronizeAppsearchLocal(object):
         local_operation_person = []
         # check whether the inserted relationship is a Person related relationship
         operation_event_guid = deleted_relationship["guid"]
+        person_guid = input_entity.guid
         if deleted_relationship["typeName"]=="m4i_person":
             operation_event_guid = input_entity.guid
+            person_guid = deleted_relationship["guid"]
         # create local operations
         # Charif: If these are lists, then this will not work properly. Look up guid in derivedpersonguid and then delete what needs to be deleted.
         
@@ -109,8 +111,14 @@ class SynchronizeAppsearchLocal(object):
         #                           DeleteLocalAttributeProcessor(name="delete attribute derivedpersonguid", 
         #                                                         key="derivedpersonguid")]
 
-        operation = [DeleteListEntryBasedOnUniqueValueList(name="delete attribute derivedperson", unique_list_key = derived_person_guid, target_list_key=derived_person, unique_value=input_entity.guid),
-                                 DeleteListEntryBasedOnUniqueValueList(name="delete attribute derivedpersonguid", unique_list_key = derived_person_guid, target_list_key=derived_person_guid, unique_value=input_entity.guid)
+        operation = [DeleteListEntryBasedOnUniqueValueList(name="delete attribute derivedperson", 
+                                                           unique_list_key = derived_person_guid, 
+                                                           target_list_key=derived_person, 
+                                                           unique_value=person_gui),
+                     DeleteListEntryBasedOnUniqueValueList(name="delete attribute derivedpersonguid", 
+                                                           unique_list_key = derived_person_guid, 
+                                                           target_list_key=derived_person_guid, 
+                                                           unique_value=person_guid)
         ]
         # return operation_event_guid, local_operation_person
         # operation = [DeleteLocalAttributeProcessor(name="delete attribute derivedperson",
