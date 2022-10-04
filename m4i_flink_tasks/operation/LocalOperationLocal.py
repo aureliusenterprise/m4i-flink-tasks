@@ -154,9 +154,12 @@ class LocalOperationLocal(object):
                                entity_guid=id_,
                                changes=new_changes[id_])
                 logging.warn(f"propagated event for id {id_}: {op}")
-                events.append(op)
+                events.append(json.dumps(json.loads(op.to_json())))
         else: 
             raise Exception(f"Retrieving the documents from app search failed for entity_guid {entity_guid} with the following errors: {repr(errors)}")                
-        logging.info("return events")
+        
+        
+        logging.info("return events:")
+        logging.info(events)
         return events
 # end of class LocalOperationLocal
