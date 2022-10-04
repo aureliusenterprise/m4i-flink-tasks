@@ -216,7 +216,7 @@ def synchronize_app_search():
 
     data_stream = env.add_source(kafka_source).name("consuming determined change events")
 
-    data_stream = data_stream.map(SynchronizeAppsearch(), Types.List(element_type_info = Types.STRING())).name("synchronize appsearch").filter(lambda notif: notif)
+    data_stream = data_stream.map(SynchronizeAppsearch(), Types.LIST(element_type_info = Types.STRING())).name("synchronize appsearch").filter(lambda notif: notif)
 
     data_stream = data_stream.flat_map(GetResult(), Types.STRING()).name("parse change")
 
