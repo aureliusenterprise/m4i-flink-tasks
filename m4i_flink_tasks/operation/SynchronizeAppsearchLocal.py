@@ -338,19 +338,19 @@ class SynchronizeAppsearchLocal(object):
                     if deleted_relationships_ == []:
                         continue
 
-
-                    super_types = await get_super_types_names(input_entity.type_name)
-                    logging.info(f"super_types {super_types}")
-                    m4isourcetype = get_m4i_source_types(super_types)
-                    logging.info(f"m4isourcetype {m4isourcetype}")
-                    if len(m4isourcetype) > 0:
-                        m4isourcetype = m4isourcetype[0]
-                    derived_guid, derived_type = get_relevant_hierarchy_entity_fields(m4isourcetype)
-                    logging.info(f"derived_guid {derived_guid}")
-                    logging.info(f"derived_type {derived_type}")
                     # iterate over all deleted relationships
                     for deleted_relationship in deleted_relationships_:
                         # deleted_relationship = deleted_relationships_[0]
+                        super_types = await get_super_types_names(input_entity.type_name)
+                        logging.info(f"super_types {super_types}")
+                        m4isourcetype = get_m4i_source_types(super_types)
+                        logging.info(f"m4isourcetype {m4isourcetype}")
+                        if len(m4isourcetype) > 0:
+                            m4isourcetype = m4isourcetype[0]
+                        derived_guid, derived_type = get_relevant_hierarchy_entity_fields(m4isourcetype)
+                        logging.info(f"derived_guid {derived_guid}")
+                        logging.info(f"derived_type {derived_type}")
+                    
                         # check whether the relationship is a hierarchical relationship
                         if await is_parent_child_relationship(m4isourcetype, key, deleted_relationship):
                             operation_event_guid, local_operation_list, propagated_operation_downwards_list = self.handle_deleted_relationship(entity_message, key, deleted_relationship, derived_guid)

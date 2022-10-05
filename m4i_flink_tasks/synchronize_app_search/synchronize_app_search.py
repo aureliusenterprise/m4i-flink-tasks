@@ -33,7 +33,7 @@ async def get_super_types(input_type: str) -> List[EntityDef]:
     """This function returns all supertypes of the input type given"""
     access_token = get_keycloak_token()
     entity_def = await get_type_def(input_type, access_token=access_token)
-
+    logging.info(f"entity_def {entity_def}")
     if len(entity_def.super_types) == 0:
         return [entity_def]
 
@@ -55,6 +55,7 @@ async def get_super_types(input_type: str) -> List[EntityDef]:
 async def get_super_types_names(input_type: str) -> List[str]:
     """This function returns all supertype names of the input type given with the given type included."""
     super_types = await get_super_types(input_type)
+    logging.info(f"supertypenames: {super_types}")
     return  [super_type.name for super_type in super_types]
 
 def get_source_type(super_types : list) -> SourceType:
@@ -112,8 +113,9 @@ def insert_prefix_to_breadcrumbs_of_child_entities(input_document : dict, child_
 
 def get_m4i_source_types(super_types : list) -> list:
     """This function returns the m4i_source_types in the list of given super types."""
+    #TODO here are other types missing like data_quality , governance quality and potentially others
     source_types = [data_domain, data_entity,
-                    data_attribute, field, dataset, collection, system]
+                    data_attribute, field, dataset, collection, system, person]
     return list(filter(lambda super_type: super_type in source_types, super_types))
 
 
