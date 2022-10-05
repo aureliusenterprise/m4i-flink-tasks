@@ -201,7 +201,7 @@ class AddElementToListProcessor(AbstractProcessor):
     
     # end of process
 
-# end of class UpdateLocalAttributeProcessor
+# end of class AddElementToListProcessor
 
 
 
