@@ -28,7 +28,7 @@ from pyflink.datastream.functions import FlatMapFunction
 from m4i_flink_tasks import EntityMessage
 from m4i_flink_tasks import DeadLetterBoxMesage
 from m4i_flink_tasks.operation import UpdateLocalAttributeProcessor, OperationEvent, OperationChange, Sequence, WorkflowEngine
-from m4i_flink_tasks.operation.SynchronizeAppsearchLocal import SynchronizeAppsearchLocal
+from m4i_flink_tasks.operation.AlternativeSynchronizeAppsearchLocal import SynchronizeAppsearchLocal
 
 import time
 from kafka import KafkaProducer
