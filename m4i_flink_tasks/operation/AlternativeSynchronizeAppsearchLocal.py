@@ -116,6 +116,9 @@ class SynchronizeAppsearchLocal(object):
     async def handle_deleted_hierarchical_relationships(self, entity_message: EntityMessage,  local_operations_dict : dict, propagated_operation_downwards_operations_dict : dict, propagated_operation_upwards_operations_dict: dict):
         """This function defines all operators required to handle the deleted relationships."""
         input_entity = entity_message.new_value
+        if input_entity == {}:
+            input_entity = entity_message.old_value
+            
         if entity_message.deleted_relationships != {}:
             logging.warning("handle deleted relationships.")
             for key, deleted_relationships_ in entity_message.deleted_relationships.items():
@@ -356,7 +359,7 @@ class SynchronizeAppsearchLocal(object):
 
         if entity_message.original_event_type==EntityAuditAction.ENTITY_DELETE:
             logging.warning("start handling deleted relationships.")
-            delete_local_operation_dict[input_entity.guid] = [(DeleteEntityOperator(name=f"delete entity with guid {operation_event_guid}"))]
+            delete_local_operation_dict[entity_message.guid] = [(DeleteEntityOperator(name=f"delete entity with guid {entity_message.guid}"))]
 
             if entity_message.deleted_relationships != {}:
                 local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict = await self.handle_deleted_hierarchical_relationships( entity_message,  local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict)
