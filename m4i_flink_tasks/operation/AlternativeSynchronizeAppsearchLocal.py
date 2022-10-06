@@ -118,7 +118,7 @@ class SynchronizeAppsearchLocal(object):
         input_entity = entity_message.new_value
         if input_entity == {}:
             input_entity = entity_message.old_value
-            
+
         if entity_message.deleted_relationships != {}:
             logging.warning("handle deleted relationships.")
             for key, deleted_relationships_ in entity_message.deleted_relationships.items():
@@ -460,7 +460,7 @@ class SynchronizeAppsearchLocal(object):
         for entity_guid in entity_guid_list:
             local_steps = create_local_operation_dict.get(entity_guid, []) + local_operations_dict.get(entity_guid, []) + delete_local_operation_dict.get(entity_guid, [])
             if len(local_steps)>0:
-                seq = Sequence(name="local operaions", steps = local_steps)
+                seq = Sequence(name="local operations", steps = local_steps)
                 spec = jsonpickle.encode(seq) 
                 oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
                 logging.warning("Operation that executes local operations has been created")
@@ -468,7 +468,7 @@ class SynchronizeAppsearchLocal(object):
 
             propagated_steps = propagated_operation_downwards_operations_dict.get(entity_guid, []) 
             if len(propagated_steps)>0:
-                seq = Sequence(name="create entity", steps = propagated_steps)
+                seq = Sequence(name="propagated downwards operation", steps = propagated_steps)
                 spec = jsonpickle.encode(seq) 
                 oc = OperationChange(propagate=True, propagate_down=True, operation = json.loads(spec))
                 logging.warning("Operation that propagates relevant operations downwards has been created")
@@ -476,7 +476,7 @@ class SynchronizeAppsearchLocal(object):
 
             propagated_steps = propagated_operation_upwards_operations_dict.get(entity_guid, [])
             if len(propagated_steps)>0:
-                seq = Sequence(name="create entity", steps = propagated_steps)
+                seq = Sequence(name="propagated upwards operation", steps = propagated_steps)
                 spec = jsonpickle.encode(seq) 
                 oc = OperationChange(propagate=True, propagate_down=False, operation = json.loads(spec))
                 logging.warning("Operation that propagates relevant operations upwards has been created")

@@ -168,7 +168,7 @@ class SynchronizeAppsearchLocal(object):
 
     async def handle_inserted_hierarchical_relationship(self, entity_message: EntityMessage, key :str, inserted_relationship,  other_operations: dict):
         """This function defines all operators required to handle the inserted hierarchical relationship."""
-
+        
         local_operation_list = []
         propagated_operation_downwards_list = []
 
