@@ -458,6 +458,7 @@ class SynchronizeAppsearchLocal(object):
         entity_guid_list = list(set(entity_guid_list))
         
         for entity_guid in entity_guid_list:
+            change_list = []
             local_steps = create_local_operation_dict.get(entity_guid, []) + local_operations_dict.get(entity_guid, []) + delete_local_operation_dict.get(entity_guid, [])
             if len(local_steps)>0:
                 seq = Sequence(name="local operations", steps = local_steps)
