@@ -355,12 +355,20 @@ class SynchronizeAppsearchLocal(object):
         local_operations_dict = {}
 
         if entity_message.original_event_type==EntityAuditAction.ENTITY_DELETE:
-           delete_local_operation_dict[input_entity.guid] = [(DeleteEntityOperator(name=f"delete entity with guid {operation_event_guid}"))]
+            logging.warning("start handling deleted relationships.")
+            delete_local_operation_dict[input_entity.guid] = [(DeleteEntityOperator(name=f"delete entity with guid {operation_event_guid}"))]
+
+            if entity_message.deleted_relationships != {}:
+                local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict = await self.handle_deleted_hierarchical_relationships( entity_message,  local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict)
+                
+            logging.warning("deleted relationships handled.")
            #TODO handle propagation of removed relationships:
            # deleting an entity with an attribute and a domain related to it requires to 
            # propagate changes to related attributes, by removing parent and removing breadcrumb prefix
            # check also for delete of person, which requires a whole different set of lcoal changes
            # local_changes = self.delete_person_entity(entity)
+
+
 
 
 
@@ -415,7 +423,7 @@ class SynchronizeAppsearchLocal(object):
                                 m4isourcetype = m4isourcetype[0]
                             derived_guid, derived_type = get_relevant_hierarchy_entity_fields(m4isourcetype)
 
-                            propagated_operation_downwards_operations_dict = self.add_list_to_dict(UpdateListEntryBasedOnUniqueValueList(name="update derived entity field", unique_list_key=derived_guid, target_list_key=derived_type, unique_value=input_entity.guid, target_value= value))
+                            propagated_operation_downwards_operations_dict = self.add_list_to_dict(propagated_operation_downwards_operations_dict, operation_event_guid, UpdateListEntryBasedOnUniqueValueList(name="update derived entity field", unique_list_key=derived_guid, target_list_key=derived_type, unique_value=input_entity.guid, target_value= value))
 
             # end of handle change attributes
 
@@ -425,7 +433,7 @@ class SynchronizeAppsearchLocal(object):
                 for delete_attribute in entity_message.deleted_attributes:
                     if delete_attribute.lower() in self.schema_names:
                         # local_operation_list.append(DeleteLocalAttributeProcessor(name=f"delete attribute {delete_attribute}", key=delete_attribute.lower(), value=value))
-                        local_operations_dict = self.add_list_to_dict(DeleteLocalAttributeProcessor(name=f"delete attribute {delete_attribute}", key=delete_attribute.lower(), value=value))
+                        local_operations_dict = self.add_list_to_dict(local_operations_dict, operation_event_guid, DeleteLocalAttributeProcessor(name=f"delete attribute {delete_attribute}", key=delete_attribute.lower(), value=value))
 
             # end of handle deleted attributes
             
