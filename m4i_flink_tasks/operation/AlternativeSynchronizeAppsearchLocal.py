@@ -80,7 +80,7 @@ class SynchronizeAppsearchLocal(object):
             local_operations_dict[operation_event_guid].extend(operation)
 
         logging.info("end insert_person_relationship")
-        return local_operation_person
+        return local_operations_dict
 
 
     def delete_person_relationship(self,input_entity, deleted_relationship, local_operations_dict):
