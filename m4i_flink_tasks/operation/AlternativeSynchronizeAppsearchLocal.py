@@ -83,17 +83,17 @@ class SynchronizeAppsearchLocal(object):
 
         if (relationsip_type == data_attribute_business_owner_assignment or relationsip_type == data_entity_business_owner_assignment):
             # business owner 
-            local_operation_person.extend([AddElementToListProcessor(name="update attribute dervieddataownerguid",
+            local_operation_person.extend([UpdateLocalAttributeProcessor(name="update attribute dervieddataownerguid",
                                                         key="deriveddataownerguid", value=person_guid)])                            
 
         if (relationsip_type == data_attribute_steward_assignment or relationsip_type == data_entity_steward_assignment):
             # steward 
-            local_operation_person.extend([AddElementToListProcessor(name="update attribute deriveddatastewardguid",
+            local_operation_person.extend([UpdateLocalAttributeProcessor(name="update attribute deriveddatastewardguid",
                                                         key="deriveddatastewardguid", value=person_guid)])
             
         if (relationsip_type == domain_lead_assignment):
             # domainlead
-            local_operation_person.extend([AddElementToListProcessor(name="update attribute deriveddomainleadguid",
+            local_operation_person.extend([UpdateLocalAttributeProcessor(name="update attribute deriveddomainleadguid",
                                                         key="deriveddomainleadguid", value=person_guid)])
 
   
