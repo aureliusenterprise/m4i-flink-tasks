@@ -59,25 +59,48 @@ class SynchronizeAppsearchLocal(object):
         logging.info("start insert_person_relationship")
         local_operation_person = []
         # check whether the inserted relationship is a Person related relationship
+
+        relationsip_type = inserted_relationship["relationshipType"]
+
         person_guid = input_entity.guid
         person_name = input_entity.attributes.unmapped_attributes["name"]
-        operation_event_guid = inserted_relationship["guid"]
+        operation_event_guid = inserted_relationship["guid"] # this is the conceptual entity that has a reference with the person.
+        # operation_event_name = inserted_relationship["displayText"]
+        
+
         if inserted_relationship["typeName"]=="m4i_person":
             person_guid = inserted_relationship['guid']
             person_name = inserted_relationship['displayText']
             operation_event_guid = input_entity.guid
+            # operation_event_name = input_entity.attributes.unmapped_attributes['name']
 
-        operation = [AddElementToListProcessor(name="update attribute derivedperson",
+
+
+        local_operation_person.extend([AddElementToListProcessor(name="update attribute derivedperson",
                                                         key="derivedperson", value=person_name),
                      AddElementToListProcessor(name="update attribute derivedpersonguid", 
-                                                        key="derivedpersonguid", value=person_guid)]
+                                                        key="derivedpersonguid", value=person_guid)])
 
-                                                                
+        if (relationsip_type == data_attribute_business_owner_assignment or relationsip_type == data_entity_business_owner_assignment):
+            # business owner 
+            local_operation_person.extend([AddElementToListProcessor(name="update attribute dervieddataownerguid",
+                                                        key="deriveddataownerguid", value=person_guid)])                            
+
+        if (relationsip_type == data_attribute_steward_assignment or relationsip_type == data_entity_steward_assignment):
+            # steward 
+            local_operation_person.extend([AddElementToListProcessor(name="update attribute deriveddatastewardguid",
+                                                        key="deriveddatastewardguid", value=person_guid)])
+            
+        if (relationsip_type == domain_lead_assignment):
+            # domainlead
+            local_operation_person.extend([AddElementToListProcessor(name="update attribute deriveddomainleadguid",
+                                                        key="deriveddomainleadguid", value=person_guid)])
+
   
         if operation_event_guid not in local_operations_dict.keys():
-            local_operations_dict[operation_event_guid] = operation
+            local_operations_dict[operation_event_guid] = local_operation_person
         else:
-            local_operations_dict[operation_event_guid].extend(operation)
+            local_operations_dict[operation_event_guid].extend(local_operation_person)
 
         logging.info("end insert_person_relationship")
         return local_operations_dict
@@ -87,14 +110,18 @@ class SynchronizeAppsearchLocal(object):
         logging.info("start deleted_person_relationship")
         local_operation_person = []
         # check whether the inserted relationship is a Person related relationship
+
+        relationsip_type = deleted_relationship["relationshipType"]
+
         operation_event_guid = deleted_relationship["guid"]
         person_guid = input_entity.guid
+
         if deleted_relationship["typeName"]=="m4i_person":
             operation_event_guid = input_entity.guid
             person_guid = deleted_relationship["guid"]
         # create local operations
 
-        operation = [DeleteListEntryBasedOnUniqueValueList(name="delete attribute derivedperson", 
+        local_operation_person = [DeleteListEntryBasedOnUniqueValueList(name="delete attribute derivedperson", 
                                                            unique_list_key = derived_person_guid, 
                                                            target_list_key=derived_person, 
                                                            unique_value=person_guid),
@@ -104,11 +131,26 @@ class SynchronizeAppsearchLocal(object):
                                                            unique_value=person_guid)
         ]
 
+        if (relationsip_type == data_attribute_business_owner_assignment or relationsip_type == data_entity_business_owner_assignment):
+            # business owner 
+            local_operation_person.extend([DeleteLocalAttributeProcessor(name="delete attribute dervieddataownerguid", key="deriveddataownerguid")])                            
+
+        if (relationsip_type == data_attribute_steward_assignment or relationsip_type == data_entity_steward_assignment):
+            # steward 
+            local_operation_person.extend([DeleteLocalAttributeProcessor(name="delete attribute deriveddatastewardguid",key="deriveddatastewardguid")])  
+            
+        if (relationsip_type == domain_lead_assignment):
+            # domainlead
+            local_operation_person.extend([DeleteLocalAttributeProcessor(name="delete attribute deriveddomainleadguid",key="deriveddomainleadguid")])  
+            
+            local_operation_person.extend([AddElementToListProcessor(name="update attribute deriveddomainleadguid",
+                                                        key="deriveddomainleadguid", value=person_guid)])
+
      
         if operation_event_guid not in local_operations_dict.keys():
-            local_operations_dict[operation_event_guid] = operation
+            local_operations_dict[operation_event_guid] = local_operation_person
         else:
-            local_operations_dict[operation_event_guid].extend(operation)
+            local_operations_dict[operation_event_guid].extend(local_operation_person)
         logging.info("end deleted_person_relationship")
         return local_operations_dict
 
@@ -436,7 +478,7 @@ class SynchronizeAppsearchLocal(object):
                 for delete_attribute in entity_message.deleted_attributes:
                     if delete_attribute.lower() in self.schema_names:
                         # local_operation_list.append(DeleteLocalAttributeProcessor(name=f"delete attribute {delete_attribute}", key=delete_attribute.lower(), value=value))
-                        local_operations_dict = self.add_list_to_dict(local_operations_dict, operation_event_guid, DeleteLocalAttributeProcessor(name=f"delete attribute {delete_attribute}", key=delete_attribute.lower(), value=value))
+                        local_operations_dict = self.add_list_to_dict(local_operations_dict, operation_event_guid, DeleteLocalAttributeProcessor(name=f"delete attribute {delete_attribute}", key=delete_attribute.lower()))
 
             # end of handle deleted attributes
             
