@@ -78,7 +78,7 @@ class SynchronizeAppsearchLocal(object):
 
         local_operation_person.extend([AddElementToListProcessor(name="update attribute derivedperson",
                                                         key="derivedperson", value=person_name),
-                     AddElementToListProcessor(name="update attribute derivedpersonguid", 
+                                       AddElementToListProcessor(name="update attribute derivedpersonguid", 
                                                         key="derivedpersonguid", value=person_guid)])
 
         if (relationsip_type == data_attribute_business_owner_assignment or relationsip_type == data_entity_business_owner_assignment):
@@ -106,7 +106,7 @@ class SynchronizeAppsearchLocal(object):
         return local_operations_dict
 
 
-    def delete_person_relationship(self,input_entity, deleted_relationship, local_operations_dict):
+    def delete_person_relationship(self,input_entity : Entity, deleted_relationship, local_operations_dict):
         logging.info("start deleted_person_relationship")
         local_operation_person = []
         # check whether the inserted relationship is a Person related relationship
@@ -572,12 +572,12 @@ class SynchronizeAppsearchLocal(object):
         
         for entity_guid in entity_guid_list:
             change_list = []
-            local_steps = create_local_operation_dict.get(entity_guid, []) + local_operations_dict.get(entity_guid, []) + delete_local_operation_dict.get(entity_guid, [])
+            create_entity_steps = create_local_operation_dict.get(entity_guid, [])
             if len(local_steps)>0:
-                seq = Sequence(name="local operations", steps = local_steps)
+                seq = Sequence(name="lolca operations", steps = create_entity_steps)
                 spec = jsonpickle.encode(seq) 
                 oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
-                logging.warning("Operation that executes local operations has been created")
+                logging.warning("Operation that creates entity document in app search.")
                 change_list.append(oc)
 
             propagated_steps = propagated_operation_downwards_operations_dict.get(entity_guid, []) 
@@ -595,6 +595,23 @@ class SynchronizeAppsearchLocal(object):
                 oc = OperationChange(propagate=True, propagate_down=False, operation = json.loads(spec))
                 logging.warning("Operation that propagates relevant operations upwards has been created")
                 change_list.append(oc)
+
+            local_steps = local_operations_dict.get(entity_guid, []) 
+            if len(local_steps)>0:
+                seq = Sequence(name="local operations", steps = local_steps)
+                spec = jsonpickle.encode(seq) 
+                oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
+                logging.warning("Operation that executes local operations has been created")
+                change_list.append(oc)
+
+            delete_entity_steps =  delete_local_operation_dict.get(entity_guid, [])
+            if len(local_steps)>0:
+                seq = Sequence(name="local operations", steps = delete_entity_steps)
+                spec = jsonpickle.encode(seq) 
+                oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
+                logging.warning("Operation that deletes entity document from app search.")
+                change_list.append(oc)
+
 
             if len(change_list)>0:
                 oe = OperationEvent(id=str(uuid.uuid4()), 
