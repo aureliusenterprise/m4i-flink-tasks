@@ -134,9 +134,21 @@ async def is_parent_child_relationship(input_document : dict, relationship_key :
 
     return False
 
+# async def is_attribute_field_relationship(doc, inserted_relationship):
+#     """This function determines whether the relationship is an attribute field relationship."""
+#     super_types = await get_super_types(inserted_relationship["typeName"])
+#     target_entity_source_types = get_source_types(
+#         super_types + [inserted_relationship["typeName"]])
+#     if field in (target_entity_source_types) and data_attribute in doc["m4isourcetype"]:
+#         return True
+#     if data_attribute in (target_entity_source_types) and field in doc["m4isourcetype"]:
+#         return True
+#     return False
+
+
 
 async def is_parent_child_relationship(input_type : str, relationship_key :str, input_relationship : dict):
-    """This function determines whether the entity belonging to the input document and the entity corresponding to the end point of the relationship are a parent child pair."""
+    """This function determines whether the entity belonging to the input entity type and the entity corresponding to the end point of the relationship are a parent child pair."""
     super_types = await get_super_types_names(input_relationship["typeName"])
     target_entity_source_types = get_m4i_source_types(super_types)
 
@@ -153,23 +165,40 @@ async def is_parent_child_relationship(input_type : str, relationship_key :str, 
     return False
 
 
-async def is_attribute_field_relationship(input_document : dict, input_relationship : dict):
+async def is_attribute_field_relationship(input_type : str, input_relationship : dict):
     """This function determines whether the relationship is an attribute field relationship."""
+    super_types = await get_super_types_names(input_type)
+    source_entity_source_types = get_m4i_source_types(super_types)
+
     super_types = await get_super_types_names(input_relationship["typeName"])
     target_entity_source_types = get_m4i_source_types(super_types)
-    if field in (target_entity_source_types) and data_attribute in input_document["m4isourcetype"]:
+
+    if field in (target_entity_source_types) and data_attribute in source_entity_source_types:
         return True
-    if data_attribute in (target_entity_source_types) and field in input_document["m4isourcetype"]:
+    if data_attribute in (target_entity_source_types) and field in source_entity_source_types:
         return True
     return False
 
 
-def get_attribute_field_guid(input_document : dict, input_relationship : dict):
+# def get_attribute_field_guid(input_document : dict, input_relationship : dict):
+#     """This function returns respectively the guid of a data attribute and a field."""
+#     if data_attribute in input_document["m4isourcetype"]:
+#         return input_document[guid], input_relationship[guid]
+#     else:
+#         return input_relationship[guid], input_document[guid]
+
+async def get_attribute_field_guid(input_entity : Entity, input_relationship : dict):
     """This function returns respectively the guid of a data attribute and a field."""
-    if data_attribute in input_document["m4isourcetype"]:
-        return input_document[guid], input_relationship[guid]
+    super_types = await get_super_types_names(input_entity.type_name)
+    source_entity_source_types = get_m4i_source_types(super_types)
+
+    super_types = await get_super_types_names(input_relationship["typeName"])
+    target_entity_source_types = get_m4i_source_types(super_types)
+
+    if data_attribute in source_entity_source_types:
+        return input_entity.guid, input_relationship[guid]
     else:
-        return input_relationship[guid], input_document[guid]
+        return input_relationship[guid], input_entity.guid
 
 
 def define_derived_entity_attribute_field_fields(data_attribute_document: dict, field_document : dict) -> List[dict]:
