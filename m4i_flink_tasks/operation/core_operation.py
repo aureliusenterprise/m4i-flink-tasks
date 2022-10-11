@@ -37,6 +37,9 @@ class AbstractProcessor(ABC):
         return {}
     # end of process
 
+    def transform(self, input_data:Dict):
+        return self
+
 # end of class AbstractProcessor
 
 class CreateLocalEntityProcessor(AbstractProcessor):
@@ -275,7 +278,7 @@ class Sequence(AbstractProcessor):
         #assert(isinstance(self.steps[0],AbstractProcessor))
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data: Dict) -> Dict:
         #logging = input_data["logging"]
         input_data_ = input_data
         for step in self.steps:
@@ -287,6 +290,12 @@ class Sequence(AbstractProcessor):
         return input_data_
     # end of proces
 
+    def transform(self, input_data: Dict):
+        result = []
+        for step in self.steps:
+            result.append(step.transform(input_data))
+
+        return Sequence(name=self.name,steps=result)
 # end of class Sequence
 
 
@@ -307,6 +316,11 @@ class WorkflowEngine:
         data = self.specification.process(input_data)
         return data
     # end of run
+
+    def transform(self, input_data:Dict) -> Dict:
+        specification = self.specification.transform(input_data)
+        return specification
+    # end of transform
 # end of class WorkflowEngine
 
 
