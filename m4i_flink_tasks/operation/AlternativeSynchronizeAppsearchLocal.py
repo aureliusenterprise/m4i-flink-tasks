@@ -573,8 +573,8 @@ class SynchronizeAppsearchLocal(object):
         for entity_guid in entity_guid_list:
             change_list = []
             create_entity_steps = create_local_operation_dict.get(entity_guid, [])
-            if len(local_steps)>0:
-                seq = Sequence(name="lolca operations", steps = create_entity_steps)
+            if len(create_entity_steps)>0:
+                seq = Sequence(name="local operations", steps = create_entity_steps)
                 spec = jsonpickle.encode(seq) 
                 oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
                 logging.warning("Operation that creates entity document in app search.")
@@ -605,7 +605,7 @@ class SynchronizeAppsearchLocal(object):
                 change_list.append(oc)
 
             delete_entity_steps =  delete_local_operation_dict.get(entity_guid, [])
-            if len(local_steps)>0:
+            if len(delete_entity_steps)>0:
                 seq = Sequence(name="local operations", steps = delete_entity_steps)
                 spec = jsonpickle.encode(seq) 
                 oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
