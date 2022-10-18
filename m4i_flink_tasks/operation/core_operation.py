@@ -189,7 +189,7 @@ class UpdateListEntryBasedOnUniqueValueList(AbstractProcessor):
         # Charif: Remark .. The first time when this operator is called for a breadcrumb name update, the provided breadcrumb will not be found 
         if self.unqiue_value in input_data[self.unqiue_list_key]:
             index = input_data[self.unqiue_list_key].index(self.unqiue_value)
-            input_data = InsertElementInList(name=self.name, key=self.target_list_key, index = index, value=self.target_value).process(input_data)
+            input_data = InsertElementInList(name=self.name, key=self.target_list_key, index = index, value=self.target_value).process(input_data, app_search)
      
         return input_data
     # end of process
@@ -221,7 +221,7 @@ class DeleteListEntryBasedOnUniqueValueList(AbstractProcessor):
     def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
 
         index = input_data[self.unqiue_list_key].index(self.unqiue_value)
-        input_data = DeleteElementFromList(name=self.name, key=self.target_list_key, index = index).process(input_data)
+        input_data = DeleteElementFromList(name=self.name, key=self.target_list_key, index = index).process(input_data, app_search)
         
         return input_data
     # end of process
@@ -456,12 +456,12 @@ class Delete_Hierarchical_Relationship(AbstractProcessor):
         elif self.current_entity_guid == self.child_entity_guid:
 
             # breadcrumb updates -> relevant for child entity 
-            input_data = DeletePrefixFromList(name="update breadcrumb name", key="breadcrumbname", guid_key="breadcrumbguid" , first_guid_to_keep=self.child_entity_guid)
-            input_data = DeletePrefixFromList(name="update breadcrumb type", key="breadcrumbtype", guid_key="breadcrumbguid" , first_guid_to_keep=self.child_entity_guid)
-            input_data = DeletePrefixFromList(name="update breadcrumb guid", key="breadcrumbguid", guid_key="breadcrumbguid" , first_guid_to_keep=self.child_entity_guid)
+            input_data = DeletePrefixFromList(name="update breadcrumb name", key="breadcrumbname", guid_key="breadcrumbguid" , first_guid_to_keep=self.child_entity_guid).process(input_data, app_search)
+            input_data = DeletePrefixFromList(name="update breadcrumb type", key="breadcrumbtype", guid_key="breadcrumbguid" , first_guid_to_keep=self.child_entity_guid).process(input_data, app_search)
+            input_data = DeletePrefixFromList(name="update breadcrumb guid", key="breadcrumbguid", guid_key="breadcrumbguid" , first_guid_to_keep=self.child_entity_guid).process(input_data, app_search)
             
             # delete parent guid -> relevant for child 
-            input_data = DeleteLocalAttributeProcessor(name=f"delete attribute {parent_guid}", key=parent_guid)
+            input_data = DeleteLocalAttributeProcessor(name=f"delete attribute {parent_guid}", key=parent_guid).process(input_data, app_search)
             
             # delete derived entity guid -> relevant for child
             if self.derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
@@ -475,8 +475,8 @@ class Delete_Hierarchical_Relationship(AbstractProcessor):
 
             for to_be_deleted_derived_guid_field in to_be_deleted_derived_guid_fields:
 
-                input_data = (DeleteLocalAttributeProcessor(name=f"delete derived entity field: {to_be_deleted_derived_guid_field}", key = to_be_deleted_derived_guid_field))
-                input_data = (DeleteLocalAttributeProcessor(name=f"delete derived entity field: {hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]))
+                input_data = DeleteLocalAttributeProcessor(name=f"delete derived entity field: {to_be_deleted_derived_guid_field}", key = to_be_deleted_derived_guid_field).process(input_data, app_search)
+                input_data = DeleteLocalAttributeProcessor(name=f"delete derived entity field: {hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]).process(input_data, app_search)
             return input_data
 
         else:
@@ -557,24 +557,24 @@ class Insert_Hierarchical_Relationship(AbstractProcessor):
 
             for to_be_inserted_derived_guid_field in to_be_inserted_derived_guid_fields:
 
-                input_data = (UpdateLocalAttributeProcessor(name=f"insert derived entity field {to_be_inserted_derived_guid_field}", key = to_be_inserted_derived_guid_field, value = parent_entity_document[to_be_inserted_derived_guid_field])).process(input_data)
-                input_data = (UpdateLocalAttributeProcessor(name=f"insert derived entity field {hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field], value = parent_entity_document[hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]])).process(input_data)
+                input_data = (UpdateLocalAttributeProcessor(name=f"insert derived entity field {to_be_inserted_derived_guid_field}", key = to_be_inserted_derived_guid_field, value = parent_entity_document[to_be_inserted_derived_guid_field])).process(input_data, app_search)
+                input_data = (UpdateLocalAttributeProcessor(name=f"insert derived entity field {hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field], value = parent_entity_document[hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]])).process(input_data, app_search)
 
             # define parent guid -> relevant for child 
-            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {parent_guid}", key=parent_guid, value=self.parent_entity_guid)).process(input_data)
+            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {parent_guid}", key=parent_guid, value=self.parent_entity_guid)).process(input_data, app_search)
 
-            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {derived_guid}", key=derived_guid, value=parent_entity_document[derived_guid] + [self.parent_entity_guid])).process(input_data)
+            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {derived_guid}", key=derived_guid, value=parent_entity_document[derived_guid] + [self.parent_entity_guid])).process(input_data, app_search)
             
-            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {derived_type}", key=derived_type, value=parent_entity_document[derived_type] + [parent_entity_document[name]])).process(input_data) # Charif: Validate whether this will work for nested structures!!
+            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {derived_type}", key=derived_type, value=parent_entity_document[derived_type] + [parent_entity_document[name]])).process(input_data, app_search) # Charif: Validate whether this will work for nested structures!!
 
             # breadcrumb updates -> relevant for child entity 
             breadcrumbguid_prefix = parent_entity_document["breadcrumbguid"] + [parent_entity_document["guid"]]
             breadcrumbname_prefix = parent_entity_document["breadcrumbname"] + [parent_entity_document["name"]]
             breadcrumbtype_prefix = parent_entity_document["breadcrumbtype"] + [parent_entity_document["typename"]]
             
-            input_data = (InsertPrefixToList(name="update breadcrumb guid", key="breadcrumbguid", input_list=breadcrumbguid_prefix)).process(input_data)
-            input_data = (InsertPrefixToList(name="update breadcrumb name", key="breadcrumbname", input_list=breadcrumbname_prefix)).process(input_data)
-            input_data = (InsertPrefixToList(name="update breadcrumb type", key="breadcrumbtype", input_list=breadcrumbtype_prefix)).process(input_data)
+            input_data = (InsertPrefixToList(name="update breadcrumb guid", key="breadcrumbguid", input_list=breadcrumbguid_prefix)).process(input_data, app_search)
+            input_data = (InsertPrefixToList(name="update breadcrumb name", key="breadcrumbname", input_list=breadcrumbname_prefix)).process(input_data, app_search)
+            input_data = (InsertPrefixToList(name="update breadcrumb type", key="breadcrumbtype", input_list=breadcrumbtype_prefix)).process(input_data, app_search)
 
             return input_data
         
