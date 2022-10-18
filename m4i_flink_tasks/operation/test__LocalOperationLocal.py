@@ -1,20 +1,20 @@
-import pytest
-import json 
-import requests
 import asyncio
+import json
 
-from m4i_atlas_core import ConfigStore
-from m4i_flink_tasks.AtlasEntityChangeMessage import EntityMessage
+import pytest
+import requests
 from elastic_app_search import Client
-
-from m4i_flink_tasks.operation.LocalOperationLocal import LocalOperationLocal
-
 from m4i_atlas_core import ConfigStore, Entity
-# from scripts.config import config
-# from scripts.credentials import credentials
+
+from m4i_flink_tasks.AtlasEntityChangeMessage import EntityMessage
+from m4i_flink_tasks.operation.LocalOperationLocal import LocalOperationLocal
 
 from .config import config
 from .credentials import credentials
+
+# from scripts.config import config
+# from scripts.credentials import credentials
+
 
 
 config_store = ConfigStore.get_instance()
@@ -128,3 +128,9 @@ def test__map_local6(store):
    
 	res = local_operation_local.map_local(kafka_message)
 
+def test__map_local8(store):
+	kafka_message = '{"id": "440cd50f-3950-41d7-b962-ed8cf5ba4dda", "creationTime": 1666083288074, "entityGuid": "b6044c9a-61b3-4a02-acec-e028e1f2c951", "changes": [{"propagate": true, "propagateDown": true, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "propagated downwards operation", "steps": [[{"py/object": "m4i_flink_tasks.operation.core_operation.Insert_Hierarchical_Relationship", "name": "insert hierarchical relationship", "parent_entity_guid": "b6044c9a-61b3-4a02-acec-e028e1f2c951", "child_entity_guid": "863394a9-eb15-4673-bddd-e20b2fe7dc52", "current_entity_guid": "b6044c9a-61b3-4a02-acec-e028e1f2c951"}]]}}]}'
+	local_operation_local = LocalOperationLocal()
+	local_operation_local.open_local(config, credentials,store)
+   
+	res = local_operation_local.map_local(kafka_message)

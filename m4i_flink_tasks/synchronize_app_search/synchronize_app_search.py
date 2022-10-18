@@ -1,17 +1,22 @@
 import asyncio
+import json
 # from itertools import pairwise
 import logging
+from copy import copy  # add this to dependencies
 from typing import Callable, Dict, List, Optional, Union
 
-from m4i_atlas_core import (ConfigStore, Entity, EntityDef, get_type_def, get_keycloak_token)
-from m4i_atlas_core.entities.atlas.core.relationship.Relationship import Relationship
 from elastic_enterprise_search import AppSearch
-from .HierarchyMapping import hierarchy_mapping
+from m4i_atlas_core import (ConfigStore, Entity, EntityDef, get_keycloak_token,
+                            get_type_def)
+from m4i_atlas_core.entities.atlas.core.relationship.Relationship import \
+    Relationship
+
 from m4i_flink_tasks.parameters import *
+
 from .AppSearchDocument import AppSearchDocument
-from .elastic import get_document, send_query, get_documents, get_child_entity_docs
-import json
-from copy import copy #add this to dependencies
+from .elastic import (get_child_entity_docs, get_document, get_documents,
+                      send_query)
+from .HierarchyMapping import hierarchy_mapping
 
 ActionHandler = Callable[[Optional[Union[Entity, Relationship]]], None]
 logger = logging.getLogger(__name__)

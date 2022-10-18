@@ -2,23 +2,29 @@ import json
 import logging
 import sys
 
-# from set_environment import set_env
+from m4i_atlas_core import ConfigStore, Entity
 
 from config import config
 from credentials import credentials
-from m4i_flink_tasks.synchronize_app_search import make_elastic_connection
 from m4i_flink_tasks.operation.PublishStateLocal import PublishStateLocal
-from m4i_atlas_core import ConfigStore, Entity
+from m4i_flink_tasks.synchronize_app_search import make_elastic_connection
+
+# from set_environment import set_env
+
 config_store = ConfigStore.get_instance()
 
-from kafka import KafkaProducer
+import os
 import time
 import traceback
-import os
-from pyflink.common.serialization import SimpleStringSchema, JsonRowSerializationSchema
+
+from kafka import KafkaProducer
+from pyflink.common.serialization import (JsonRowSerializationSchema,
+                                          SimpleStringSchema)
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
+from pyflink.datastream.connectors import (FlinkKafkaConsumer,
+                                           FlinkKafkaProducer)
 from pyflink.datastream.functions import MapFunction, RuntimeContext
+
 from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 
 

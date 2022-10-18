@@ -2,9 +2,12 @@
 import asyncio
 import json
 import logging
+
 #from config import config
 #from credentials import credentials
-from m4i_atlas_core import AtlasChangeMessage, EntityAuditAction, get_entity_by_guid, get_keycloak_token
+from m4i_atlas_core import (AtlasChangeMessage, EntityAuditAction,
+                            get_entity_by_guid, get_keycloak_token)
+
 #from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 #store = ConfigStore.get_instance()
 

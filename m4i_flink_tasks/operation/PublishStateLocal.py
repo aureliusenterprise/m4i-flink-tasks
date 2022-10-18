@@ -1,10 +1,12 @@
 import json
 import logging
+
+from m4i_atlas_core import Entity
+
 #from config import config
 #from credentials import credentials
 #from m4i_atlas_core import AtlasChangeMessage, EntityAuditAction, get_entity_by_guid, get_keycloak_token
 from m4i_flink_tasks.synchronize_app_search import make_elastic_connection
-from m4i_atlas_core import Entity
 
 
 class PublishStateLocal(object):

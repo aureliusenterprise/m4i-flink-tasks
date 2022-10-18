@@ -77,12 +77,6 @@ class LocalOperationLocal(object):
             # first propagation has to be determined before local changes are applied.
             # Otherwise propagation can not be determined properly anymore
             # propagation required?
-            # apply local changes
-            operation = change.operation
-            engine = WorkflowEngine(json.dumps(operation))
-            entity = engine.run(entity, self.app_search)
-            logging.info(f"modified entity {entity}")
-
             if change.propagate:
                 logging.warn(f"propagate events for id {oe.id}")
                 propagate_ids = None
@@ -109,12 +103,15 @@ class LocalOperationLocal(object):
                     if isinstance(breadcrumbguid,list) and len(breadcrumbguid)>0:
                         propagate_ids = [breadcrumbguid[-1]]
                 for id_ in propagate_ids:
-                    transformed_sequence = engine.transform(entity, self.app_search)
                     if id_ not in new_changes.keys():
-                        new_changes[id_] = [transformed_sequence]
+                        new_changes[id_] = [change]
                     else:
-                        new_changes[id_].append(transformed_sequence)
-            
+                        new_changes[id_].append(change)
+            # apply local changes
+            operation = change.operation
+            engine = WorkflowEngine(json.dumps(operation))
+            entity = engine.run(entity)
+            logging.info(f"modified entity {entity}")
         # end of if change.propagate
             
         # write back the entity into appsearch

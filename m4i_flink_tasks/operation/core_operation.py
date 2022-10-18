@@ -1,23 +1,37 @@
-from abc import ABC
-import pandas as pd
-import numpy as np
-import math
+import asyncio
 import datetime
-from typing import List, Dict, Optional
-import jsonpickle
+import json
+import logging
+import math
+import sys
 #from datetime import datetime, timedelta
 import traceback
-import sys
-import json
-import asyncio
-import logging
+from abc import ABC
+from telnetlib import SE
+from typing import Dict, List, Optional
+
+import jsonpickle
+import numpy as np
+import pandas as pd
+from elastic_enterprise_search import AppSearch, EnterpriseSearch
+from m4i_atlas_core import Entity, EntityAuditAction
 
 from m4i_flink_tasks.parameters import *
+from m4i_flink_tasks.synchronize_app_search import (
+    get_attribute_field_guid, get_document, get_m4i_source_types,
+    get_parent_child_entity_guid, get_relevant_hierarchy_entity_fields,
+    get_super_types_names, is_attribute_field_relationship,
+    is_parent_child_relationship)
+from m4i_flink_tasks.synchronize_app_search.elastic import (delete_document,
+                                                            get_document)
 
-from m4i_flink_tasks.synchronize_app_search.elastic import delete_document, get_document
-from ..synchronize_app_search import get_direct_child_entity_docs, make_elastic_app_search_connect, update_dq_score_fields
-from ..synchronize_app_search import get_super_types_names,get_m4i_source_types,get_source_type
+from ..synchronize_app_search import (get_direct_child_entity_docs,
+                                      get_m4i_source_types, get_source_type,
+                                      get_super_types_names,
+                                      make_elastic_app_search_connect,
+                                      update_dq_score_fields)
 from ..synchronize_app_search.AppSearchDocument import AppSearchDocument
+
 
 class AbstractProcessor(ABC):
     """All processors of the workflow inherit from this AbstractProcessor class.
@@ -33,14 +47,81 @@ class AbstractProcessor(ABC):
         assert(name != None and len(name)>0)
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
         return {}
     # end of process
 
-    def transform(self, input_data:Dict):
+    def transform(self, input_data:Dict, app_search: AppSearch):
         return self
 
 # end of class AbstractProcessor
+
+
+
+class Sequence(AbstractProcessor):
+    """Sequence process step executes sequentially a list of process steps, where the putput of one process step
+    is added to the input of the next process steps.
+
+    Parameters
+    ----------
+    name :str
+        Name of the processor
+    steps :List
+        List of process steps to be executed.
+    """
+    def __init__(self, name:str, steps:List):
+        super().__init__(name)
+        self.steps = steps
+        print(type(self.steps[0]))
+        assert(self.steps!=None and isinstance(self.steps, list) and len(self.steps)>0)
+        #assert(isinstance(self.steps[0],AbstractProcessor))
+    # end of __init__
+
+    def process(self, input_data: Dict, app_search: AppSearch) -> Dict:
+        #logging = input_data["logging"]
+        input_data_ = input_data
+        for step in self.steps:
+            #logging.append({"ts":str(datetime.datetime.now()),
+            #                "class":"sequence",
+            #                "step_name":step.name})
+            #print(f"====LOG {str(datetime.datetime.now())},sequence,{step.name}")
+            input_data_ = step.process(input_data_, app_search)
+        return input_data_
+    # end of process
+
+    def transform(self, input_data: Dict, app_search: AppSearch):
+        result = []
+        for step in self.steps:
+            result.append(step.transform(input_data, app_search))
+
+        return Sequence(name=self.name, steps=result)
+    # end of transform
+# end of class Sequence
+
+class WorkflowEngine:
+    """Workflow engine creates an object of the agent specification and triggers the process method of the object.
+    The resulting data of the processing are returned as a dictionary.
+
+    Parameters
+    ----------
+    specification :str
+        specification of a hunting agent. The hunting agent object is serialized as a string using jsonpickle.
+    """
+    def __init__(self, specification:str):
+        self.specification = jsonpickle.decode(specification)
+    # end of __init__
+
+    def run(self, input_data:Dict, app_search: AppSearch) -> Dict:
+        data = self.specification.process(input_data, app_search)
+        return data
+    # end of run
+
+    def transform(self, input_data:Dict, app_search: AppSearch) -> Dict:
+        specification = self.specification.transform(input_data, app_search)
+        return specification
+    # end of transform
+# end of class WorkflowEngine
+
 
 class CreateLocalEntityProcessor(AbstractProcessor):
     """CreateLocalEntityProcessor is a processot to create an entity with
@@ -64,7 +145,7 @@ class CreateLocalEntityProcessor(AbstractProcessor):
         self.entity_qualifiedname = entity_qualifiedname
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:        
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:        
         super_types = asyncio.run( get_super_types_names(self.entity_type))
         app_search_document = AppSearchDocument(id=self.entity_guid,
             guid = self.entity_guid,
@@ -104,7 +185,7 @@ class UpdateListEntryBasedOnUniqueValueList(AbstractProcessor):
         self.target_value = target_value
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
         # Charif: Remark .. The first time when this operator is called for a breadcrumb name update, the provided breadcrumb will not be found 
         if self.unqiue_value in input_data[self.unqiue_list_key]:
             index = input_data[self.unqiue_list_key].index(self.unqiue_value)
@@ -137,7 +218,7 @@ class DeleteListEntryBasedOnUniqueValueList(AbstractProcessor):
         self.unqiue_value = unique_value
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
 
         index = input_data[self.unqiue_list_key].index(self.unqiue_value)
         input_data = DeleteElementFromList(name=self.name, key=self.target_list_key, index = index).process(input_data)
@@ -170,7 +251,7 @@ class UpdateLocalAttributeProcessor(AbstractProcessor):
         self.value = value
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
        input_data[self.key] = self.value
        return input_data
     # end of process
@@ -195,7 +276,7 @@ class AddElementToListProcessor(AbstractProcessor):
         self.value = value
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
 
         if isinstance(input_data[self.key], list):
             input_data[self.key].append(self.value)
@@ -224,7 +305,7 @@ class DeleteLocalAttributeProcessor(AbstractProcessor):
         self.key = key
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
         if type(input_data[self.key]) == list:
             input_data[self.key] = []
         else:
@@ -249,7 +330,7 @@ class UpdateDqScoresProcessor(AbstractProcessor):
         super().__init__(name)
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
        #TODO: do something meaningful here 
        return input_data
     # end of process
@@ -258,70 +339,6 @@ class UpdateDqScoresProcessor(AbstractProcessor):
 
 
 
-
-class Sequence(AbstractProcessor):
-    """Sequence process step executes sequentially a list of process steps, where the putput of one process step
-    is added to the input of the next process steps.
-
-    Parameters
-    ----------
-    name :str
-        Name of the processor
-    steps :List
-        List of process steps to be executed.
-    """
-    def __init__(self, name:str, steps:List):
-        super().__init__(name)
-        self.steps = steps
-        print(type(self.steps[0]))
-        assert(self.steps!=None and isinstance(self.steps, list) and len(self.steps)>0)
-        #assert(isinstance(self.steps[0],AbstractProcessor))
-    # end of __init__
-
-    def process(self, input_data: Dict) -> Dict:
-        #logging = input_data["logging"]
-        input_data_ = input_data
-        for step in self.steps:
-            #logging.append({"ts":str(datetime.datetime.now()),
-            #                "class":"sequence",
-            #                "step_name":step.name})
-            #print(f"====LOG {str(datetime.datetime.now())},sequence,{step.name}")
-            input_data_ = step.process(input_data_)
-        return input_data_
-    # end of proces
-
-    def transform(self, input_data: Dict):
-        result = []
-        for step in self.steps:
-            result.append(step.transform(input_data))
-
-        return Sequence(name=self.name,steps=result)
-# end of class Sequence
-
-
-class WorkflowEngine:
-    """Workflow engine creates an object of the agent specification and triggers the process method of the object.
-    The resulting data of the processing are returned as a dictionary.
-
-    Parameters
-    ----------
-    specification :str
-        specification of a hunting agent. The hunting agent object is serialized as a string using jsonpickle.
-    """
-    def __init__(self, specification:str):
-        self.specification = jsonpickle.decode(specification)
-    # end of __init__
-
-    def run(self, input_data:Dict) -> Dict:
-        data = self.specification.process(input_data)
-        return data
-    # end of run
-
-    def transform(self, input_data:Dict) -> Dict:
-        specification = self.specification.transform(input_data)
-        return specification
-    # end of transform
-# end of class WorkflowEngine
 
 
 class UpdateListEntryProcessor(AbstractProcessor):
@@ -355,7 +372,7 @@ class UpdateListEntryProcessor(AbstractProcessor):
 
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
         if not self.key in input_data.keys():
             raise Exception(f"Key {self.key} not in input data")
 
@@ -417,8 +434,195 @@ class UpdateListEntryProcessor(AbstractProcessor):
 
 # # end of class UpdateListEntryProcessor
 
+class Delete_Hierarchical_Relationship(AbstractProcessor):
+    def __init__(self,
+            name:str, 
+            parent_entity_guid : str,
+            child_entity_guid: str,
+            current_entity_guid: str,
+            derived_guid: str):
+        super().__init__(name)
+        self.parent_entity_guid = parent_entity_guid
+        self.child_entity_guid = child_entity_guid
+        self.current_entity_guid = current_entity_guid
+        self.derived_guid = derived_guid
+    # end of __init__
+
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
+
+        if self.current_entity_guid == self.parent_entity_guid:
+            return input_data
+
+        elif self.current_entity_guid == self.child_entity_guid:
+
+            # breadcrumb updates -> relevant for child entity 
+            input_data = DeletePrefixFromList(name="update breadcrumb name", key="breadcrumbname", guid_key="breadcrumbguid" , first_guid_to_keep=self.child_entity_guid)
+            input_data = DeletePrefixFromList(name="update breadcrumb type", key="breadcrumbtype", guid_key="breadcrumbguid" , first_guid_to_keep=self.child_entity_guid)
+            input_data = DeletePrefixFromList(name="update breadcrumb guid", key="breadcrumbguid", guid_key="breadcrumbguid" , first_guid_to_keep=self.child_entity_guid)
+            
+            # delete parent guid -> relevant for child 
+            input_data = DeleteLocalAttributeProcessor(name=f"delete attribute {parent_guid}", key=parent_guid)
+            
+            # delete derived entity guid -> relevant for child
+            if self.derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
+                index = conceptual_hierarchical_derived_entity_guid_fields_list.index(self.derived_guid)
+                to_be_deleted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index+1]   
 
 
+            if self.derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
+                index = technical_hierarchical_derived_entity_guid_fields_list.index(self.derived_guid)
+                to_be_deleted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index+1]   
+
+            for to_be_deleted_derived_guid_field in to_be_deleted_derived_guid_fields:
+
+                input_data = (DeleteLocalAttributeProcessor(name=f"delete derived entity field: {to_be_deleted_derived_guid_field}", key = to_be_deleted_derived_guid_field))
+                input_data = (DeleteLocalAttributeProcessor(name=f"delete derived entity field: {hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]))
+            return input_data
+
+        else:
+            logging.warning(f"parent entity guid: {self.parent_entity_guid}, child entity guid: {self.child_entity_guid}, current entity guid: {self.current_entity_guid}")
+            raise Exception(f"Unexpected state.")
+
+    def transform(self, input_data:Dict, app_search:AppSearch) -> Dict:
+        steps = []
+        if self.current_entity_guid == self.parent_entity_guid:
+            steps.append(Delete_Hierarchical_Relationship(name="delete hierarchical relationship", parent_entity_guid=self.parent_entity_guid, child_entity_guid=self.child_entity_guid, current_entity_guid=self.child_entity_guid))
+            return Sequence(name="trasnformed deleted hierarchical relationships", steps = steps)
+
+        elif self.current_entity_guid == self.child_entity_guid:
+            steps.append(DeletePrefixFromList(name="update breadcrumb name", key="breadcrumbname", guid_key="breadcrumbguid" , first_guid_to_keep=self.child_entity_guid))
+            steps.append(DeletePrefixFromList(name="update breadcrumb type", key="breadcrumbtype", guid_key="breadcrumbguid" , first_guid_to_keep=self.child_entity_guid))
+            steps.append(DeletePrefixFromList(name="update breadcrumb guid", key="breadcrumbguid", guid_key="breadcrumbguid" , first_guid_to_keep=self.child_entity_guid))
+
+            if self.derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
+                index = conceptual_hierarchical_derived_entity_guid_fields_list.index(self.derived_guid)
+                to_be_deleted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index+1]   
+
+
+            if self.derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
+                index = technical_hierarchical_derived_entity_guid_fields_list.index(self.derived_guid)
+                to_be_deleted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index+1]   
+
+            for to_be_deleted_derived_guid_field in to_be_deleted_derived_guid_fields:
+
+                steps.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field: {to_be_deleted_derived_guid_field}", key = to_be_deleted_derived_guid_field))
+                steps.append(DeleteLocalAttributeProcessor(name=f"delete derived entity field: {hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_deleted_derived_guid_field]))
+
+            return Sequence(name="transforms deleted hierarchical relationships", steps = steps)
+
+        else:
+            logging.warning(f"parent entity guid: {self.parent_entity_guid}, child entity guid: {self.child_entity_guid}, current entity guid: {self.current_entity_guid}")
+            raise Exception(f"Unexpected state.")
+        
+
+
+class Insert_Hierarchical_Relationship(AbstractProcessor):
+    def __init__(self,
+            name:str, 
+            parent_entity_guid : str,
+            child_entity_guid: str,
+            current_entity_guid: str):
+        super().__init__(name)
+        self.parent_entity_guid = parent_entity_guid
+        self.child_entity_guid = child_entity_guid
+        self.current_entity_guid = current_entity_guid
+    # end of __init__
+
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
+
+        if self.current_entity_guid == self.parent_entity_guid:
+            return input_data
+
+        elif self.current_entity_guid == self.child_entity_guid:
+            parent_entity_document = get_document(self.parent_entity_guid, app_search)
+           
+            
+            if not parent_entity_document:
+                logging.warning(f"no parent entity found corresponding to guid {self.parent_entity_guid}")
+                raise Exception(f"no parent entity found corresponding to guid {self.parent_entity_guid}. This entity should be created, but is not created.")
+
+            parent_m4isourcetype = parent_entity_document["m4isourcetype"]
+            derived_guid, derived_type = get_relevant_hierarchy_entity_fields(parent_m4isourcetype[0])
+
+            # derived entity fields -> relevant for child entity
+
+            if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
+                index = conceptual_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
+                to_be_inserted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index] 
+
+
+            if derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
+                index = technical_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
+                to_be_inserted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index]   
+
+            for to_be_inserted_derived_guid_field in to_be_inserted_derived_guid_fields:
+
+                input_data = (UpdateLocalAttributeProcessor(name=f"insert derived entity field {to_be_inserted_derived_guid_field}", key = to_be_inserted_derived_guid_field, value = parent_entity_document[to_be_inserted_derived_guid_field])).process(input_data)
+                input_data = (UpdateLocalAttributeProcessor(name=f"insert derived entity field {hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field], value = parent_entity_document[hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]])).process(input_data)
+
+            # define parent guid -> relevant for child 
+            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {parent_guid}", key=parent_guid, value=self.parent_entity_guid)).process(input_data)
+
+            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {derived_guid}", key=derived_guid, value=parent_entity_document[derived_guid] + [self.parent_entity_guid])).process(input_data)
+            
+            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {derived_type}", key=derived_type, value=parent_entity_document[derived_type] + [parent_entity_document[name]])).process(input_data) # Charif: Validate whether this will work for nested structures!!
+
+            # breadcrumb updates -> relevant for child entity 
+            breadcrumbguid_prefix = parent_entity_document["breadcrumbguid"] + [parent_entity_document["guid"]]
+            breadcrumbname_prefix = parent_entity_document["breadcrumbname"] + [parent_entity_document["name"]]
+            breadcrumbtype_prefix = parent_entity_document["breadcrumbtype"] + [parent_entity_document["typename"]]
+            
+            input_data = (InsertPrefixToList(name="update breadcrumb guid", key="breadcrumbguid", input_list=breadcrumbguid_prefix)).process(input_data)
+            input_data = (InsertPrefixToList(name="update breadcrumb name", key="breadcrumbname", input_list=breadcrumbname_prefix)).process(input_data)
+            input_data = (InsertPrefixToList(name="update breadcrumb type", key="breadcrumbtype", input_list=breadcrumbtype_prefix)).process(input_data)
+
+            return input_data
+        
+        else:
+            logging.warning(f"parent entity guid: {self.parent_entity_guid}, child entity guid: {self.child_entity_guid}, current entity guid: {self.current_entity_guid}")
+            raise Exception(f"Unexpected state.")
+
+        
+    def transform(self, input_data:Dict, app_search: AppSearch) -> Dict:
+        steps = []
+        if self.current_entity_guid == self.parent_entity_guid:
+            steps.append(Insert_Hierarchical_Relationship(name="transformed inserted hierarchical relationships", parent_entity_guid=self.parent_entity_guid, child_entity_guid=self.child_entity_guid, current_entity_guid=self.child_entity_guid))
+            return Sequence(name="transformed inserted hierarchical relationship", steps = steps)
+
+        elif self.current_entity_guid == self.child_entity_guid:
+            child_entity_document = input_data
+            child_m4isourcetype = child_entity_document["m4isourcetype"]
+            derived_guid, derived_type = get_relevant_hierarchy_entity_fields(child_m4isourcetype[0])
+
+            if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
+                index = conceptual_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
+                to_be_inserted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index] 
+
+
+            if derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
+                index = technical_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
+                to_be_inserted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index]   
+
+            for to_be_inserted_derived_guid_field in to_be_inserted_derived_guid_fields:
+
+                steps.append((UpdateLocalAttributeProcessor(name=f"insert derived entity field {to_be_inserted_derived_guid_field}", key = to_be_inserted_derived_guid_field, value = child_entity_document[to_be_inserted_derived_guid_field])))
+                steps.append((UpdateLocalAttributeProcessor(name=f"insert derived entity field {hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field], value = child_entity_document[hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]])))
+
+            breadcrumbguid_prefix = child_entity_document["breadcrumbguid"] 
+            breadcrumbname_prefix = child_entity_document["breadcrumbname"] 
+            breadcrumbtype_prefix = child_entity_document["breadcrumbtype"] 
+
+            steps.append((InsertPrefixToList(name="update breadcrumb guid", key="breadcrumbguid", input_list=breadcrumbguid_prefix)))
+            steps.append((InsertPrefixToList(name="update breadcrumb name", key="breadcrumbname", input_list=breadcrumbname_prefix)))
+            steps.append((InsertPrefixToList(name="update breadcrumb type", key="breadcrumbtype", input_list=breadcrumbtype_prefix)))
+
+            return Sequence(name="transformed inserted hierarchical relationships", steps = steps)
+
+        else:
+            logging.warning(f"parent entity guid: {self.parent_entity_guid}, child entity guid: {self.child_entity_guid}, current entity guid: {self.current_entity_guid}")
+            raise Exception(f"Unexpected state.")
+
+        
 
 # always provide a generic name and description 
 class InsertPrefixToList(AbstractProcessor):
@@ -443,7 +647,7 @@ DeletePrefixFromList
         self.input_list = input_list
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
 
         if not self.key in input_data.keys():
             raise Exception(f"Key {self.key} not in input data")
@@ -485,7 +689,7 @@ class DeletePrefixFromList(AbstractProcessor):
     # end of __init__
 
     
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
         if not self.key in input_data.keys():
             raise Exception(f"Key {self.key} not in input data")
         
@@ -589,7 +793,7 @@ class ComputeDqScoresProcessor(AbstractProcessor):
         super().__init__(name)
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
         child_entity_dicts = get_direct_child_entity_docs(input_data["guid"], make_elastic_app_search_connect())
         input_data = update_dq_score_fields(input_data, child_entity_dicts)
         return input_data
@@ -613,7 +817,7 @@ class ResetDqScoresProcessor(AbstractProcessor):
         super().__init__(name)
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
         for key in input_data.keys():
             if key.startswith("dqscore"):
                 input_data[key] = 0
@@ -646,7 +850,7 @@ class InsertElementInList(AbstractProcessor):
         self.value = value
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
 
         if not self.key in input_data.keys():
             raise Exception(f"Key {self.key} not in input data")
@@ -688,7 +892,7 @@ class DeleteElementFromList(AbstractProcessor):
         self.index = index
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
 
         if not self.key in input_data.keys():
             raise Exception(f"Key {self.key} not in input data")
@@ -728,7 +932,7 @@ class InheritDerviedEntitiesFromParentEntity(AbstractProcessor):
         self.parent_entity_guid = parent_entity_guid
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
         # input_data[] = self.parent_entity_guid
         # get_document(self.parent_entity_guid, make_elastic_app_search_connect()) # This is bad practice .. think of an alternaive
         pass
@@ -753,7 +957,7 @@ class DeleteEntityOperator(AbstractProcessor):
         super().__init__(name)
     # end of __init__
 
-    def process(self, input_data:Dict) -> Dict:
+    def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
         return 
     # end of process
 

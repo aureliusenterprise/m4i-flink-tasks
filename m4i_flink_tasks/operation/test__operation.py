@@ -1,7 +1,10 @@
-from symbol import pass_stmt
-from core_operation import UpdateLocalAttributeProcessor, Sequence, WorkflowEngine, UpdateDqScoresProcessor, UpdateListEntryProcessor, InsertPrefixToList, DeletePrefixFromList, ComputeDqScoresProcessor
-from core_operation import *
 import jsonpickle
+from core_operation import *
+from core_operation import (ComputeDqScoresProcessor, DeletePrefixFromList,
+                            InsertPrefixToList, Sequence,
+                            UpdateDqScoresProcessor, UpdateListEntryProcessor,
+                            UpdateLocalAttributeProcessor, WorkflowEngine)
+
 
 def test__specify_local_update():
     op = UpdateLocalAttributeProcessor(name="update data entity with value hallo",

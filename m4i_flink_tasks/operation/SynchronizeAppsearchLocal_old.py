@@ -1,21 +1,29 @@
+import datetime
 import json
 import logging
+import uuid
+
 #from aenum import unique
 import jsonpickle
-import uuid
-import datetime
-from m4i_flink_tasks.parameters import *
-from m4i_flink_tasks import EntityMessage
-from m4i_flink_tasks.operation.core_operation import InsertPrefixToList,DeletePrefixFromList,DeleteLocalAttributeProcessor, UpdateListEntryBasedOnUniqueValueList, DeleteListEntryBasedOnUniqueValueList
-from m4i_flink_tasks.operation.core_operation import CreateLocalEntityProcessor, DeleteEntityOperator,UpdateLocalAttributeProcessor, AddElementToListProcessor
-from m4i_flink_tasks.operation.OperationEvent import OperationEvent, OperationChange
-from m4i_flink_tasks.operation.core_operation import Sequence,CreateLocalEntityProcessor,DeleteLocalAttributeProcessor
+from elastic_enterprise_search import AppSearch, EnterpriseSearch
 from m4i_atlas_core import EntityAuditAction
-from elastic_enterprise_search import EnterpriseSearch, AppSearch
+
+from m4i_flink_tasks import EntityMessage
+from m4i_flink_tasks.operation.core_operation import (
+    AddElementToListProcessor, CreateLocalEntityProcessor,
+    DeleteEntityOperator, DeleteListEntryBasedOnUniqueValueList,
+    DeleteLocalAttributeProcessor, DeletePrefixFromList, InsertPrefixToList,
+    Sequence, UpdateListEntryBasedOnUniqueValueList,
+    UpdateLocalAttributeProcessor)
+from m4i_flink_tasks.operation.OperationEvent import (OperationChange,
+                                                      OperationEvent)
+from m4i_flink_tasks.parameters import *
+from m4i_flink_tasks.synchronize_app_search import (
+    get_document, get_m4i_source_types, get_parent_child_entity_guid,
+    get_relevant_hierarchy_entity_fields, get_super_types_names,
+    is_parent_child_relationship)
 from m4i_flink_tasks.synchronize_app_search.elastic import delete_document
 from scripts.init.app_search_engine_setup import engines
-
-from m4i_flink_tasks.synchronize_app_search import get_m4i_source_types, get_super_types_names, get_relevant_hierarchy_entity_fields, is_parent_child_relationship, get_parent_child_entity_guid, get_document
 
 
 class SynchronizeAppsearchLocal(object):
