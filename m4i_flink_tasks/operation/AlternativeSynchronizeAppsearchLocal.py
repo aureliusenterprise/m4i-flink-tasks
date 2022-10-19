@@ -249,10 +249,11 @@ class SynchronizeAppsearchLocal(object):
 
         parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, deleted_relationship)
         operation_event_guid = child_entity_guid # validate whether this goes right in all cases.
-        # operation_event_guid = input_entity_guid
-
-        propagated_operation_downwards_list.append(Delete_Hierarchical_Relationship(name="delete hierarchical relationship", parent_entity_guid=parent_entity_guid, child_entity_guid=child_entity_guid, current_entity_guid=input_entity_guid, derived_guid=derived_guid))
+        propagated_operation_downwards_list.append(Delete_Hierarchical_Relationship(name="delete hierarchical relationship", parent_entity_guid=parent_entity_guid, child_entity_guid=child_entity_guid, current_entity_guid=child_entity_guid, derived_guid=derived_guid))
         
+
+        # operation_event_guid = input_entity_guid
+        # propagated_operation_downwards_list.append(Delete_Hierarchical_Relationship(name="delete hierarchical relationship", parent_entity_guid=parent_entity_guid, child_entity_guid=child_entity_guid, current_entity_guid=input_entity_guid, derived_guid=derived_guid))
         if operation_event_guid not in local_operations_dict.keys():
             local_operations_dict[operation_event_guid] = local_operation_list
         else:
@@ -332,11 +333,13 @@ class SynchronizeAppsearchLocal(object):
         input_entity = entity_message.new_value
         
         parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, inserted_relationship)
+        
         operation_event_guid = child_entity_guid
+        propagated_operation_downwards_list.append(Insert_Hierarchical_Relationship(name="insert hierarchical relationship", parent_entity_guid=parent_entity_guid,child_entity_guid=child_entity_guid, current_entity_guid=child_entity_guid))
+        
         # operation_event_guid = input_entity.guid 
-        propagated_operation_downwards_list.append(Insert_Hierarchical_Relationship(name="insert hierarchical relationship", parent_entity_guid=parent_entity_guid,child_entity_guid=child_entity_guid, current_entity_guid=input_entity.guid))
-
-
+        # propagated_operation_downwards_list.append(Insert_Hierarchical_Relationship(name="insert hierarchical relationship", parent_entity_guid=parent_entity_guid,child_entity_guid=child_entity_guid, current_entity_guid=input_entity.guid))
+        
         if operation_event_guid not in local_operations_dict.keys():
             local_operations_dict[operation_event_guid] = local_operation_list
         else:
