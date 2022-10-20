@@ -73,11 +73,11 @@ class OperationChange(DataClassJsonMixin):
 
                 for id_ in operation_dict.keys():
                     
-                    seq = Sequence(name="propagated downwards operation", steps = operation_dict[id_])
+                    seq = Sequence(name="propagated downwards operation transformed", steps = operation_dict[id_])
                     spec = jsonpickle.encode(seq) 
                     oc = OperationChange(propagate=True, propagate_down=True, operation = json.loads(spec))
 
-                    result[id_] = oc
+                    result[id_] = [oc]
             else:
                 # propagate upwards
                 propagate_ids = []
