@@ -88,9 +88,12 @@ class LocalOperationLocal(object):
 
         for change in oe.changes:
             # this transformation takes care of the transformation and the propagation.. 
-            new_changes = change.transform(entity,self.app_search,entity_guid,self.app_search_engine_name)
-
-            
+            new_changes_returned = change.transform(entity,self.app_search,entity_guid,self.app_search_engine_name)
+            for id_ in new_changes_returned.keys():
+                if id_ not in new_changes.keys():
+                    new_changes[id_] = new_changes_returned
+                else:
+                    new_changes[id_] = new_changes[id_]  + new_changes_returned            
          
             
         # write back the entity into appsearch
