@@ -148,3 +148,10 @@ def test__map_local10(store):
 	local_operation_local.open_local(config, credentials,store)
    
 	res = local_operation_local.map_local(kafka_message)
+
+def test__map_local11(store):
+	kafka_message = '{"id": "18e41391-bee8-4a1a-ad60-2dd9f3b90108", "creationTime": 1666265344133, "entityGuid": "c660893f-1a14-4940-894f-9a91391c1b39", "changes": [{"propagate": true, "propagateDown": true, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "propagated downwards operation", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.Insert_Hierarchical_Relationship", "name": "insert hierarchical relationship", "parent_entity_guid": "3a2429e1-d80f-4beb-a59f-e8f4f21b4d4b", "child_entity_guid": "c660893f-1a14-4940-894f-9a91391c1b39", "current_entity_guid": "3a2429e1-d80f-4beb-a59f-e8f4f21b4d4b"}]}}]}'	
+	local_operation_local = LocalOperationLocal()
+	local_operation_local.open_local(config, credentials,store)
+   
+	res = local_operation_local.map_local(kafka_message)

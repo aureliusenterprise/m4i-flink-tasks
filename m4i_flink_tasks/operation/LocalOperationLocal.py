@@ -86,44 +86,12 @@ class LocalOperationLocal(object):
             entity = engine.run(entity, self.app_search)
             logging.info(f"modified entity {entity}")
 
+        for change in oe.changes:
+            # this transformation takes care of the transformation and the propagation.. 
+            new_changes = change.transform(entity,self.app_search,entity_guid,self.app_search_engine_name)
+
             
-
-            if change.propagate:
-                logging.warn(f"propagate events for id {oe.id}")
-                propagate_ids = None
-                if change.propagate_down:
-                    # propagae downwards
-                    retry = 0
-                    while retry<3 and propagate_ids==None:
-                        try:
-                            
-                            propagate_ids = get_child_entity_guids(entity_guid=entity_guid,
-                                                           app_search=self.app_search,
-                                                           engine_name=self.app_search_engine_name)
-                            logging.info(f"derived ids to be propagated: {propagate_ids}")
-                        except Exception as e:
-                            logging.error("connection to app search could not be established "+str(e))
-                            self.app_search = make_elastic_app_search_connect()
-                        retry = retry+1
-                    if propagate_ids==None:
-                        raise Exception(f"Could not find document with guid {entity_guid} for event id {oe.id}")
-
-                    for id_ in propagate_ids:
-                        seq = engine.transform(entity, self.app_search)
-                        spec = jsonpickle.encode(seq) 
-                        oc = OperationChange(propagate=True, propagate_down=True, operation = json.loads(spec))
-
-                        if id_ not in new_changes.keys():
-                            new_changes[id_] = [oc]
-                        else:
-                            new_changes[id_].append(oc)     
-                else:
-                    # propagate upwards
-                    propagate_ids = []
-                    breadcrumbguid = entity['breadcrumbguid']
-                    if isinstance(breadcrumbguid,list) and len(breadcrumbguid)>0:
-                        propagate_ids = [breadcrumbguid[-1]]
-        # end of if change.propagate
+         
             
         # write back the entity into appsearch
         retry_ = 0

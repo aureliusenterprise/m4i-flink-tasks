@@ -486,8 +486,10 @@ class Delete_Hierarchical_Relationship(AbstractProcessor):
     def transform(self, input_data:Dict, app_search:AppSearch) -> Dict:
         steps = []
         if self.current_entity_guid == self.parent_entity_guid:
-            steps.append(Delete_Hierarchical_Relationship(name="delete hierarchical relationship", parent_entity_guid=self.parent_entity_guid, child_entity_guid=self.child_entity_guid, current_entity_guid=self.child_entity_guid, derived_guid = self.derived_guid))
-            return Sequence(name="trasnformed deleted hierarchical relationships", steps = steps)
+            return Delete_Hierarchical_Relationship(name="delete hierarchical relationship", parent_entity_guid=self.parent_entity_guid, child_entity_guid=self.child_entity_guid, current_entity_guid=self.child_entity_guid, derived_guid = self.derived_guid)
+            
+            # steps.append(Delete_Hierarchical_Relationship(name="delete hierarchical relationship", parent_entity_guid=self.parent_entity_guid, child_entity_guid=self.child_entity_guid, current_entity_guid=self.child_entity_guid, derived_guid = self.derived_guid))
+            # return Sequence(name="trasnformed deleted hierarchical relationships", steps = steps)
 
         elif self.current_entity_guid == self.child_entity_guid:
             steps.append(DeletePrefixFromList(name="update breadcrumb name", key="breadcrumbname", guid_key="breadcrumbguid" , first_guid_to_keep=self.child_entity_guid))
@@ -586,8 +588,10 @@ class Insert_Hierarchical_Relationship(AbstractProcessor):
     def transform(self, input_data:Dict, app_search: AppSearch) -> Dict:
         steps = []
         if self.current_entity_guid == self.parent_entity_guid:
-            steps.append(Insert_Hierarchical_Relationship(name="transformed inserted hierarchical relationships", parent_entity_guid=self.parent_entity_guid, child_entity_guid=self.child_entity_guid, current_entity_guid=self.child_entity_guid))
-            return Sequence(name="transformed inserted hierarchical relationship", steps = steps)
+            return Insert_Hierarchical_Relationship(name="transformed inserted hierarchical relationships", parent_entity_guid=self.parent_entity_guid, child_entity_guid=self.child_entity_guid, current_entity_guid=self.child_entity_guid)
+            
+            # steps.append(Insert_Hierarchical_Relationship(name="transformed inserted hierarchical relationships", parent_entity_guid=self.parent_entity_guid, child_entity_guid=self.child_entity_guid, current_entity_guid=self.child_entity_guid))
+            # return Sequence(name="transformed inserted hierarchical relationship", steps = steps)
 
         elif self.current_entity_guid == self.child_entity_guid:
             child_entity_document = input_data
