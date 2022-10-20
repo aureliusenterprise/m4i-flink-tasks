@@ -91,9 +91,9 @@ class LocalOperationLocal(object):
             new_changes_returned = change.transform(entity,self.app_search,entity_guid,self.app_search_engine_name)
             for id_ in new_changes_returned.keys():
                 if id_ not in new_changes.keys():
-                    new_changes[id_] = new_changes_returned
+                    new_changes[id_] = new_changes_returned[id_]
                 else:
-                    new_changes[id_] = new_changes[id_]  + new_changes_returned            
+                    new_changes[id_] = new_changes[id_]  + new_changes_returned  [id_]          
          
             
         # write back the entity into appsearch
