@@ -530,18 +530,44 @@ class Insert_Hierarchical_Relationship(AbstractProcessor):
         self.current_entity_guid = current_entity_guid
     # end of __init__
 
+    def entity_has_parent(self, input_data: Dict ) ->bool:
+        return input_data[parent_guid]
+
+    def get_breadcrumb_length(self, input_data: Dict) -> int:
+        return len(input_data[breadcrumb_guid])
+
+    def define_parent_entity_document(self, input_data, app_search):
+        """This function defines which proper parent of the child entity should inherit from in acse the child has several parent entities assigned to it, e.g, (data domain A -> data entity C) and  (data entity B -> data entity C)"""
+        parent_entity_document = get_document(self.parent_entity_guid, app_search)
+
+        if not self.entity_has_parent(input_data=input_data):
+            return parent_entity_document
+
+        else:
+            current_parent_entity_document = get_document(input_data[parent_guid], app_search)
+            if self.get_breadcrumb_length(current_parent_entity_document) < self.get_breadcrumb_length(parent_entity_document):
+                return  current_parent_entity_document
+            else:
+                return parent_entity_document
+
+
     def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
 
         if self.current_entity_guid == self.parent_entity_guid:
             return input_data
 
         elif self.current_entity_guid == self.child_entity_guid:
-            parent_entity_document = get_document(self.parent_entity_guid, app_search)
-           
+            # parent_entity_document = get_document(self.parent_entity_guid, app_search)
+            parent_entity_document = self.define_parent_entity_document(input_data, app_search)
+        
             
             if not parent_entity_document:
                 logging.warning(f"no parent entity found corresponding to guid {self.parent_entity_guid}")
                 raise Exception(f"no parent entity found corresponding to guid {self.parent_entity_guid}. This entity should be created, but is not created.")
+
+            if parent_entity_document[guid] == input_data[parent_guid]:
+                logging.warning(f"The current entity parent stays the parent. No action is performed.")
+                return input_data
 
             parent_m4isourcetype = parent_entity_document["m4isourcetype"]
             derived_guid, derived_type = get_relevant_hierarchy_entity_fields(parent_m4isourcetype[0])
@@ -551,7 +577,6 @@ class Insert_Hierarchical_Relationship(AbstractProcessor):
             if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
                 index = conceptual_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
                 to_be_inserted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index] 
-
 
             if derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
                 index = technical_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
