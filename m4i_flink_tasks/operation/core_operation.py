@@ -21,9 +21,11 @@ from m4i_flink_tasks.synchronize_app_search import (
     get_attribute_field_guid, get_document, get_m4i_source_types,
     get_parent_child_entity_guid, get_relevant_hierarchy_entity_fields,
     get_super_types_names, is_attribute_field_relationship,
-    is_parent_child_relationship)
+    is_parent_child_relationship, get_source_type, is_parent_relationship)
 from m4i_flink_tasks.synchronize_app_search.elastic import (delete_document,
                                                             get_document)
+from m4i_atlas_core import (AtlasChangeMessage, EntityAuditAction,
+                            get_entity_by_guid, get_keycloak_token)
 
 from ..synchronize_app_search import (get_direct_child_entity_docs,
                                       get_m4i_source_types, get_source_type,
@@ -536,6 +538,55 @@ class Insert_Hierarchical_Relationship(AbstractProcessor):
     def get_breadcrumb_length(self, input_data: Dict) -> int:
         return len(input_data[breadcrumb_guid])
 
+    
+    def get_hierarchy(self, input_data: Dict) -> Optional[str]:
+        if len(input_data[breadcrumb_type]) > 0 :
+            return input_data[breadcrumb_type][0]
+
+        else:
+            return None
+
+    
+    access_token = None
+
+    def get_access_token(self):
+        if self.access_token==None:
+            try:
+                self.access_token = get_keycloak_token()
+            except:
+                pass
+        return self.access_token
+
+    
+
+
+    async def get_all_parent_entity_guid(self, entity_guid: str):
+        result = []
+        retry = 0
+        while retry < 3:
+            try:
+                if not self.access_token:
+                    self.access_token = self.get_access_token()
+                    logging.info(f"access tokenL: {self.access_token}")
+                    await get_entity_by_guid.cache.clear()
+                    event_entity = await get_entity_by_guid(guid=entity_guid, ignore_relationships=False, access_token=self.access_token)
+            except Exception as e:
+                logging.error("failed to retrieve entity from atlas - retry")
+                logging.error(str(e))
+                self.access_token = None
+            retry = retry + 1
+        
+        entity_type = event_entity["typeName"]
+        for key, input_relationships_ in event_entity["relationshipAttributes"]:
+            for input_relationship in input_relationships_ :
+                if await is_parent_relationship(entity_type, key, input_relationship):
+                    result.append(input_relationship[guid])
+
+        return result 
+
+
+    
+
     def define_parent_entity_document(self, input_data, app_search):
         """This function defines which proper parent of the child entity should inherit from in acse the child has several parent entities assigned to it, e.g, (data domain A -> data entity C) and  (data entity B -> data entity C)"""
         parent_entity_document = get_document(self.parent_entity_guid, app_search)
@@ -544,6 +595,7 @@ class Insert_Hierarchical_Relationship(AbstractProcessor):
             return parent_entity_document
 
         else:
+
             current_parent_entity_document = get_document(input_data[parent_guid], app_search)
             if self.get_breadcrumb_length(current_parent_entity_document) < self.get_breadcrumb_length(parent_entity_document):
                 return  current_parent_entity_document
@@ -556,54 +608,64 @@ class Insert_Hierarchical_Relationship(AbstractProcessor):
         if self.current_entity_guid == self.parent_entity_guid:
             return input_data
 
+
+
         elif self.current_entity_guid == self.child_entity_guid:
-            # parent_entity_document = get_document(self.parent_entity_guid, app_search)
-            parent_entity_document = self.define_parent_entity_document(input_data, app_search)
-        
-            
-            if not parent_entity_document:
-                logging.warning(f"no parent entity found corresponding to guid {self.parent_entity_guid}")
-                raise Exception(f"no parent entity found corresponding to guid {self.parent_entity_guid}. This entity should be created, but is not created.")
+           
+            # if self.entity_has_parent(input_data=input_data):
+            #     parent_entity_document = self.define_parent_entity_document(input_data, app_search)
+            #     if parent_entity_document[guid] == input_data[parent_guid]:
+            #         logging.warning(f"The current entity parent stays the parent. No action is performed.")
+            #         return input_data
 
-            if parent_entity_document[guid] == input_data[parent_guid]:
-                logging.warning(f"The current entity parent stays the parent. No action is performed.")
+            #     return input_data
+
+            # else:
+                parent_entity_document = get_document(self.parent_entity_guid, app_search)
+            
+
+                
+                if not parent_entity_document:
+                    logging.warning(f"no parent entity found corresponding to guid {self.parent_entity_guid}")
+                    raise Exception(f"no parent entity found corresponding to guid {self.parent_entity_guid}. This entity should be created, but is not created.")
+
+            
+
+                parent_m4isourcetype = parent_entity_document["m4isourcetype"]
+                derived_guid, derived_type = get_relevant_hierarchy_entity_fields(parent_m4isourcetype[0])
+
+                # derived entity fields -> relevant for child entity
+
+                if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
+                    index = conceptual_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
+                    to_be_inserted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index] 
+
+                if derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
+                    index = technical_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
+                    to_be_inserted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index]   
+
+                for to_be_inserted_derived_guid_field in to_be_inserted_derived_guid_fields:
+
+                    input_data = (UpdateLocalAttributeProcessor(name=f"insert derived entity field {to_be_inserted_derived_guid_field}", key = to_be_inserted_derived_guid_field, value = parent_entity_document[to_be_inserted_derived_guid_field])).process(input_data, app_search)
+                    input_data = (UpdateLocalAttributeProcessor(name=f"insert derived entity field {hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field], value = parent_entity_document[hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]])).process(input_data, app_search)
+
+                # define parent guid -> relevant for child 
+                input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {parent_guid}", key=parent_guid, value=self.parent_entity_guid)).process(input_data, app_search)
+
+                input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {derived_guid}", key=derived_guid, value=parent_entity_document[derived_guid] + [self.parent_entity_guid])).process(input_data, app_search)
+                
+                input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {derived_type}", key=derived_type, value=parent_entity_document[derived_type] + [parent_entity_document[name]])).process(input_data, app_search) # Charif: Validate whether this will work for nested structures!!
+
+                # breadcrumb updates -> relevant for child entity 
+                breadcrumbguid_prefix = parent_entity_document["breadcrumbguid"] + [parent_entity_document["guid"]]
+                breadcrumbname_prefix = parent_entity_document["breadcrumbname"] + [parent_entity_document["name"]]
+                breadcrumbtype_prefix = parent_entity_document["breadcrumbtype"] + [parent_entity_document["typename"]]
+                
+                input_data = (InsertPrefixToList(name="update breadcrumb guid", key="breadcrumbguid", input_list=breadcrumbguid_prefix)).process(input_data, app_search)
+                input_data = (InsertPrefixToList(name="update breadcrumb name", key="breadcrumbname", input_list=breadcrumbname_prefix)).process(input_data, app_search)
+                input_data = (InsertPrefixToList(name="update breadcrumb type", key="breadcrumbtype", input_list=breadcrumbtype_prefix)).process(input_data, app_search)
+
                 return input_data
-
-            parent_m4isourcetype = parent_entity_document["m4isourcetype"]
-            derived_guid, derived_type = get_relevant_hierarchy_entity_fields(parent_m4isourcetype[0])
-
-            # derived entity fields -> relevant for child entity
-
-            if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
-                index = conceptual_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
-                to_be_inserted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index] 
-
-            if derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
-                index = technical_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
-                to_be_inserted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index]   
-
-            for to_be_inserted_derived_guid_field in to_be_inserted_derived_guid_fields:
-
-                input_data = (UpdateLocalAttributeProcessor(name=f"insert derived entity field {to_be_inserted_derived_guid_field}", key = to_be_inserted_derived_guid_field, value = parent_entity_document[to_be_inserted_derived_guid_field])).process(input_data, app_search)
-                input_data = (UpdateLocalAttributeProcessor(name=f"insert derived entity field {hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field], value = parent_entity_document[hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]])).process(input_data, app_search)
-
-            # define parent guid -> relevant for child 
-            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {parent_guid}", key=parent_guid, value=self.parent_entity_guid)).process(input_data, app_search)
-
-            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {derived_guid}", key=derived_guid, value=parent_entity_document[derived_guid] + [self.parent_entity_guid])).process(input_data, app_search)
-            
-            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {derived_type}", key=derived_type, value=parent_entity_document[derived_type] + [parent_entity_document[name]])).process(input_data, app_search) # Charif: Validate whether this will work for nested structures!!
-
-            # breadcrumb updates -> relevant for child entity 
-            breadcrumbguid_prefix = parent_entity_document["breadcrumbguid"] + [parent_entity_document["guid"]]
-            breadcrumbname_prefix = parent_entity_document["breadcrumbname"] + [parent_entity_document["name"]]
-            breadcrumbtype_prefix = parent_entity_document["breadcrumbtype"] + [parent_entity_document["typename"]]
-            
-            input_data = (InsertPrefixToList(name="update breadcrumb guid", key="breadcrumbguid", input_list=breadcrumbguid_prefix)).process(input_data, app_search)
-            input_data = (InsertPrefixToList(name="update breadcrumb name", key="breadcrumbname", input_list=breadcrumbname_prefix)).process(input_data, app_search)
-            input_data = (InsertPrefixToList(name="update breadcrumb type", key="breadcrumbtype", input_list=breadcrumbtype_prefix)).process(input_data, app_search)
-
-            return input_data
         
         else:
             logging.warning(f"parent entity guid: {self.parent_entity_guid}, child entity guid: {self.child_entity_guid}, current entity guid: {self.current_entity_guid}")

@@ -17,6 +17,8 @@ from .AppSearchDocument import AppSearchDocument
 from .elastic import (get_child_entity_docs, get_document, get_documents,
                       send_query)
 from .HierarchyMapping import hierarchy_mapping
+from m4i_atlas_core import (AtlasChangeMessage, EntityAuditAction,
+                            get_entity_by_guid, get_keycloak_token)
 
 ActionHandler = Callable[[Optional[Union[Entity, Relationship]]], None]
 logger = logging.getLogger(__name__)
@@ -31,7 +33,6 @@ updated_docs: Dict[str, dict] = dict()
 breadcrumb_dict: Dict[str, list] = dict()
 derived_entity_dict: Dict[str, list] = dict()
 docs_dict: Dict[str, dict] = dict()
-
 
 
 async def get_super_types(input_type: str) -> List[EntityDef]:
@@ -165,6 +166,23 @@ async def is_parent_child_relationship(input_type : str, relationship_key :str, 
     for current_entity_source_type in m4i_source_types:
         for target_entity_source_type in target_entity_source_types:
             if hierarchy_mapping.get(current_entity_source_type) == target_entity_source_type or hierarchy_mapping.get(target_entity_source_type) == current_entity_source_type:
+                return True
+
+    return False
+
+async def is_parent_relationship(input_type : str, relationship_key :str, input_relationship : dict):
+    """This function determines whether the entity belonging to the input entity type and the entity corresponding to the end point of the relationship are a parent child pair."""
+    super_types = await get_super_types_names(input_relationship["typeName"])
+    target_entity_source_types = get_m4i_source_types(super_types)
+
+    if relationship_key.startswith("parent"):
+        return True
+
+    m4i_source_types = await get_super_types_names(input_type)
+    
+    for current_entity_source_type in m4i_source_types:
+        for target_entity_source_type in target_entity_source_types:
+            if hierarchy_mapping.get(current_entity_source_type) == target_entity_source_type:
                 return True
 
     return False
@@ -911,3 +929,4 @@ def get_parent_entity_guid(input_entity : Entity):
 def get_parent_guids(input_entity_guid):
     input_entity_guid
     pass
+
