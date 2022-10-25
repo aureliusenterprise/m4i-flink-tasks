@@ -518,7 +518,7 @@ class Delete_Hierarchical_Relationship(AbstractProcessor):
             logging.warning(f"parent entity guid: {self.parent_entity_guid}, child entity guid: {self.child_entity_guid}, current entity guid: {self.current_entity_guid}")
             raise Exception(f"Unexpected state.")
         
-class Insert_Hierarchical_Relationship_In_Graph():
+class Insert_Hierarchical_Relationship_In_Graph(AbstractProcessor):
     def __init__(self,
             name:str, 
             parent_entity_guid : str,
