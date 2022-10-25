@@ -21,7 +21,7 @@ from m4i_flink_tasks.synchronize_app_search import (
     get_attribute_field_guid, get_document, get_m4i_source_types,
     get_parent_child_entity_guid, get_relevant_hierarchy_entity_fields,
     get_super_types_names, is_attribute_field_relationship,
-    is_parent_child_relationship, get_source_type, is_parent_relationship)
+    is_parent_child_relationship, get_source_type, is_parent_relationship, get_all_parent_entity_guids, define_parent_entity_document)
 from m4i_flink_tasks.synchronize_app_search.elastic import (delete_document,
                                                             get_document)
 from m4i_atlas_core import (AtlasChangeMessage, EntityAuditAction,
@@ -518,9 +518,7 @@ class Delete_Hierarchical_Relationship(AbstractProcessor):
             logging.warning(f"parent entity guid: {self.parent_entity_guid}, child entity guid: {self.child_entity_guid}, current entity guid: {self.current_entity_guid}")
             raise Exception(f"Unexpected state.")
         
-
-
-class Insert_Hierarchical_Relationship(AbstractProcessor):
+class Insert_Hierarchical_Relationship_In_Graph():
     def __init__(self,
             name:str, 
             parent_entity_guid : str,
@@ -532,36 +530,17 @@ class Insert_Hierarchical_Relationship(AbstractProcessor):
         self.current_entity_guid = current_entity_guid
     # end of __init__
 
-    def entity_has_parent(self, input_data: Dict ) ->bool:
-        return input_data[parent_guid]
-
-    def get_breadcrumb_length(self, input_data: Dict) -> int:
-        return len(input_data[breadcrumb_guid])
-
-    
-    def get_hierarchy(self, input_data: Dict) -> Optional[str]:
-        if len(input_data[breadcrumb_type]) > 0 :
-            return input_data[breadcrumb_type][0]
-
-        else:
-            return None
-
-    
     access_token = None
-
-    def get_access_token(self):
-        if self.access_token==None:
+    @classmethod
+    def get_access_token(cls):
+        if cls.access_token==None:
             try:
-                self.access_token = get_keycloak_token()
+                cls.access_token = get_keycloak_token()
             except:
                 pass
-        return self.access_token
+        return cls.access_token
 
-    
-
-
-    async def get_all_parent_entity_guid(self, entity_guid: str):
-        result = []
+    async def get_all_parent_entity_guids(self, entity_guid: str, app_search: AppSearch):
         retry = 0
         while retry < 3:
             try:
@@ -576,31 +555,94 @@ class Insert_Hierarchical_Relationship(AbstractProcessor):
                 self.access_token = None
             retry = retry + 1
         
-        entity_type = event_entity["typeName"]
-        for key, input_relationships_ in event_entity["relationshipAttributes"]:
-            for input_relationship in input_relationships_ :
-                if await is_parent_relationship(entity_type, key, input_relationship):
-                    result.append(input_relationship[guid])
-
+        result = await get_all_parent_entity_guids(event_entity, app_search)
+        
         return result 
+
+    async def process(self, input_data: Dict, app_search: AppSearch):
+
+        if self.current_entity_guid == self.parent_entity_guid:
+            return input_data
+        
+        else:
+            parent_entity_guids = await self.get_all_parent_entity_guids(input_data[guid], app_search)
+            if not parent_entity_guids:
+                logging.warning(f"no parent entity found corresponding to guid {self.parent_entity_guid}")
+                raise Exception(f"no parent entity found corresponding to guid {self.parent_entity_guid}. This entity should be created, but is not created.")
+
+
+            parent_entity_document = await define_parent_entity_document(input_data, app_search,  parent_entity_guids)
+
+            parent_m4isourcetype = parent_entity_document["m4isourcetype"]
+            derived_guid, derived_type = get_relevant_hierarchy_entity_fields(parent_m4isourcetype[0])
+
+            # derived entity fields -> relevant for child entity
+
+            if derived_guid in conceptual_hierarchical_derived_entity_guid_fields_list:
+                index = conceptual_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
+                to_be_inserted_derived_guid_fields = conceptual_hierarchical_derived_entity_guid_fields_list[:index] 
+
+            if derived_guid in technical_hierarchical_derived_entity_guid_fields_list:
+                index = technical_hierarchical_derived_entity_guid_fields_list.index(derived_guid)
+                to_be_inserted_derived_guid_fields = technical_hierarchical_derived_entity_guid_fields_list[:index]   
+
+            for to_be_inserted_derived_guid_field in to_be_inserted_derived_guid_fields:
+
+                input_data = (UpdateLocalAttributeProcessor(name=f"insert derived entity field {to_be_inserted_derived_guid_field}", key = to_be_inserted_derived_guid_field, value = parent_entity_document[to_be_inserted_derived_guid_field])).process(input_data, app_search)
+                input_data = (UpdateLocalAttributeProcessor(name=f"insert derived entity field {hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]}", key = hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field], value = parent_entity_document[hierarchical_derived_entity_fields_mapping[to_be_inserted_derived_guid_field]])).process(input_data, app_search)
+
+
+            # define parent guid -> relevant for child 
+            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {parent_guid}", key=parent_guid, value=parent_entity_document[guid])).process(input_data, app_search)
+
+            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {derived_guid}", key=derived_guid, value=parent_entity_document[derived_guid] + [parent_entity_document[guid]])).process(input_data, app_search)
+            
+            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {derived_type}", key=derived_type, value=parent_entity_document[derived_type] + [parent_entity_document[name]])).process(input_data, app_search)
+
+
+            input_breadcrumb_guid = parent_entity_document[breadcrumb_guid] + parent_entity_document[guid]
+            input_breadcrumb_name = parent_entity_document[breadcrumb_name] + parent_entity_document[name]
+            input_breadcrumb_type = parent_entity_document[breadcrumb_type] + parent_entity_document[type_name]
+
+            # define breadcrumb 
+            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {breadcrumb_guid}", key=breadcrumb_guid, value=input_breadcrumb_guid)).process(input_data, app_search)
+            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {breadcrumb_name}", key=breadcrumb_name, value=input_breadcrumb_name)).process(input_data, app_search)
+            input_data = (UpdateLocalAttributeProcessor(name=f"insert attribute {breadcrumb_type}", key=breadcrumb_type, value=input_breadcrumb_type)).process(input_data, app_search)
+
+            return input_data
+
+
+        
+
+    def transforms(self, input_data: Dict, app_search: AppSearch):
+        steps = []
+        if self.current_entity_guid == self.parent_entity_guid:
+            return Insert_Hierarchical_Relationship_In_Graph(name="transformed inserted hierarchical relationships", parent_entity_guid=self.parent_entity_guid, child_entity_guid=self.child_entity_guid, current_entity_guid=self.child_entity_guid)
+            
+        
+        else:
+            return Insert_Hierarchical_Relationship_In_Graph(name="transformed inserted hierarchical relationships", parent_entity_guid=self.parent_entity_guid, child_entity_guid=self.child_entity_guid, current_entity_guid=None) 
+
 
 
     
 
-    def define_parent_entity_document(self, input_data, app_search):
-        """This function defines which proper parent of the child entity should inherit from in acse the child has several parent entities assigned to it, e.g, (data domain A -> data entity C) and  (data entity B -> data entity C)"""
-        parent_entity_document = get_document(self.parent_entity_guid, app_search)
+ 
+        
 
-        if not self.entity_has_parent(input_data=input_data):
-            return parent_entity_document
+      
 
-        else:
-
-            current_parent_entity_document = get_document(input_data[parent_guid], app_search)
-            if self.get_breadcrumb_length(current_parent_entity_document) < self.get_breadcrumb_length(parent_entity_document):
-                return  current_parent_entity_document
-            else:
-                return parent_entity_document
+class Insert_Hierarchical_Relationship(AbstractProcessor):
+    def __init__(self,
+            name:str, 
+            parent_entity_guid : str,
+            child_entity_guid: str,
+            current_entity_guid: str):
+        super().__init__(name)
+        self.parent_entity_guid = parent_entity_guid
+        self.child_entity_guid = child_entity_guid
+        self.current_entity_guid = current_entity_guid
+    # end of __init__
 
 
     def process(self, input_data:Dict, app_search: AppSearch) -> Dict:

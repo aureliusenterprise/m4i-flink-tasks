@@ -187,6 +187,84 @@ async def is_parent_relationship(input_type : str, relationship_key :str, input_
 
     return False
 
+async def get_all_parent_entity_guids(event_entity: Dict, app_search: AppSearch):
+    result = []
+    entity_type = event_entity["typeName"]
+    for key, input_relationships_ in event_entity["relationshipAttributes"]:
+        for input_relationship in input_relationships_ :
+            if await is_parent_relationship(entity_type, key, input_relationship):
+                super_types = await get_super_types_names(input_relationship["typeName"])
+                entity_type_name = get_m4i_source_types(super_types)
+                parent_data = get_document(input_relationship[guid], app_search)
+                parent_breadcrumb_type = get_hierarchy(parent_data)
+                if not parent_breadcrumb_type:
+                    parent_breadcrumb_type = entity_type_name
+
+                result.append((input_relationship[guid], parent_breadcrumb_type))
+
+    return result 
+
+def entity_has_parent(input_data: Dict ) ->bool:
+        return input_data[parent_guid]
+
+def get_breadcrumb_length(input_data: Dict) -> int:
+    return len(input_data[breadcrumb_guid])
+
+
+def get_hierarchy(input_data: Dict) -> Optional[str]:
+    if len(input_data[breadcrumb_type]) > 0 :
+        return input_data[breadcrumb_type][0]
+
+    else:
+        return None
+
+async def define_parent_entity_document(input_data, app_search, parent_entities):
+    """This function defines which proper parent of the child entity should inherit from in acse the child has several parent entities assigned to it, e.g, (data domain A -> data entity C) and  (data entity B -> data entity C)"""
+    conceptual_hierarchy_order = [data_domain, data_entity, data_attribute]
+    technical_hierarchy_order = [system, collection, dataset, field]
+
+    if len(parent_entities) == 0:
+            raise Exception(f"Entity with guid {input_data[guid]} does not have any parent entities")
+
+    if len(parent_entities) == 1:
+        return parent_entities[0]
+
+    parent_entity_guid,  parent_entity_type_name = parent_entities[0]
+
+
+
+    for index in range(1, len(parent_entities)):
+        potential_parent_entity_guid, potential_parent_entity_type_name = parent_entities[index]
+
+        if parent_entity_type_name in conceptual_hierarchy_order and potential_parent_entity_guid in conceptual_hierarchy_order:
+
+            if conceptual_hierarchy_order.index(potential_parent_entity_guid) < conceptual_hierarchy_order.index(parent_entity_type_name):
+                parent_entity_guid = potential_parent_entity_guid
+                parent_entity_type_name = potential_parent_entity_type_name
+
+            if conceptual_hierarchy_order.index(potential_parent_entity_guid) == conceptual_hierarchy_order.index(parent_entity_type_name):
+                if get_breadcrumb_length(parent_entity_type_name) < get_breadcrumb_length(potential_parent_entity_guid):
+                    parent_entity_guid = potential_parent_entity_guid
+                    parent_entity_type_name = potential_parent_entity_type_name
+
+        elif parent_entity_type_name in technical_hierarchy_order and potential_parent_entity_guid in technical_hierarchy_order:
+            if technical_hierarchy_order.index(potential_parent_entity_guid) < technical_hierarchy_order.index(parent_entity_type_name):
+                parent_entity_guid = potential_parent_entity_guid
+                parent_entity_type_name = potential_parent_entity_type_name
+
+            if technical_hierarchy_order.index(potential_parent_entity_guid) == technical_hierarchy_order.index(parent_entity_type_name):
+                if get_breadcrumb_length(parent_entity_type_name) < get_breadcrumb_length(potential_parent_entity_guid):
+                    parent_entity_guid = potential_parent_entity_guid
+                    parent_entity_type_name = potential_parent_entity_type_name
+
+        else:
+            raise Exception(f"hierarchical relationships with unexpected types: ({potential_parent_entity_guid}, {potential_parent_entity_type_name}) and ({parent_entity_guid}, {parent_entity_type_name})")
+
+
+    return get_document(parent_entity_guid, app_search=app_search)
+
+
+
 
 async def is_attribute_field_relationship(input_type : str, input_relationship : dict):
     """This function determines whether the relationship is an attribute field relationship."""

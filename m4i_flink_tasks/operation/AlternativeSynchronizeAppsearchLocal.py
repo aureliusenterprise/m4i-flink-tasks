@@ -14,7 +14,7 @@ from m4i_flink_tasks.operation.core_operation import (
     Delete_Hierarchical_Relationship, DeleteEntityOperator,
     DeleteListEntryBasedOnUniqueValueList, DeleteLocalAttributeProcessor,
     DeletePrefixFromList, Insert_Hierarchical_Relationship, InsertPrefixToList,
-    Sequence, UpdateListEntryBasedOnUniqueValueList,
+    Sequence, UpdateListEntryBasedOnUniqueValueList, Insert_Hierarchical_Relationship_In_Graph,
     UpdateLocalAttributeProcessor)
 from m4i_flink_tasks.operation.OperationEvent import (OperationChange,
                                                       OperationEvent)
@@ -343,8 +343,8 @@ class SynchronizeAppsearchLocal(object):
         
         
         operation_event_guid = input_entity.guid 
-        propagated_operation_downwards_list.append(Insert_Hierarchical_Relationship(name="insert hierarchical relationship", parent_entity_guid=parent_entity_guid, child_entity_guid=child_entity_guid, current_entity_guid=input_entity.guid))
-        
+        propagated_operation_downwards_list.append(Insert_Hierarchical_Relationship_In_Graph(name="insert hierarchical relationship", parent_entity_guid=parent_entity_guid, child_entity_guid=child_entity_guid, current_entity_guid=input_entity.guid))
+        # propagated_operation_downwards_list.append(Insert_Hierarchical_Relationship_In_Graph(name="insert hierarchical relationship", parent_entity_guid=parent_entity_guid, child_entity_guid=child_entity_guid, current_entity_guid=input_entity.guid))
         if operation_event_guid not in local_operations_dict.keys():
             local_operations_dict[operation_event_guid] = local_operation_list
         else:

@@ -61,7 +61,8 @@ class GetEntityLocal(object):
 
             else:
                 logging.warning("message with an unexpected message operation type")
-                raise WrongOperationTypeException(f"message with an unexpected message operation type  received from Atlas with guid {kafka_notification_obj.message.entity.guid} and operation type {kafka_notification.message.operation_type}")
+                # raise WrongOperationTypeException(f"message with an unexpected message operation type  received from Atlas with guid {kafka_notification_obj.message.entity.guid} and operation type {kafka_notification_obj.message.operation_type}")
+                raise WrongOperationTypeException(f"message with an unexpected message operation type  received from Atlas")
         # END func
 
         retry = 0
