@@ -271,7 +271,7 @@ class DetermineChangeLocal():
                                 old_value = {},
                                 new_value = atlas_entity_parsed,
                                 original_event_type = atlas_kafka_notification.message.operation_type,
-                                direct_change = self.is_direct_change(atlas_entity_parsed.guid),
+                                direct_change = True,
                                 event_type = "EntityCreated",
                      
                                 inserted_attributes = list((atlas_entity_json["attributes"]).keys()),
