@@ -42,11 +42,11 @@ def get_super_types(input_type: str) -> List[EntityDef]:
     if len(entity_def.super_types) == 0:
         return [entity_def]
 
-    requests = [
+    responses = [
         get_super_types(super_type)
         for super_type in entity_def.super_types
     ]
-    responses =  asyncio.gather(*requests)
+    # responses =  asyncio.gather(*requests)
 
     super_types = [
         super_type
@@ -161,7 +161,7 @@ def is_parent_child_relationship(input_type : str, relationship_key :str, input_
         return True
 
     m4i_source_types =  get_super_types_names(input_type)
-    
+
     for current_entity_source_type in m4i_source_types:
         for target_entity_source_type in target_entity_source_types:
             if hierarchy_mapping.get(current_entity_source_type) == target_entity_source_type or hierarchy_mapping.get(target_entity_source_type) == current_entity_source_type:
@@ -292,7 +292,7 @@ def get_prefix(parent_entity_guid, first_key : str, second_key: str, app_search:
     parent_entity_document = get_document(parent_entity_guid, app_search)
     return parent_entity_document[first_key] + [parent_entity_document[second_key]]
 
-    
+
 
 def insert_prefix_to_breadcrumbs_of_child_entities(input_document : dict, child_entity_documents : List[dict]) -> List[dict]:
     """This function updates the breadcrumb of all child entity documents and returns the updated documents in case of an inserted relationship."""
@@ -390,7 +390,7 @@ def get_relevant_hierarchy_entity_fields(input_entity_data_type : str):
 
     return derived_guid, derived_type
 
-   
+
 
 
 def update_name_in_derived_entity_fields(new_input_entity_name: str, input_document : dict, app_search: AppSearch, updated_documents : List[dict]) -> List[dict]:
@@ -461,7 +461,7 @@ def update_name_in_derived_entity_fields(new_input_entity_name: str, input_docum
 
 
     retrieved_documents = []
-    # check whether documents are already updated 
+    # check whether documents are already updated
     for document_guid in copy(derived_entity_guid_list):
         if document_guid in updated_documents.keys():
             derived_entity_guid_list.remove(document_guid)
