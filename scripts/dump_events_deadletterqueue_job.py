@@ -95,13 +95,12 @@ class DumpEvents(MapFunction):
 
 
 def run_dump_events_deadletterqueue_job():
-
+    config_store.load({**config, **credentials})
     env = StreamExecutionEnvironment.get_execution_environment()
     # set_env(env)
     env.set_parallelism(1)
 
     path = os.path.dirname(__file__)
-
     # download JARs
     kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
     kafka_client = f"file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
