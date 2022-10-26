@@ -29,7 +29,7 @@ class GetEntityLocal(object):
 
     def map_local(self, kafka_notification: str):
 
-        async def get_entity(kafka_notification, access_token_):
+        def get_entity(kafka_notification, access_token_):
 
             logging.info(repr(kafka_notification))
             kafka_notification_obj = AtlasChangeMessage.from_json(kafka_notification)
@@ -40,9 +40,9 @@ class GetEntityLocal(object):
             if kafka_notification_obj.message.operation_type in [EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE]:
                 
                 entity_guid = kafka_notification_obj.message.entity.guid
-                await get_entity_by_guid.cache.clear()
-                event_entity = await get_entity_by_guid(guid=entity_guid, ignore_relationships=False, access_token=access_token_)
-                # event_entity = await get_entity_by_guid(guid=entity_guid, ignore_relationships=False)
+                asyncio.run(get_entity_by_guid.cache.clear())
+                event_entity = asyncio.run(get_entity_by_guid(guid=entity_guid, ignore_relationships=False, access_token=access_token_))
+                # event_entity =  get_entity_by_guid(guid=entity_guid, ignore_relationships=False)
                 if not event_entity:
                     raise Exception(f"No entity could be retreived from Atlas with guid {entity_guid}")
 
@@ -69,7 +69,7 @@ class GetEntityLocal(object):
             try:
                 access__token = self.get_access_token()
                 logging.info(f"access tokenL: {access__token}")
-                return asyncio.run(get_entity(kafka_notification, access__token))
+                return (get_entity(kafka_notification, access__token))
             except WrongOperationTypeException as e:
                 raise e
             except Exception as e:

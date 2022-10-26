@@ -43,19 +43,19 @@ def delete_test_engine(store):
 async def create_atlas_entites():
     access_token = get_keycloak_token()
     input_entity = Entity(type_name="m4i_data_domain", attributes=M4IAttributes(qualified_name="test_data_domain_0",unmapped_attributes={"name" : "test_data_domain"}))
-    res = await create_entities(entities = input_entity, access_token=access_token)
+    res =  create_entities(entities = input_entity, access_token=access_token)
 
 
 async def delete_atlas_entities(entity_guids = list):
     access_token = get_keycloak_token()
-    res = await delete_entity_hard(entity_guids, access_token)
+    res =  delete_entity_hard(entity_guids, access_token)
     
 
 @pytest.mark.asyncio
 async def test__get_super_types():
     type_name = "m4i_kafka_field"
 
-    super_types = await get_super_types(type_name)
+    super_types =  get_super_types(type_name)
 
     assert len(super_types) == 4
 # END test__get_super_types
@@ -66,7 +66,7 @@ async def test__create_document():
     f = open('data.json')   
     kafka_notification = json.load(f)
     input_entity = kafka_notification["newValue"]
-    app_search_document = asyncio.run(create_document(Entity.from_json(json.dumps(input_entity))))
+    app_search_document = (create_document(Entity.from_json(json.dumps(input_entity))))
     assert app_search_document == expected_app_search_document
 
 # @pytest.mark.asyncio
@@ -261,7 +261,7 @@ async def test__create_document():
 #         "email": "NULL"
 #     }'''
 #     entity_message = EntityMessage.from_json(kafka_notification)
-#     updated_docs = await handle_updated_attributes(entity_message, entity_message.new_value,entity_message.inserted_relationships, app_search, entity_doc)
+#     updated_docs =  handle_updated_attributes(entity_message, entity_message.new_value,entity_message.inserted_relationships, app_search, entity_doc)
 #     assert updated_docs["definiton"] == "This data domain contains data from the finance department (8th update)"
 
 
@@ -456,7 +456,7 @@ async def test__create_document():
 #         "email": "NULL"
 #     }'''
 #     entity_message = EntityMessage.from_json(kafka_notification)
-#     updated_docs = await handle_updated_attributes(entity_message, entity_message.new_value,entity_message.inserted_relationships, app_search, entity_doc)
+#     updated_docs =  handle_updated_attributes(entity_message, entity_message.new_value,entity_message.inserted_relationships, app_search, entity_doc)
 #     """This entity has exactyly 3 child entities lower in the hierarchy and all of these entity documents should be updated."""
 #     assert len(updated_docs) == 4
 

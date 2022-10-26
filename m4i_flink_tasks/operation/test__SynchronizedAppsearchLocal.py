@@ -2,7 +2,7 @@ import json
 
 from m4i_atlas_core import ConfigStore, Entity
 
-from m4i_flink_tasks.operation.SynchronizeAppsearchLocal_old import \
+from m4i_flink_tasks.operation.SynchronizeAppsearchLocal import \
     SynchronizeAppsearchLocal
 
 config_store = ConfigStore.get_instance()
@@ -111,7 +111,7 @@ kafka_msg3 = '''{"typeName": "m4i_data_domain", "qualifiedName": "Finance and Co
 
 import pytest
 
-from .AlternativeSynchronizeAppsearchLocal import SynchronizeAppsearchLocal
+from .SynchronizeAppsearchLocal import SynchronizeAppsearchLocal
 from .config import config
 from .credentials import credentials
 
@@ -126,7 +126,7 @@ async def test_msg1():
     asl = SynchronizeAppsearchLocal()
     asl.open_local(config, credentials, config_store)
     
-    res = await asl.map_local(msg1)
+    res =  asl.map_local(msg1)
     expected_res = '{"id": "1fc0f72a-063e-4015-8bb6-6666d40de645", "creationTime": 1663832173352, "entityGuid": "7f4eae15-9b19-41cc-9ed1-8313bf1b5536", "changes": [{"propagate": false, "propagateDown": false, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update and inser attributes", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.CreateLocalEntityProcessor", "name": "create entity with guid 7f4eae15-9b19-41cc-9ed1-8313bf1b5536 of type hdfs_path", "entity_guid": "7f4eae15-9b19-41cc-9ed1-8313bf1b5536", "entity_type": "hdfs_path"}, {"py/object": "m4i_flink_tasks.operation.core_operation.UpdateLocalAttributeProcessor", "name": "insert attribute name", "key": "name", "value": "test"}]}}]}'
     assert(res == expected_res)
     
@@ -140,7 +140,7 @@ async def test_msg2():
 	config_store.load({**config, **credentials})
 	asl = SynchronizeAppsearchLocal()
 	asl.open_local(config, credentials, config_store)
-	res = await asl.map_local(kafka_msg2)
+	res =  asl.map_local(kafka_msg2)
 	expected_res = '{"id": "9c6a3d1d-ca84-4125-a5ce-4249a9f9818d", "creationTime": 1663923390185, "entityGuid": "b6044c9a-61b3-4a02-acec-e028e1f2c951", "changes": [{"propagate": true, "propagateDown": true, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update and inser attributes", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.UpdateListEntryProcessor", "name": "update attribute name", "key": "breadcrumbname", "old_value": "Finance and Control (16:36)", "new_value": "Finance and Control"}, {"py/object": "m4i_flink_tasks.operation.core_operation.UpdateListEntryProcessor", "name": "update derived entity field {deriveddatadomain", "key": "deriveddatadomain", "old_value": "Finance and Control (16:36)", "new_value": "Finance and Control"}]}}, {"propagate": false, "propagateDown": false, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update and inser attributes", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.UpdateLocalAttributeProcessor", "name": "update attribute name", "key": "name", "value": "Finance and Control"}]}}]}'
 	expected_res = json.loads(expected_res)
 	res = json.loads(res)
@@ -159,7 +159,7 @@ async def test_msg3():
 	config_store.load({**config, **credentials})
 	asl = SynchronizeAppsearchLocal()
 	asl.open_local(config, credentials, config_store)
-	res = await asl.map_local(kafka_msg3)
+	res =  asl.map_local(kafka_msg3)
 	json.loads(res)
 
 
@@ -171,7 +171,7 @@ async def test_msg4():
 	asl = SynchronizeAppsearchLocal()
 	asl.open_local(config, credentials, config_store)
 	
-	res = await asl.map_local(kafka_msg4)
+	res =  asl.map_local(kafka_msg4)
 
 	expected_res = '{"id": "fbf78656-dcea-4bce-b849-70fec329c903", "creationTime": 1664190104173, "entityGuid": "863394a9-eb15-4673-bddd-e20b2fe7dc52", "changes": [{"propagate": true, "propagateDown": true, "operation": {"py/object": "m4i_flink_tasks.operation.core_operation.Sequence", "name": "update and inser attributes", "steps": [{"py/object": "m4i_flink_tasks.operation.core_operation.InsertPrefixToList", "name": "update breadcrumb guid", "key": "breadcrumbguid", "input_list": ["b6044c9a-61b3-4a02-acec-e028e1f2c951"]}, {"py/object": "m4i_flink_tasks.operation.core_operation.InsertPrefixToList", "name": "update breadcrumb name", "key": "breadcrumbname", "input_list": ["Finance and Control"]}, {"py/object": "m4i_flink_tasks.operation.core_operation.InsertPrefixToList", "name": "update breadcrumb type", "key": "breadcrumbtype", "input_list": ["m4i_data_domain"]}]}}]}'
 	
@@ -196,7 +196,7 @@ async def test_msg5():
 	asl = SynchronizeAppsearchLocal()
 	asl.open_local(config, credentials, config_store)
 	
-	res = await asl.map_local(kafka_msg5)
+	res =  asl.map_local(kafka_msg5)
 
 
 @pytest.mark.asyncio
@@ -207,7 +207,7 @@ async def test_msg6():
 	asl = SynchronizeAppsearchLocal()
 	asl.open_local(config, credentials, config_store)
 	
-	res = await asl.map_local(kafka_msg6)
+	res =  asl.map_local(kafka_msg6)
 
 @pytest.mark.asyncio
 async def test_msg7():
@@ -221,7 +221,7 @@ async def test_msg7():
 	asl = SynchronizeAppsearchLocal()
 	asl.open_local(config, credentials, config_store)
 	
-	res = await asl.map_local(kafka_msg7)
+	res =  asl.map_local(kafka_msg7)
 
 
 

@@ -145,7 +145,7 @@ class CreateLocalEntityProcessor(AbstractProcessor):
     # end of __init__
 
     def process(self, input_data:Dict, app_search: AppSearch) -> Dict:
-        super_types = asyncio.run( get_super_types_names(self.entity_type))
+        super_types = get_super_types_names(self.entity_type)
         app_search_document = AppSearchDocument(id=self.entity_guid,
             guid = self.entity_guid,
             sourcetype = get_source_type(super_types),

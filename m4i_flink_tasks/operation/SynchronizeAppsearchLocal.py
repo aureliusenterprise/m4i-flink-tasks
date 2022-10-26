@@ -165,7 +165,7 @@ class SynchronizeAppsearchLocal(object):
         return local_operations_dict
 
 
-    async def handle_deleted_relationships(self, entity_message: EntityMessage,  local_operations_dict : dict, propagated_operation_downwards_operations_dict : dict, propagated_operation_upwards_operations_dict: dict):
+    def handle_deleted_relationships(self, entity_message: EntityMessage,  local_operations_dict : dict, propagated_operation_downwards_operations_dict : dict, propagated_operation_upwards_operations_dict: dict):
         """This function defines all operators required to handle the deleted relationships."""
         input_entity = entity_message.new_value
         if input_entity == {}:
@@ -181,7 +181,7 @@ class SynchronizeAppsearchLocal(object):
                 # iterate over all deleted relationships
                 for deleted_relationship in deleted_relationships_:
                     # deleted_relationship = deleted_relationships_[0]
-                    super_types = await get_super_types_names(input_entity.type_name)
+                    super_types = get_super_types_names(input_entity.type_name)
                     logging.info(f"super_types {super_types}")
                     m4isourcetype = get_m4i_source_types(super_types)
                     logging.info(f"m4isourcetype {m4isourcetype}")
@@ -192,25 +192,25 @@ class SynchronizeAppsearchLocal(object):
                     logging.info(f"derived_type {derived_type}")
                 
                     # check whether the relationship is a hierarchical relationship
-                    if await is_parent_child_relationship(m4isourcetype, key, deleted_relationship):
-                        local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict = await self.handle_deleted_hierarchical_relationship(entity_message, key, deleted_relationship, derived_guid, local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict)
+                    if is_parent_child_relationship(m4isourcetype, key, deleted_relationship):
+                        local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict = self.handle_deleted_hierarchical_relationship(entity_message, key, deleted_relationship, derived_guid, local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict)
              
 
                     elif deleted_relationship["typeName"]=="m4i_person" or input_entity.type_name=="m4i_person":
                         local_operations_dict = self.delete_person_relationship(input_entity, deleted_relationship, local_operations_dict)
 
-                    elif await is_attribute_field_relationship(input_entity.type_name, deleted_relationship):
-                        local_operations_dict = await self.delete_attribute_field_relationship(input_entity, deleted_relationship, local_operations_dict)
+                    elif is_attribute_field_relationship(input_entity.type_name, deleted_relationship):
+                        local_operations_dict = self.delete_attribute_field_relationship(input_entity, deleted_relationship, local_operations_dict)
 
 
                     
 
         return local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict   
 
-    async def delete_attribute_field_relationship(self, input_entity: Entity, deleted_relationship: dict, local_operations_dict : dict):
+    def delete_attribute_field_relationship(self, input_entity: Entity, deleted_relationship: dict, local_operations_dict : dict):
         """This function determines all the operations necessary to delete a relationship from a data attribute to a field."""
 
-        data_attribute_guid, field_guid = await get_attribute_field_guid(input_entity, deleted_relationship)
+        data_attribute_guid, field_guid = get_attribute_field_guid(input_entity, deleted_relationship)
         local_operations_data_attribute = [DeleteListEntryBasedOnUniqueValueList(name="delete data field", 
                                             unique_list_key = derived_field_guid, 
                                             target_list_key = derived_field, 
@@ -234,7 +234,7 @@ class SynchronizeAppsearchLocal(object):
 
         return local_operations_dict
 
-    async def handle_deleted_hierarchical_relationship(self, entity_message: EntityMessage, key :str, deleted_relationship : list, derived_guid: str, local_operations_dict : dict, propagated_operation_downwards_operations_dict : dict, propagated_operation_upwards_operations_dict: dict):
+    def handle_deleted_hierarchical_relationship(self, entity_message: EntityMessage, key :str, deleted_relationship : list, derived_guid: str, local_operations_dict : dict, propagated_operation_downwards_operations_dict : dict, propagated_operation_upwards_operations_dict: dict):
         """This function defines all operators required to handle the deleted relationship."""
 
         local_operation_list = []
@@ -247,7 +247,7 @@ class SynchronizeAppsearchLocal(object):
 
         logging.warning("handle deleted relationships.")
 
-        parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, deleted_relationship)
+        parent_entity_guid, child_entity_guid = get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, deleted_relationship)
 
         # Charif: The following two lines are not as discussed: I put it here for testing purposes
         # operation_event_guid = child_entity_guid # validate whether this goes right in all cases.
@@ -272,7 +272,7 @@ class SynchronizeAppsearchLocal(object):
         return local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict
 
 
-    async def handle_inserted_relationships(self, entity_message: EntityMessage,  local_operations_dict : dict, propagated_operation_downwards_operations_dict : dict, propagated_operation_upwards_operations_dict: dict):
+    def handle_inserted_relationships(self, entity_message: EntityMessage,  local_operations_dict : dict, propagated_operation_downwards_operations_dict : dict, propagated_operation_upwards_operations_dict: dict):
         """This function defines all operators required to handle the inserted relationships."""
         input_entity = entity_message.new_value
         if entity_message.inserted_relationships != {}:
@@ -284,21 +284,21 @@ class SynchronizeAppsearchLocal(object):
                     continue
 
                 for inserted_relationship in inserted_relationships_ :
-                    if await is_parent_child_relationship(input_entity.type_name, key, inserted_relationship):
-                        local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict = await self.handle_inserted_hierarchical_relationship(entity_message, key, inserted_relationship, local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict)
+                    if is_parent_child_relationship(input_entity.type_name, key, inserted_relationship):
+                        local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict = self.handle_inserted_hierarchical_relationship(entity_message, key, inserted_relationship, local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict)
                     elif inserted_relationship["typeName"]=="m4i_person" or input_entity.type_name=="m4i_person":
                         local_operations_dict = self.insert_person_relationship(input_entity, inserted_relationship, local_operations_dict)
                     
-                    elif await is_attribute_field_relationship(input_entity.type_name, inserted_relationship):
-                        local_operations_dict = await self.insert_attribute_field_relationship(input_entity, inserted_relationship, local_operations_dict)
+                    elif is_attribute_field_relationship(input_entity.type_name, inserted_relationship):
+                        local_operations_dict = self.insert_attribute_field_relationship(input_entity, inserted_relationship, local_operations_dict)
 
         return local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict   
 
     
-    async def insert_attribute_field_relationship(self, input_entity: Entity, inserted_relationship: dict, local_operations_dict : dict):
+    def insert_attribute_field_relationship(self, input_entity: Entity, inserted_relationship: dict, local_operations_dict : dict):
         """This function determines all the operations necessary to delete a relationship from a data attribute to a field."""
 
-        data_attribute_guid, field_guid = await get_attribute_field_guid(input_entity, inserted_relationship)
+        data_attribute_guid, field_guid = get_attribute_field_guid(input_entity, inserted_relationship)
         if data_attribute_guid == input_entity.guid:
             data_attribute_name = input_entity.attributes.unmapped_attributes[name]
             field_name = inserted_relationship["displayText"]
@@ -327,7 +327,7 @@ class SynchronizeAppsearchLocal(object):
         return local_operations_dict
 
 
-    async def handle_inserted_hierarchical_relationship(self, entity_message: EntityMessage, key :str, inserted_relationship, local_operations_dict : dict, propagated_operation_downwards_operations_dict : dict, propagated_operation_upwards_operations_dict: dict):
+    def handle_inserted_hierarchical_relationship(self, entity_message: EntityMessage, key :str, inserted_relationship, local_operations_dict : dict, propagated_operation_downwards_operations_dict : dict, propagated_operation_upwards_operations_dict: dict):
         """This function defines all operators required to handle the inserted hierarchical relationship."""
 
         local_operation_list = []
@@ -336,7 +336,7 @@ class SynchronizeAppsearchLocal(object):
         input_entity = entity_message.new_value
         
         
-        parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, inserted_relationship)
+        parent_entity_guid, child_entity_guid = get_parent_child_entity_guid(input_entity.guid, input_entity.type_name, key, inserted_relationship)
         # Charif: The following two lines are not as discussed: I put it here for testing purposes
         # operation_event_guid = child_entity_guid
         # propagated_operation_downwards_list.append(Insert_Hierarchical_Relationship(name="insert hierarchical relationship", parent_entity_guid=parent_entity_guid,child_entity_guid=child_entity_guid, current_entity_guid=child_entity_guid))
@@ -377,7 +377,7 @@ class SynchronizeAppsearchLocal(object):
 
         return input_dict
 
-    async def map_local(self, kafka_notification: str):
+    def map_local(self, kafka_notification: str):
         result = []
 
         change_list=[]   
@@ -417,7 +417,7 @@ class SynchronizeAppsearchLocal(object):
             delete_local_operation_dict[entity_message.guid] = [(DeleteEntityOperator(name=f"delete entity with guid {entity_message.guid}"))]
 
             if entity_message.deleted_relationships != {}:
-                local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict = await self.handle_deleted_relationships( entity_message,  local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict)
+                local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict = self.handle_deleted_relationships( entity_message,  local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict)
             logging.warning("deleted relationships handled.")
 
             
@@ -478,7 +478,7 @@ class SynchronizeAppsearchLocal(object):
 
                             propagated_operation_downwards_operations_dict = self.add_list_to_dict(propagated_operation_downwards_operations_dict, operation_event_guid, UpdateListEntryBasedOnUniqueValueList(name="update breadcrumb name", unique_list_key=breadcrumb_guid, target_list_key=breadcrumb_name, unique_value=input_entity.guid, target_value= value))
 
-                            super_types = await get_super_types_names(input_entity.type_name)
+                            super_types = get_super_types_names(input_entity.type_name)
                             m4isourcetype = get_m4i_source_types(super_types)
                             if len(m4isourcetype) > 0:
                                 m4isourcetype = m4isourcetype[0]
@@ -500,13 +500,13 @@ class SynchronizeAppsearchLocal(object):
             
             # handle deleted_relationships
             if entity_message.deleted_relationships != {}:
-                local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict = await self.handle_deleted_relationships( entity_message,  local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict)
+                local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict =  self.handle_deleted_relationships( entity_message,  local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict)
                 
                 logging.warning("deleted relationships handled.")
             # end of handle delete relationships
            
             if entity_message.inserted_relationships != {}:
-                local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict  = await self.handle_inserted_relationships(entity_message,  local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict)
+                local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict  =  self.handle_inserted_relationships(entity_message,  local_operations_dict, propagated_operation_downwards_operations_dict, propagated_operation_upwards_operations_dict)
 
                 logging.warning("inserted relationships handled.")
                 # end of handling inserted relationship

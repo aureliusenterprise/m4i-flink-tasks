@@ -34,10 +34,10 @@ docs_dict: Dict[str, dict] = dict()
 
 
 
-async def get_super_types(input_type: str) -> List[EntityDef]:
+def get_super_types(input_type: str) -> List[EntityDef]:
     """This function returns all supertypes of the input type given"""
     access_token = get_keycloak_token()
-    entity_def = await get_type_def(input_type, access_token=access_token)
+    entity_def =  asyncio.run(get_type_def(input_type, access_token=access_token))
     logging.info(f"entity_def {entity_def}")
     if len(entity_def.super_types) == 0:
         return [entity_def]
@@ -46,7 +46,7 @@ async def get_super_types(input_type: str) -> List[EntityDef]:
         get_super_types(super_type)
         for super_type in entity_def.super_types
     ]
-    responses = await asyncio.gather(*requests)
+    responses =  asyncio.gather(*requests)
 
     super_types = [
         super_type
@@ -57,9 +57,9 @@ async def get_super_types(input_type: str) -> List[EntityDef]:
     return [entity_def, *super_types]
 # END get_super_types
 
-async def get_super_types_names(input_type: str) -> List[str]:
+def get_super_types_names(input_type: str) -> List[str]:
     """This function returns all supertype names of the input type given with the given type included."""
-    super_types = await get_super_types(input_type)
+    super_types =  get_super_types(input_type)
     logging.info(f"supertypenames: {super_types}")
     return  [super_type.name for super_type in super_types]
 
@@ -124,9 +124,9 @@ def get_m4i_source_types(super_types : list) -> list:
     return list(filter(lambda super_type: super_type in source_types, super_types))
 
 
-async def is_parent_child_relationship(input_document : dict, relationship_key :str, input_relationship : dict):
+def is_parent_child_relationship(input_document : dict, relationship_key :str, input_relationship : dict):
     """This function determines whether the entity belonging to the input document and the entity corresponding to the end point of the relationship are a parent child pair."""
-    super_types = await get_super_types_names(input_relationship["typeName"])
+    super_types =  get_super_types_names(input_relationship["typeName"])
     target_entity_source_types = get_m4i_source_types(super_types)
 
     if relationship_key.startswith("child") or relationship_key.startswith("parent"):
@@ -139,9 +139,9 @@ async def is_parent_child_relationship(input_document : dict, relationship_key :
 
     return False
 
-# async def is_attribute_field_relationship(doc, inserted_relationship):
+# def is_attribute_field_relationship(doc, inserted_relationship):
 #     """This function determines whether the relationship is an attribute field relationship."""
-#     super_types = await get_super_types(inserted_relationship["typeName"])
+#     super_types =  get_super_types(inserted_relationship["typeName"])
 #     target_entity_source_types = get_source_types(
 #         super_types + [inserted_relationship["typeName"]])
 #     if field in (target_entity_source_types) and data_attribute in doc["m4isourcetype"]:
@@ -152,15 +152,15 @@ async def is_parent_child_relationship(input_document : dict, relationship_key :
 
 
 
-async def is_parent_child_relationship(input_type : str, relationship_key :str, input_relationship : dict):
+def is_parent_child_relationship(input_type : str, relationship_key :str, input_relationship : dict):
     """This function determines whether the entity belonging to the input entity type and the entity corresponding to the end point of the relationship are a parent child pair."""
-    super_types = await get_super_types_names(input_relationship["typeName"])
+    super_types =  get_super_types_names(input_relationship["typeName"])
     target_entity_source_types = get_m4i_source_types(super_types)
 
     if relationship_key.startswith("child") or relationship_key.startswith("parent"):
         return True
 
-    m4i_source_types = await get_super_types_names(input_type)
+    m4i_source_types =  get_super_types_names(input_type)
     
     for current_entity_source_type in m4i_source_types:
         for target_entity_source_type in target_entity_source_types:
@@ -170,12 +170,12 @@ async def is_parent_child_relationship(input_type : str, relationship_key :str, 
     return False
 
 
-async def is_attribute_field_relationship(input_type : str, input_relationship : dict):
+def is_attribute_field_relationship(input_type : str, input_relationship : dict):
     """This function determines whether the relationship is an attribute field relationship."""
-    super_types = await get_super_types_names(input_type)
+    super_types =  get_super_types_names(input_type)
     source_entity_source_types = get_m4i_source_types(super_types)
 
-    super_types = await get_super_types_names(input_relationship["typeName"])
+    super_types =  get_super_types_names(input_relationship["typeName"])
     target_entity_source_types = get_m4i_source_types(super_types)
 
     if field in (target_entity_source_types) and data_attribute in source_entity_source_types:
@@ -192,12 +192,12 @@ async def is_attribute_field_relationship(input_type : str, input_relationship :
 #     else:
 #         return input_relationship[guid], input_document[guid]
 
-async def get_attribute_field_guid(input_entity : Entity, input_relationship : dict):
+def get_attribute_field_guid(input_entity : Entity, input_relationship : dict):
     """This function returns respectively the guid of a data attribute and a field."""
-    super_types = await get_super_types_names(input_entity.type_name)
+    super_types =  get_super_types_names(input_entity.type_name)
     source_entity_source_types = get_m4i_source_types(super_types)
 
-    super_types = await get_super_types_names(input_relationship["typeName"])
+    super_types =  get_super_types_names(input_relationship["typeName"])
     target_entity_source_types = get_m4i_source_types(super_types)
 
     if data_attribute in source_entity_source_types:
@@ -235,7 +235,7 @@ def delete_derived_entity_attribute_field_fields(data_attribute_document: dict, 
 
 # async def get_parent_child_entity_guid(input_document, key, input_relationship):
 #     """This function determines the hierarchy between the input entities and rerturns the guids ordered: parent_guid, child_guid"""
-#     super_types = await get_super_types_names(input_relationship["typeName"])
+#     super_types =  get_super_types_names(input_relationship["typeName"])
 #     target_entity_source_types = get_m4i_source_types(super_types)
 
 #     target_entity_guid = input_relationship[guid]
@@ -260,12 +260,12 @@ def delete_derived_entity_attribute_field_fields(data_attribute_document: dict, 
 #     logging.warning("The parent and child entity could not be determined of a relatonship that is classified as a parent-child relationship.")
 
 
-async def get_parent_child_entity_guid(input_entity_guid, input_entity_typename, key, input_relationship):
+def get_parent_child_entity_guid(input_entity_guid, input_entity_typename, key, input_relationship):
     """This function determines the hierarchy between the input entities and rerturns the guids ordered: parent_guid, child_guid"""
-    super_types = await get_super_types_names(input_relationship["typeName"])
+    super_types =  get_super_types_names(input_relationship["typeName"])
     target_entity_source_types = get_m4i_source_types(super_types)
 
-    super_types = await get_super_types_names(input_entity_typename)
+    super_types =  get_super_types_names(input_entity_typename)
     source_entity_source_types = get_m4i_source_types(super_types)
 
     target_entity_guid = input_relationship[guid]
@@ -647,7 +647,7 @@ def delete_governance_role_derived_entity_fields(input_document : dict, key : st
 
 
 
-async def handle_inserted_relationships(entity_message, new_input_entity, inserted_relationships, app_search, doc=None):
+def handle_inserted_relationships(entity_message, new_input_entity, inserted_relationships, app_search, doc=None):
     updated_docs: Dict[str, dict] = dict()
     engine_name = config_store.get("elastic.app.search.engine.name")
     schema_keys = sorted(
@@ -669,8 +669,8 @@ async def handle_inserted_relationships(entity_message, new_input_entity, insert
             continue
         for inserted_relationship in inserted_relationships_:
 
-            if await is_parent_child_relationship(doc, key, inserted_relationship):
-                parent_entity_guid, child_entity_guid = await get_parent_child_entity_guid(
+            if  is_parent_child_relationship(doc, key, inserted_relationship):
+                parent_entity_guid, child_entity_guid =  get_parent_child_entity_guid(
                     doc, key, inserted_relationship)
                 if input_entity_guid == child_entity_guid:
                     doc = define_breadcrumb(
@@ -700,7 +700,7 @@ async def handle_inserted_relationships(entity_message, new_input_entity, insert
                 for child_doc in child_docs:
                     updated_docs[child_doc[guid]] = child_doc
 
-            if await is_attribute_field_relationship(doc, inserted_relationship):
+            if  is_attribute_field_relationship(doc, inserted_relationship):
 
                 attribute_guid, field_guid = get_attribute_field_guid(
                     doc, inserted_relationship)
@@ -716,7 +716,7 @@ async def handle_inserted_relationships(entity_message, new_input_entity, insert
     return updated_docs
 
 
-async def handle_deleted_relationships(entity_message, input_entity, deleted_relationships, app_search, doc=None):
+def handle_deleted_relationships(entity_message, input_entity, deleted_relationships, app_search, doc=None):
     updated_docs: Dict[str, dict] = dict()
     engine_name = config_store.get("elastic.app.search.engine.name")
     schema_keys = sorted(
@@ -739,7 +739,7 @@ async def handle_deleted_relationships(entity_message, input_entity, deleted_rel
             continue
         for deleted_relationship in deleted_relationships_:
 
-            if await is_parent_child_relationship(doc, key, deleted_relationship):
+            if  is_parent_child_relationship(doc, key, deleted_relationship):
                 parent_entity_guid, child_entity_guid = get_parent_child_entity_guid(
                     doc, key, deleted_relationship)
                 if input_entity_guid == child_entity_guid:
@@ -864,14 +864,14 @@ def handle_deleted_attributes(entity_message, input_entity, deleted_attributes, 
     return updated_docs
 
 
-async def create_document(input_entity : Entity) -> dict:
+def create_document(input_entity : Entity) -> dict:
     """This function creates a new app search document corresponding tp the entity belonging to the input entity message.
     The output document has the standard fields that could be infered directly from the entity message filled in.
     The dq scores are all equal to zero"""
-    super_types = await get_super_types_names(input_entity.type_name)
+    super_types =  get_super_types_names(input_entity.type_name)
     app_search_document = AppSearchDocument(id=input_entity.guid,
         guid = input_entity.guid,
-        sourcetype = asyncio.run(get_source_type(super_types)),
+        sourcetype = get_source_type(super_types),
         referenceablequalifiedname = input_entity.attributes.unmapped_attributes["qualifiedName"],
         typename = input_entity.type_name,
         m4isourcetype = get_m4i_source_types(super_types),

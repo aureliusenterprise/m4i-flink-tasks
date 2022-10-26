@@ -28,7 +28,7 @@ from pyflink.datastream.functions import FlatMapFunction
 from m4i_flink_tasks import EntityMessage
 from m4i_flink_tasks import DeadLetterBoxMesage
 from m4i_flink_tasks.operation import UpdateLocalAttributeProcessor, OperationEvent, OperationChange, Sequence, WorkflowEngine
-from m4i_flink_tasks.operation.AlternativeSynchronizeAppsearchLocal import SynchronizeAppsearchLocal
+from m4i_flink_tasks.operation.SynchronizeAppsearchLocal import SynchronizeAppsearchLocal
 
 import time
 from kafka import KafkaProducer
@@ -71,7 +71,7 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
 
     def map(self, kafka_notification: str):        
         try:
-            res = asyncio.run(self.map_local(kafka_notification))
+            res = (self.map_local(kafka_notification))
             logging.info("received result: "+repr(res))
             return res
         except Exception as e:
