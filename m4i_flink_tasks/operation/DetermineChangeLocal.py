@@ -292,7 +292,8 @@ class DetermineChangeLocal():
             # this is not good.... need a way to handle individual states even if they have the same updatetime
             if previous_atlas_entity_json==None or not previous_atlas_entity_json:
                 logging.warning("The Kafka notification received could not be handled due to missing corresponding entity document in the audit database in elastic search.")
-                return
+                raise Exception("The Kafka notification received could not be handled due to missing corresponding entity document in the audit database in elastic search.")
+
             logging.warning("Previous entity found.")
             previous_entity_parsed = Entity.from_json(json.dumps(previous_atlas_entity_json))
      
@@ -318,7 +319,7 @@ class DetermineChangeLocal():
      
             if sum([len(inserted_attributes), len(changed_attributes), len(deleted_attributes), len(inserted_relationships), len(changed_relationships), len(deleted_relationships)])==0:
                 logging.warning("No audit could be determined.")
-                return
+                raise Exception("No audit could be determined.")
      
             result = []
      
@@ -381,5 +382,5 @@ class DetermineChangeLocal():
             return result
      
         logging.error(f"unknown event type: {atlas_kafka_notification.message.operation_type}")
-        return
+        raise Exception(f"unknown event type: {atlas_kafka_notification.message.operation_type}")
 # end of class DetermineChangeLocal
