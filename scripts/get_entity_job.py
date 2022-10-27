@@ -62,7 +62,8 @@ class GetEntity(MapFunction,GetEntityLocal):
             exc_info = sys.exc_info()
             e = (''.join(traceback.format_exception(*exc_info)))
 
-            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=repr(kafka_notification), job="get_entity", description = (e))
+            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=repr(kafka_notification), job="get_entity", description = (e),
+                                        exception_class = type(e).__name__, remark= None)
             logging.error("this goes into dead letter box: ")
             logging.error(repr(event))
 

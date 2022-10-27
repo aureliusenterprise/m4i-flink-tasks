@@ -231,7 +231,8 @@ class DetermineChange(MapFunction,DetermineChangeLocal):
             exc_info = sys.exc_info()
             e = (''.join(traceback.format_exception(*exc_info)))
 
-            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="determine_change", description = (e))
+            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="determine_change", description = (e),
+                    exception_class = type(e).__name__, remark= None)
             logging.error("this goes into dead letter box: ")
             logging.error(repr(event))
 

@@ -10,6 +10,27 @@ from m4i_atlas_core import Entity, AtlasChangeMessage, EntityAuditAction
 from m4i_atlas_core import get_keycloak_token
 from m4i_atlas_core import get_entity_audit
 
+class AtlasAuditRetrieveException(Exception):
+    pass
+# end of class AtlasAuditRetrieveException
+
+class ElasticPreviouseStateRetrieveException(Exception):
+    pass
+# end of class ElasticPreviouseStateRetrieveException
+
+class EventParsingException2(Exception):
+    pass
+# end of class EventParsingException2
+
+class NoChangeDetectedException(Exception):
+    pass
+# end of class NoChangeDetectedException
+
+class UnknownEventTypeException(Exception):
+    pass
+# end of class UnknownEventTypeException
+
+
 
 class DetermineChangeLocal():
     elastic_search_index = None
@@ -73,12 +94,12 @@ class DetermineChangeLocal():
                 logging.error(str(e))
                 self.access_token = None
                 retry = retry+1
-        raise Exception(f"Failed to lookup entity audit for entity guid {entity_guid}")
+        raise AtlasAuditRetrieveException(f"Failed to lookup entity audit for entity guid {entity_guid}")
 
     def get_added_relationships(self, current_entity, previous_entity):
         comparison = current_entity.iloc[0].eq(previous_entity.iloc[0])
         changed_attributes = comparison[comparison==False].index.to_list()
-    
+
         result  = dict()
         for changed_attribute in copy(changed_attributes):
             element_list = []
@@ -88,18 +109,18 @@ class DetermineChangeLocal():
                     if element not in (previous_entity[changed_attribute].iloc[0]):
                         list_is_idential = False
                         element_list.append(element)
-    
+
                 if list_is_idential:
                     changed_attributes.remove(changed_attribute)
                 else:
                     result[changed_attribute] = element_list
-    
+
         return (result)
-    
+
     def get_deleted_relationships(self,current_entity, previous_entity):
         comparison = current_entity.iloc[0].eq(previous_entity.iloc[0])
         changed_attributes = comparison[comparison==False].index.to_list()
-    
+
         result  = dict()
         for changed_attribute in copy(changed_attributes):
             element_list = []
@@ -109,31 +130,31 @@ class DetermineChangeLocal():
                     if element not in (current_entity[changed_attribute].iloc[0]):
                         list_is_idential = False
                         element_list.append(element)
-    
+
                 if list_is_idential:
                     changed_attributes.remove(changed_attribute)
                 else:
                     result[changed_attribute] = element_list
-    
+
         return  (result)
 
     def get_non_matching_fields(self, current_entity, previous_entity):
         comparison = current_entity.iloc[0].eq(previous_entity.iloc[0])
         changed_attributes = comparison[comparison==False].index.to_list()
-    
+
         for changed_attribute in copy(changed_attributes):
             if type(current_entity[changed_attribute].iloc[0])==list and type(previous_entity[changed_attribute].iloc[0])==list:
-    
+
                 list_is_idential = True
                 for element in (current_entity[changed_attribute].iloc[0]):
                     if element not in ((previous_entity[changed_attribute].iloc[0])):
                         list_is_idential = False
-    
+
                 if list_is_idential:
                     changed_attributes.remove(changed_attribute)
-    
+
         return set(changed_attributes)
-    
+
     def get_changed_fields(self,current_entity_df, previous_entity_df):
         result = []
         non_matching_fields = self.get_non_matching_fields(current_entity_df, previous_entity_df)
@@ -141,7 +162,7 @@ class DetermineChangeLocal():
             if (previous_entity_df[field].iloc[0] != [] or previous_entity_df[field].iloc[0] != None) and (current_entity_df[field].iloc[0] != [] or current_entity_df[field].iloc[0]  != None):
                 result.append(field)
         return list(set(result))
-    
+
     def get_added_fields(self,current_entity_df, previous_entity_df):
         result = []
         non_matching_fields = self.get_non_matching_fields(current_entity_df, previous_entity_df)
@@ -149,7 +170,7 @@ class DetermineChangeLocal():
             if (previous_entity_df[field].iloc[0]  == [] or previous_entity_df[field].iloc[0]  == None) and (current_entity_df[field].iloc[0]  != [] or current_entity_df[field].iloc[0]  != None):
                 result.append(field)
         return list(set(result))
-    
+
     def get_deleted_fields(self,current_entity_df, previous_entity_df):
         result = []
         non_matching_fields = self.get_non_matching_fields(current_entity_df, previous_entity_df)
@@ -157,11 +178,11 @@ class DetermineChangeLocal():
             if (previous_entity_df[field].iloc[0]  != [] or previous_entity_df[field].iloc[0]  != None) and (current_entity_df[field].iloc[0]  == [] or current_entity_df[field].iloc[0]  == None):
                 result.append(field)
         return list(set(result))
-        
 
-     
+
+
     def get_previous_atlas_entity(self, entity_guid, msg_creation_time):
-        
+
         query = {
             "bool": {
                 "filter": [
@@ -203,26 +224,27 @@ class DetermineChangeLocal():
                 except:
                     pass
             retry = retry + 1
+        raise ElasticPreviouseStateRetrieveException(f"Failed to retrieve perviouse state for guid {entity_guid}")
 
     def map_local(self, kafka_notification: str):
         logging.warning(repr(kafka_notification))
 
         kafka_notification_json = json.loads(kafka_notification)
         msg_creation_time = kafka_notification_json.get("kafka_notification").get("msgCreationTime")
-     
+
         	    # check whether notification or entity is missing
         if not kafka_notification_json.get("kafka_notification") or (not kafka_notification_json.get("atlas_entity") and kafka_notification_json.get("atlas_entity")!={}):
-            
+
             logging.warning("The Kafka notification received could not be handled due to unexpected notification structure.")
             guid = kafka_notification_json.get("guid","not available")
-            raise Exception(f"event with GUID {guid} does not have a kafka notification and or an atlas entity attribute.")
-     
+            raise EventParsingException2(f"event with GUID {guid} does not have a kafka notification and or an atlas entity attribute.")
+
         atlas_kafka_notification_json = kafka_notification_json["kafka_notification"]
         atlas_kafka_notification = AtlasChangeMessage.from_json(json.dumps(atlas_kafka_notification_json))
-     
+
         atlas_entity_json = kafka_notification_json["atlas_entity"]
         atlas_entity_parsed = Entity.from_json(json.dumps(atlas_entity_json))
-     
+
         	# DELETE operation
         if atlas_kafka_notification.message.operation_type == EntityAuditAction.ENTITY_DELETE:
             logging.warning("The Kafka notification received belongs to an entity delete audit.")
@@ -231,10 +253,10 @@ class DetermineChangeLocal():
 
             atlas_entity_json = self.get_previous_atlas_entity(entity_guid, msg_creation_time)
             atlas_entity_parsed = Entity.from_json(json.dumps(atlas_entity_json))
-     
+
             atlas_entity_json["attributes"] = self.delete_list_values_from_dict(atlas_entity_json["attributes"])
             atlas_entity_json["attributes"] = self.delete_null_values_from_dict(atlas_entity_json["attributes"])
-     
+
             atlas_entity_change_message = EntityMessage(
                                 type_name = atlas_entity_parsed.type_name,
                                 qualified_name = atlas_entity_parsed.attributes.unmapped_attributes["qualifiedName"],
@@ -245,24 +267,24 @@ class DetermineChangeLocal():
                                 original_event_type = atlas_kafka_notification.message.operation_type,
                                 direct_change = True,
                                 event_type = "EntityDeleted",
-                     
+
                                 inserted_attributes = [],
                                 changed_attributes = [],
                                 deleted_attributes = list((atlas_entity_json["attributes"]).keys()),
-                     
+
                                 inserted_relationships = {},
                                 changed_relationships = {},
                                 deleted_relationships = (atlas_entity_json["relationshipAttributes"])
-                     
+
                             )
             return [json.dumps(json.loads(atlas_entity_change_message.to_json()))]
-     
+
         # CREATE operation
         if atlas_kafka_notification.message.operation_type == EntityAuditAction.ENTITY_CREATE:
             logging.warning("The Kafka notification received belongs to an entity create audit.")
             atlas_entity_json["attributes"] = self.delete_list_values_from_dict(atlas_entity_json["attributes"])
             atlas_entity_json["attributes"] = self.delete_null_values_from_dict(atlas_entity_json["attributes"])
-     
+
             atlas_entity_change_message = EntityMessage(
                                 type_name = atlas_entity_parsed.type_name,
                                 qualified_name = atlas_entity_parsed.attributes.unmapped_attributes["qualifiedName"],
@@ -273,18 +295,18 @@ class DetermineChangeLocal():
                                 original_event_type = atlas_kafka_notification.message.operation_type,
                                 direct_change = True,
                                 event_type = "EntityCreated",
-                     
+
                                 inserted_attributes = list((atlas_entity_json["attributes"]).keys()),
                                 changed_attributes = [],
                                 deleted_attributes = [],
-                     
+
                                 inserted_relationships = (atlas_entity_json["relationshipAttributes"]),
                                 changed_relationships = {},
                                 deleted_relationships = {}
-                     
+
                             )
             return [json.dumps(json.loads(atlas_entity_change_message.to_json()))]
-     
+
         # UPDATE operation
         if atlas_kafka_notification.message.operation_type == EntityAuditAction.ENTITY_UPDATE:
             logging.warning("The Kafka notification received belongs to an entity update audit.")
@@ -296,36 +318,36 @@ class DetermineChangeLocal():
 
             logging.warning("Previous entity found.")
             previous_entity_parsed = Entity.from_json(json.dumps(previous_atlas_entity_json))
-     
+
             previous_atlas_entity_json["attributes"] = self.delete_list_values_from_dict(previous_atlas_entity_json["attributes"])
             atlas_entity_json["attributes"] = self.delete_list_values_from_dict(atlas_entity_json["attributes"])
-     
+
             previous_entity_attributes = self.get_attributes_df(previous_atlas_entity_json, "attributes")
             current_entity_attributes = self.get_attributes_df(atlas_entity_json, "attributes")
-     
+
             previous_entity_relationships = self.get_attributes_df(previous_atlas_entity_json, "relationshipAttributes")
             current_entity_relationships = self.get_attributes_df(atlas_entity_json, "relationshipAttributes")
-     
+
             inserted_attributes = self.get_added_fields(current_entity_attributes, previous_entity_attributes)
             changed_attributes = self.get_changed_fields(current_entity_attributes, previous_entity_attributes)
             deleted_attributes = self.get_deleted_fields(current_entity_attributes, previous_entity_attributes)
-     
-     
+
+
             inserted_relationships = self.get_added_relationships(current_entity_relationships, previous_entity_relationships)
             changed_relationships = {}
             deleted_relationships = self.get_deleted_relationships(current_entity_relationships, previous_entity_relationships)
-     
+
             logging.warning("Determine audit category.")
-     
+
             if sum([len(inserted_attributes), len(changed_attributes), len(deleted_attributes), len(inserted_relationships), len(changed_relationships), len(deleted_relationships)])==0:
-                logging.warning("No audit could be determined.")
-                raise Exception("No audit could be determined.")
-     
+                logging.warning("No changes have been detected.")
+                raise NoChangeDetectedException("No audit could be determined.")
+
             result = []
-     
+
             if sum([len(inserted_attributes), len(changed_attributes), len(deleted_attributes)])>0:
                 event_type = "EntityAttributeAudit"
-     
+
                 atlas_entity_change_message = EntityMessage(
                                             type_name = atlas_entity_parsed.type_name,
                                             qualified_name = atlas_entity_parsed.attributes.unmapped_attributes["qualifiedName"],
@@ -336,23 +358,23 @@ class DetermineChangeLocal():
                                             original_event_type = atlas_kafka_notification.message.operation_type,
                                             direct_change = self.is_direct_change(atlas_entity_parsed.guid),
                                             event_type = event_type,
-                                 
+
                                             inserted_attributes = inserted_attributes,
                                             changed_attributes = changed_attributes,
                                             deleted_attributes = deleted_attributes,
-                                 
+
                                             inserted_relationships = {},
                                             changed_relationships = {},
                                             deleted_relationships = {}
-                                 
+
                                             )
-     
+
                 result.append(json.dumps(json.loads(atlas_entity_change_message.to_json())))
-     
-     
+
+
             if sum([len(inserted_relationships), len(changed_relationships), len(deleted_relationships)])>0:
                 event_type = "EntityRelationshipAudit"
-     
+
                 atlas_entity_change_message = EntityMessage(
                 type_name = atlas_entity_parsed.type_name,
                 qualified_name = atlas_entity_parsed.attributes.unmapped_attributes["qualifiedName"],
@@ -363,24 +385,24 @@ class DetermineChangeLocal():
                 original_event_type = atlas_kafka_notification.message.operation_type,
                 direct_change = self.is_direct_change(atlas_entity_parsed.guid),
                 event_type = event_type,
-     
+
                 inserted_attributes = [],
                 changed_attributes = [],
                 deleted_attributes = [],
-     
+
                 inserted_relationships = inserted_relationships,
                 changed_relationships = changed_relationships,
                 deleted_relationships = deleted_relationships
-     
+
                 )
-     
+
                 result.append(json.dumps(json.loads(atlas_entity_change_message.to_json())))
-     
-     
+
+
             logging.warning("audit catergory determined.")
-     
+
             return result
-     
+
         logging.error(f"unknown event type: {atlas_kafka_notification.message.operation_type}")
-        raise Exception(f"unknown event type: {atlas_kafka_notification.message.operation_type}")
+        raise UnknownEventTypeException(f"unknown event type: {atlas_kafka_notification.message.operation_type}")
 # end of class DetermineChangeLocal

@@ -16,6 +16,10 @@ class WrongOperationTypeException(Exception):
     pass
 # end of class WrongOperationTypeException
 
+class SourceEntityTypeException(Exception):
+    pass
+# end of class SourceEntityTypeException
+
 class GetEntityLocal(object):
     access_token = None
 
@@ -37,14 +41,11 @@ class GetEntityLocal(object):
 
             msg_creation_time = kafka_notification_obj.msg_creation_time
 
-            
+            if kafka_notification_obj.message.entity.type_name == 'm4i_source':
+                    logging.info("This is an entity of type m4i_source ")
+                    raise SourceEntityTypeException(f"This is an entity of type m4i_source")
 
             if kafka_notification_obj.message.operation_type in [EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE]:
-            
-                if kafka_notification_obj.message.entity.type_name == 'm4i_source':
-                    logging.info("This is an entity of type m4i_source ")
-                    raise Exception(f"This is an entity of type m4i_source")
-
                 entity_guid = kafka_notification_obj.message.entity.guid
                 asyncio.run(get_entity_by_guid.cache.clear())
                 event_entity = asyncio.run(get_entity_by_guid(guid=entity_guid, ignore_relationships=False, access_token=access_token_))
@@ -77,6 +78,8 @@ class GetEntityLocal(object):
                 logging.info(f"access tokenL: {access__token}")
                 return (get_entity(kafka_notification, access__token))
             except WrongOperationTypeException as e:
+                raise e
+            except SourceEntityTypeException as e:
                 raise e
             except Exception as e:
                 logging.error("failed to retrieve entity from atlas - retry")

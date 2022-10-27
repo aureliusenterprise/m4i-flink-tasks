@@ -68,9 +68,9 @@ m4i_store = m4i_ConfigStore.get_instance()
 #                     retry = retry+1
 #             if entity==None:
 #                 raise Exception(f"Could not find document with guid {entity_guid} for event id {oe.id}")
-            
+
 #             # execute the different changes
-#             new_event = OperationEvent(id=str(uuid.uuid4()), 
+#             new_event = OperationEvent(id=str(uuid.uuid4()),
 #                                        creation_time=int(datetime.now().timestamp()*1000),
 #                                        entity_guid="",
 #                                        changes=[])
@@ -95,7 +95,7 @@ m4i_store = m4i_ConfigStore.get_instance()
 #                                 self.app_search = make_elastic_app_search_connect()
 #                                 retry = retry+1
 #                         if propagate_ids==None:
-#                             raise Exception(f"Could not find document with guid {entity_guid} for event id {oe.id}")     
+#                             raise Exception(f"Could not find document with guid {entity_guid} for event id {oe.id}")
 #                     else:
 #                         # propagate upwards
 #                         propagate_ids = []
@@ -111,15 +111,15 @@ m4i_store = m4i_ConfigStore.get_instance()
 #                 operation = change.operation
 #                 engine = WorkflowEngine(operation)
 #                 entity = engine.run(entity)
-            
+
 #             # calculate the resulting events to be propagated
 #             for id_ in new_changes.keys():
-#                 op = OperationEvent(id=str(uuid.uuid4()), 
+#                 op = OperationEvent(id=str(uuid.uuid4()),
 #                                creation_time=int(datetime.now().timestamp()*1000),
 #                                entity_guid=id_,
 #                                changes=new_changes[id_])
 #                 events.append(op)
-                
+
 #             return events
 
 #         except Exception as e:
@@ -156,7 +156,7 @@ class LocalOperation(MapFunction, LocalOperationLocal):
         self.open_local(config, credentials, m4i_store)
         self.bootstrap_server_hostname, self.bootstrap_server_port =  m4i_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
         self.dead_lettter_box_topic = m4i_store.get("exception.events.topic.name")
-    
+
 
     def get_producer(self):
         if self.producer == None:
@@ -169,13 +169,13 @@ class LocalOperation(MapFunction, LocalOperationLocal):
                             linger_ms = 1000
                         )
         return self.producer
-            
-    
+
+
     def map(self, kafka_notification: str):
         try:
             res = self.map_local(kafka_notification)
             return res
-            
+
         except Exception as e:
             logging.error("The Kafka notification received could not be handled.")
 
@@ -183,13 +183,14 @@ class LocalOperation(MapFunction, LocalOperationLocal):
             e = (''.join(traceback.format_exception(*exc_info)))
             logging.error(repr(e))
 
-            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="local_operation", description = (e))
+            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="local_operation", description = (e),
+                                        exception_class = type(e).__name__, remark= None)
             retry = 0
             while retry<3:
                 try:
                     producer_ = self.get_producer()
                     producer_.send(topic = self.dead_lettter_box_topic, value=event.to_json())
-                    return 
+                    return
                 except Exception as e:
                     logging.error(f"Problems sending a deadletter message : {str(e)}")
                     retry = retry+1
@@ -252,7 +253,7 @@ def local_operation():
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_local_operation_job2"},
         serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink")
 
-    
+
     # bootstrap_server_hostname, bootstrap_server_port =  self.m4i_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
     # producer = KafkaProducer(
     #     bootstrap_servers=  f"{bootstrap_server_hostname}:{bootstrap_server_port}",
@@ -264,7 +265,7 @@ def local_operation():
     # )
     # dead_lettter_box_topic = self.m4i_store.get("exception.events.topic.name")
     # producer.send(topic = dead_lettter_box_topic, value=event.to_json())
-            
+
     env.execute("local_operation")
 
 

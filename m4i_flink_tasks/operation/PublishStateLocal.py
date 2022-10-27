@@ -8,6 +8,13 @@ from m4i_atlas_core import Entity
 #from m4i_atlas_core import AtlasChangeMessage, EntityAuditAction, get_entity_by_guid, get_keycloak_token
 from m4i_flink_tasks.synchronize_app_search import make_elastic_connection
 
+class EventParsingException(Exception):
+    pass
+# end of class EventParsingException
+
+class ElasticPersistingException(Exception):
+    pass
+# end of class ElasticPersistingException
 
 class PublishStateLocal(object):
     elastic = None
@@ -28,12 +35,12 @@ class PublishStateLocal(object):
         kafka_notification_json = json.loads(kafka_notification)
 
         if "kafka_notification" not in kafka_notification_json.keys() or "atlas_entity" not in kafka_notification_json.keys():
-            raise Exception("Kafka event does not match the predefined structure: {\"kafka_notification\" : {}, \"atlas_entity\" : {}}")
+            raise EventParsingException("Kafka event does not match the predefined structure: {\"kafka_notification\" : {}, \"atlas_entity\" : {}}")
 
         if not kafka_notification_json.get("kafka_notification"):
             logging.warning(kafka_notification)
             logging.warning("No kafka notification.")
-            raise Exception("Original Kafka notification which is produced by Atlas is missing")
+            raise EventParsingException("Original Kafka notification which is produced by Atlas is missing")
 
         if not kafka_notification_json.get("atlas_entity"):
             logging.warning(kafka_notification)
@@ -50,7 +57,7 @@ class PublishStateLocal(object):
 
         # turns out update_time for an import of data into atlas is the same for all events. Does not work for us!
         # doc_id = "{}_{}".format(atlas_entity.guid, atlas_entity.update_time)
-        
+
         doc_id_ = "{}_{}".format(atlas_entity.guid, msg_creation_time)
         doc = json.loads(json.dumps({"msgCreationTime": msg_creation_time, "body": atlas_entity_json }))
 
@@ -75,6 +82,9 @@ class PublishStateLocal(object):
                     pass
             retry = retry + 1
         # elastic.close()
+        if not success:
+            raise ElasticPersistingException(f"Storing state with doc_id {doc_id_} failed 3 times")
+
         return kafka_notification
 
 # end of class PublishStateLocal

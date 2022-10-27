@@ -12,13 +12,17 @@ from m4i_flink_tasks.operation.OperationEvent import (OperationChange,
 from m4i_flink_tasks.synchronize_app_search.elastic import (
     get_child_entity_guids, make_elastic_app_search_connect)
 
-#from .parameters import *
-#from m4i_flink_tasks.synchronize_app_search import get_super_types,get_source_type,
+class MissingEntityGuidException(Exception):
+    pass
+# end of class MissingEntityGuidException
 
-#from m4i_flink_tasks import DeadLetterBoxMesage
-#import time
-#from kafka import KafkaProducer
-#import traceback
+class AppSearchDocumentNotFoundException(Exception):
+    pass
+# end of class AppSearchDocumentNotFoundException
+
+class AppSearchUpdateStorageException(Exception):
+    pass
+# end of class AppSearchUpdateStorageException
 
 
 class LocalOperationLocal(object):
@@ -41,7 +45,7 @@ class LocalOperationLocal(object):
         oe = OperationEvent.from_json(kafka_notification)
         entity_guid = oe.entity_guid
         if entity_guid==None or len(entity_guid)==0:
-            raise Exception(f"Missing entity guid in local operation event with id {oe.id} at {oe.creation_time}")
+            raise MissingEntityGuidException(f"Missing entity guid in local operation event with id {oe.id} at {oe.creation_time}")
         # retrieve the app search document
         retry = 0
         entity = None
@@ -53,7 +57,7 @@ class LocalOperationLocal(object):
                                             engine_name=self.engine_name,
                                             document_ids=[entity_guid]))
                 # doc = list(app_search.get_documents(engine_name=engine_name,document_ids=[entity_guid]))
- 
+
                 # keep it on the dictionary and not the object, beasue then it is applicabel to variouse app search documents
                 # and the sync elastic job is independent of a specific data model
                 logging.info("received documents")
@@ -69,9 +73,9 @@ class LocalOperationLocal(object):
                 self.app_search = make_elastic_app_search_connect()
             retry = retry+1
         logging.info(f"retrieved entity {entity}")
-        # if not success_retrieve:
-        #     raise Exception(f"Could not find document with guid {entity_guid} for event id {oe.id}")
-        
+        if not success_retrieve:
+            raise AppSearchDocumentNotFoundException(f"Could not find document with guid {entity_guid} for event id {oe.id}")
+
         # execute the different changes
         new_changes={}
         errors = []
@@ -87,15 +91,15 @@ class LocalOperationLocal(object):
             logging.info(f"modified entity {entity}")
 
         for change in oe.changes:
-            # this transformation takes care of the transformation and the propagation.. 
+            # this transformation takes care of the transformation and the propagation..
             new_changes_returned = change.transform(entity,self.app_search,entity_guid,self.app_search_engine_name)
             for id_ in new_changes_returned.keys():
                 if id_ not in new_changes.keys():
                     new_changes[id_] = new_changes_returned[id_]
                 else:
-                    new_changes[id_] = new_changes[id_]  + new_changes_returned  [id_]          
-         
-            
+                    new_changes[id_] = new_changes[id_]  + new_changes_returned  [id_]
+
+
         # write back the entity into appsearch
         retry_ = 0
         success_update = False
@@ -133,16 +137,16 @@ class LocalOperationLocal(object):
             # calculate the resulting events to be propagated
             logging.info("calculate the resulting events to be propagated")
             for id_ in new_changes.keys():
-                op = OperationEvent(id=str(uuid.uuid4()), 
+                op = OperationEvent(id=str(uuid.uuid4()),
                                creation_time=int(datetime.datetime.now().timestamp()*1000),
                                entity_guid=id_,
                                changes=new_changes[id_])
                 logging.warn(f"propagated event for id {id_}: {op}")
                 events.append(json.dumps(json.loads(op.to_json())))
-        else: 
-            raise Exception(f"Retrieving the documents from app search failed for entity_guid {entity_guid} with the following errors: {repr(errors)}")                
-        
-        
+        else:
+            raise AppSearchUpdateStorageException(f"Upodating the documents from app search failed for entity_guid {entity_guid} with the following errors: {repr(errors)}")
+
+
         logging.info("return events:")
         logging.info(events)
         return events

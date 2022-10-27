@@ -67,9 +67,9 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
                     linger_ms = 1000
                 )
         return self.producer
-    
 
-    def map(self, kafka_notification: str):        
+
+    def map(self, kafka_notification: str):
         try:
             res = (self.map_local(kafka_notification))
             logging.info("received result: "+repr(res))
@@ -81,7 +81,8 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
             exc_info = sys.exc_info()
             e = (''.join(traceback.format_exception(*exc_info)))
 
-            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="synchronize_appsearch", description = (e))
+            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="synchronize_appsearch", description = (e),
+                                        exception_class = type(e).__name__, remark= None)
             logging.error("this goes into dead letter box: ")
             logging.error(repr(event))
 
@@ -94,7 +95,7 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
                 except Exception as e2:
                     logging.error("error dumping data into deadletter topic "+repr(e2))
                 retry = retry + 1
-                    
+
 
     # def open(self, runtime_context: RuntimeContext):
     #     global app_search
@@ -104,7 +105,7 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
 
 
     # def map(self, kafka_notification: str):
-    #     try:    
+    #     try:
 
     #         result = None
 
@@ -113,7 +114,7 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
     #         entity_message = EntityMessage.from_json((kafka_notification))
 
     #         input_entity = entity_message.new_value
-            
+
 
 
     #         # Charif: This if-statement does not match our new approach..
@@ -136,24 +137,24 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
     #                 if update_attribute == "name":
     #                     pass
     #             seq = Sequence(name="update attribute", steps = operation_list)
-    #             spec = jsonpickle.encode(seq) 
+    #             spec = jsonpickle.encode(seq)
 
     #             oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
     #             logging.warning("Operation Change has been created")
 
-    #             oe = OperationEvent(id=str(uuid.uuid4()), 
+    #             oe = OperationEvent(id=str(uuid.uuid4()),
     #                                 creation_time=int(datetime.datetime.now().timestamp()*1000),
     #                                 entity_guid=input_entity.guid,
     #                                 changes=[oc])
     #             logging.warning("Operation event has been created")
-                
+
     #             result = json.dumps(json.loads(oe.to_json()))
 
     #         return result
 
 
 
-       
+
 
 
     #     except Exception as e:
