@@ -25,3 +25,9 @@ def test__get_entity():
     cl = GetEntityLocal()
     res= cl.map_local(msg)
     cl.get_access_token()
+
+def test__get_relationship():
+    msg =  '{"version":{"version":"1.0.0","versionParts":[1]},"msgCompressionKind":"NONE","msgSplitIdx":1,"msgSplitCount":1,"msgSourceIP":"10.244.2.147","msgCreatedBy":"","msgCreationTime":1666818667739,"spooled":false,"message":{"type":"ENTITY_NOTIFICATION_V2","relationship":{"typeName":"m4i_data_attribute_business_owner_assignment","guid":"5fe56ca3-9dd9-44f8-bd5d-3effd14a1bc8","status":"ACTIVE","propagateTags":"NONE","label":"r:m4i_data_attribute_business_owner_assignment","end1":{"guid":"45e581d9-452c-4d48-98e0-452b7a109efb","typeName":"m4i_person"},"end2":{"guid":"b4bf70d3-1121-408e-bcf9-39e96a13d980","typeName":"m4i_data_attribute","uniqueAttributes":{"qualifiedName":"personnel-and-organization--personnel--internal--functional-organization"}}},"operationType":"RELATIONSHIP_CREATE","eventTime":1666818547291}}'
+    cl = GetEntityLocal()
+    res= cl.map_local(msg)
+    cl.get_access_token()
