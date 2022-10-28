@@ -68,7 +68,7 @@ class DumpEventsSynchronizeAppSearch(MapFunction):
             success = False
             while not success and retry<3:
                 try:
-                    res = self.elastic.index(index=self.elastic_search_index, id = self.get_doc_id(), document=repr(kafka_notification_json))
+                    res = self.elastic.index(index=self.elastic_search_index, id = self.get_doc_id(), document='"'+kafka_notification+'"')
                     if res['result'] in ['updated','created','deleted']:
                         success = True
                         logging.warning("successfully submitted the document")

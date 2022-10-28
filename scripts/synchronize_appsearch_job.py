@@ -97,91 +97,11 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
                 retry = retry + 1
 
 
-    # def open(self, runtime_context: RuntimeContext):
-    #     global app_search
-    #     config_store.load({**config, **credentials})
-    #     app_search = get_app_search()
-
-
-
-    # def map(self, kafka_notification: str):
-    #     try:
-
-    #         result = None
-
-    #         operation_list = []
-    #         logging.warning(kafka_notification)
-    #         entity_message = EntityMessage.from_json((kafka_notification))
-
-    #         input_entity = entity_message.new_value
-
-
-
-    #         # Charif: This if-statement does not match our new approach..
-
-    #         if entity_message.direct_change == False:
-    #             logging.warning("This message is a consequence of an indirect change. No further action is taken.")
-    #             # return
-    #             pass
-
-    #         if entity_message.changed_attributes != []:
-    #             logging.info("handle updated attributes.")
-    #             for update_attribute in entity_message.changed_attributes:
-    #                 if update_attribute in input_entity.attributes.unmapped_attributes.keys():
-
-    #                     value = input_entity.attributes.unmapped_attributes[update_attribute]
-    #                     operation_list.append(UpdateLocalAttributeProcessor(name="update attribute", key=update_attribute, value=value))
-
-
-
-    #                 if update_attribute == "name":
-    #                     pass
-    #             seq = Sequence(name="update attribute", steps = operation_list)
-    #             spec = jsonpickle.encode(seq)
-
-    #             oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
-    #             logging.warning("Operation Change has been created")
-
-    #             oe = OperationEvent(id=str(uuid.uuid4()),
-    #                                 creation_time=int(datetime.datetime.now().timestamp()*1000),
-    #                                 entity_guid=input_entity.guid,
-    #                                 changes=[oc])
-    #             logging.warning("Operation event has been created")
-
-    #             result = json.dumps(json.loads(oe.to_json()))
-
-    #         return result
-
-
-
-
-
-
-    #     except Exception as e:
-
-    #         logging.warning("The Kafka notification received could not be handled.")
-
-
-    #         exc_info = sys.exc_info()
-    #         e = (''.join(traceback.format_exception(*exc_info)))
-
-    #         event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="determine_change", description = (e))
-    #         bootstrap_server_hostname, bootstrap_server_port =  config_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
-    #         producer = KafkaProducer(
-    #             bootstrap_servers=  f"{bootstrap_server_hostname}:{bootstrap_server_port}",
-    #             value_serializer=str.encode,
-    #             request_timeout_ms = 1000,
-    #             api_version = (2,0,2),
-    #             retries = 1,
-    #             linger_ms = 1000
-    #         )
-    #         dead_lettter_box_topic = config_store.get("exception.events.topic.name")
-    #         producer.send(topic=dead_lettter_box_topic, value=event.to_json())
-
 class GetResult(FlatMapFunction):
 
     def flat_map(self, input_list):
         for element in input_list:
+            logging.info(element)
             yield element
 
 

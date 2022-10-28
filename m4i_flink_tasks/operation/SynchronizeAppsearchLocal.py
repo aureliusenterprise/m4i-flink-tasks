@@ -503,10 +503,10 @@ class SynchronizeAppsearchLocal(object):
             change_list = []
             create_entity_steps = create_local_operation_dict.get(entity_guid, [])
             if len(create_entity_steps)>0:
-                seq = Sequence(name="local operations", steps = create_entity_steps)
+                seq = Sequence(name="local operations create", steps = create_entity_steps)
                 spec = jsonpickle.encode(seq)
                 oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
-                logging.warning("Operation that creates entity document in app search.")
+                logging.warning(f"Operation that creates entity document in app search. {len(create_entity_steps)}")
                 change_list.append(oc)
 
             propagated_steps = propagated_operation_downwards_operations_dict.get(entity_guid, [])
@@ -514,7 +514,7 @@ class SynchronizeAppsearchLocal(object):
                 seq = Sequence(name="propagated downwards operation", steps = propagated_steps)
                 spec = jsonpickle.encode(seq)
                 oc = OperationChange(propagate=True, propagate_down=True, operation = json.loads(spec))
-                logging.warning("Operation that propagates relevant operations downwards has been created")
+                logging.warning(f"Operation that propagates relevant operations downwards has been created {len(propagated_steps)}")
                 change_list.append(oc)
 
             propagated_steps = propagated_operation_upwards_operations_dict.get(entity_guid, [])
@@ -522,7 +522,7 @@ class SynchronizeAppsearchLocal(object):
                 seq = Sequence(name="propagated upwards operation", steps = propagated_steps)
                 spec = jsonpickle.encode(seq)
                 oc = OperationChange(propagate=True, propagate_down=False, operation = json.loads(spec))
-                logging.warning("Operation that propagates relevant operations upwards has been created")
+                logging.warning(f"Operation that propagates relevant operations upwards has been created {len(propagated_steps)}")
                 change_list.append(oc)
 
             local_steps = local_operations_dict.get(entity_guid, [])
@@ -530,7 +530,7 @@ class SynchronizeAppsearchLocal(object):
                 seq = Sequence(name="local operations", steps = local_steps)
                 spec = jsonpickle.encode(seq)
                 oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
-                logging.warning("Operation that executes local operations has been created")
+                logging.warning(f"Operation that executes local operations has been created {len(local_steps)}")
                 change_list.append(oc)
 
             delete_entity_steps =  delete_local_operation_dict.get(entity_guid, [])
@@ -538,7 +538,7 @@ class SynchronizeAppsearchLocal(object):
                 seq = Sequence(name="local operations", steps = delete_entity_steps)
                 spec = jsonpickle.encode(seq)
                 oc = OperationChange(propagate=False, propagate_down=False, operation = json.loads(spec))
-                logging.warning("Operation that deletes entity document from app search.")
+                logging.warning(f"Operation that deletes entity document from app search. {len(delete_entity_steps)}")
                 change_list.append(oc)
 
             if len(change_list)>0:
@@ -547,7 +547,7 @@ class SynchronizeAppsearchLocal(object):
                                     entity_guid=entity_guid,
                                     changes=change_list)
                 result.append(json.dumps(json.loads(oe.to_json())))
-            logging.warning("Operation event has been created")
+            logging.warning(f"Operation event has been created {len(change_list)}")
 
         return result
 
