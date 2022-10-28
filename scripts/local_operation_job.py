@@ -180,10 +180,10 @@ class LocalOperation(MapFunction, LocalOperationLocal):
             logging.error("The Kafka notification received could not be handled.")
 
             exc_info = sys.exc_info()
-            e = (''.join(traceback.format_exception(*exc_info)))
+            e1 = (''.join(traceback.format_exception(*exc_info)))
             logging.error(repr(e))
 
-            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="local_operation", description = (e),
+            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="local_operation", description = (e1),
                                         exception_class = type(e).__name__, remark= None)
             retry = 0
             while retry<3:

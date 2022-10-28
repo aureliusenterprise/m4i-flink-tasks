@@ -113,10 +113,10 @@ class DumpEventsDetermineChange(MapFunction):
 
         except Exception as e:
             exc_info = sys.exc_info()
-            e = (''.join(traceback.format_exception(*exc_info)))
+            e1 = (''.join(traceback.format_exception(*exc_info)))
             logging.warning(e)
 
-            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification_json, job="publish_state", description = (e),
+            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification_json, job="publish_state", description = (e1),
                                         exception_class = type(e).__name__, remark= None)
             bootstrap_server_hostname, bootstrap_server_port =  config_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
             producer = KafkaProducer(

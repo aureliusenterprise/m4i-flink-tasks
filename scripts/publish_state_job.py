@@ -62,9 +62,9 @@ class PublishState(MapFunction,PublishStateLocal):
             logging.error(repr(e))
 
             exc_info = sys.exc_info()
-            e = (''.join(traceback.format_exception(*exc_info)))
+            e1 = (''.join(traceback.format_exception(*exc_info)))
 
-            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="publish_state", description = (e),
+            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="publish_state", description = (e1),
                                         exception_class = type(e).__name__, remark= None)
             logging.error("this goes into dead letter box: ")
             logging.error(repr(event))
