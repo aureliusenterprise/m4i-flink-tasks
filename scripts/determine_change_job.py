@@ -298,10 +298,10 @@ def determine_change():
 
     data_stream = data_stream.flat_map(GetResult(), Types.STRING()).name("parse change")
 
-    data_stream.print()
+    #data_stream.print()
 
     data_stream.add_sink(FlinkKafkaProducer(topic = sink_topic_name,
-        producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id},
+        producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_determine_change_job2"},
         serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink")
 
     env.execute("determine_change")

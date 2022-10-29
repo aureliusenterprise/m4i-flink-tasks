@@ -247,7 +247,7 @@ def local_operation():
 
     data_stream = data_stream.flat_map(GetResult(), Types.STRING()).name("process operation")
 
-    data_stream.print()
+    #data_stream.print()
 
     data_stream.add_sink(FlinkKafkaProducer(topic = sink_topic_name,
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_local_operation_job2"},

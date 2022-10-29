@@ -130,7 +130,7 @@ def synchronize_app_search():
 
     kafka_source = FlinkKafkaConsumer(topics = source_topic_name,
                                       properties={'bootstrap.servers':  f"{bootstrap_server_hostname}:{bootstrap_server_port}",
-                                                  'group.id': kafka_consumer_group_id,
+                                                  'group.id': kafka_consumer_group_id+"_sync_appsearch",
                                                   "key.deserializer": "org.apache.kafka.common.serialization.StringDeserializer",
                                                   "value.deserializer": "org.apache.kafka.common.serialization.StringDeserializer"},
                                       deserialization_schema=SimpleStringSchema()).set_commit_offsets_on_checkpoints(True).set_start_from_latest()
@@ -141,10 +141,10 @@ def synchronize_app_search():
 
     data_stream = data_stream.flat_map(GetResult(), Types.STRING()).name("parse change")
 
-    data_stream.print()
+    #data_stream.print()
 
     data_stream.add_sink(FlinkKafkaProducer(topic = sink_topic_name,
-        producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id},
+        producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_sync_appsearch2"},
         serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink")
 
 
