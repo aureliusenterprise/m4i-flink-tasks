@@ -59,7 +59,6 @@ class DumpEvents(MapFunction):
         config_store.load({**config, **credentials})
         self.elastic = make_elastic_connection()
 
-
     def map(self, kafka_notification: str):
         try:
             kafka_notification_json = json.loads(kafka_notification)
@@ -91,7 +90,7 @@ class DumpEvents(MapFunction):
             exc_info = sys.exc_info()
             e = (''.join(traceback.format_exception(*exc_info)))
             logging.warning(e)
-            producer.send(topic = dead_lettter_box_topic, value=event.to_json())
+            #producer.send(topic = dead_lettter_box_topic, value=event.to_json())
 
 
 def run_dump_events_deadletterqueue_job():

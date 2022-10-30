@@ -76,8 +76,8 @@ class GetEntity(MapFunction,GetEntityLocal):
             retry = 0
             while retry <2:
                 try:
-                    producer = self.get_deadletter()
-                    producer.send(topic=self.dead_lettter_box_topic, value=event.to_json())
+                    producer_ = self.get_deadletter()
+                    producer_.send(topic=self.dead_lettter_box_topic, value=event.to_json())
                     return
                 except Exception as e2:
                     logging.error("error dumping data into deadletter topic "+repr(e2))

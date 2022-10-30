@@ -196,6 +196,7 @@ class DetermineChange(MapFunction,DetermineChangeLocal):
     bootstrap_server_hostname=None
     bootstrap_server_port=None
     cnt = 0
+    producer = None
 
     def open(self, runtime_context: RuntimeContext):
         store.load({**config, **credentials})
@@ -238,8 +239,8 @@ class DetermineChange(MapFunction,DetermineChangeLocal):
             retry = 0
             while retry <2:
                 try:
-                    producer = self.get_deadletter()
-                    producer.send(topic=self.dead_lettter_box_topic, value=event.to_json())
+                    producer_ = self.get_deadletter()
+                    producer_.send(topic=self.dead_lettter_box_topic, value=event.to_json())
                     return
                 except Exception as e2:
                     logging.error("error dumping data into deadletter topic "+repr(e2))
