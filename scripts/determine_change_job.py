@@ -249,10 +249,13 @@ class DetermineChange(MapFunction,DetermineChangeLocal):
 
 
 
-class GetResult(FlatMapFunction):
+class GetResultDetermineChange(FlatMapFunction):
+    cnt = 0
 
     def flat_map(self, input_list):
         for element in input_list:
+            self.cnt = self.cnt+1
+            logging.info(f"event count GetResultDetermineChange: {self.cnt}")
             yield element
 
 
@@ -292,17 +295,17 @@ def determine_change():
         raise Exception("kafka source is empty")
     kafka_source.set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
-    data_stream = env.add_source(kafka_source).name("consuming enriched atlas events")
+    data_stream = env.add_source(kafka_source).name("consuming enriched atlas events determine_change")
 
     data_stream = data_stream.map(DetermineChange(), Types.LIST(element_type_info = Types.STRING())).name("determine change").filter(lambda notif: notif)
 
-    data_stream = data_stream.flat_map(GetResult(), Types.STRING()).name("parse change")
+    data_stream = data_stream.flat_map(GetResultDetermineChange(), Types.STRING()).name("parse change determine_change")
 
     #data_stream.print()
 
     data_stream.add_sink(FlinkKafkaProducer(topic = sink_topic_name,
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_determine_change_job2"},
-        serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink")
+        serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink determine_change")
 
     env.execute("determine_change")
 

@@ -115,9 +115,9 @@ def run_publish_state_job():
     kafka_source.set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
 
-    data_stream = env.add_source(kafka_source)
+    data_stream = env.add_source(kafka_source).name("publish state source")
 
-    data_stream = data_stream.map(PublishState()).name("my_mapping")
+    data_stream = data_stream.map(PublishState()).name("my_mapping publish_state")
 
     #data_stream.print()
 

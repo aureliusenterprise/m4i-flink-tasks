@@ -27,6 +27,7 @@ class GetEntity(MapFunction,GetEntityLocal):
     bootstrap_server_port=None
     producer = None
     store = None
+    cnt = 0
 
 
     def open(self, runtime_context: RuntimeContext):
@@ -54,6 +55,8 @@ class GetEntity(MapFunction,GetEntityLocal):
         try:
             res = self.map_local(kafka_notification)
             logging.info("received result: "+repr(res))
+            self.cnt = self.cnt+1
+            logging.info(f"event count GetEntity: {self.cnt}")
             return res
         except Exception as e:
             logging.error("Exception during processing:")
@@ -112,15 +115,15 @@ def run_get_entity_job():
     kafka_source.set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
 
-    data_stream = env.add_source(kafka_source).name("consuming atlas events")
+    data_stream = env.add_source(kafka_source).name("consuming atlas events run_get_entity")
 
-    data_stream = data_stream.map(GetEntity(), Types.STRING()).name("retrieve entity from atlas").filter(lambda notif: notif)
+    data_stream = data_stream.map(GetEntity(), Types.STRING()).name("retrieve entity from atlas run_get_entity").filter(lambda notif: notif)
 
     #data_stream.print()
 
     data_stream.add_sink(FlinkKafkaProducer(topic=sink_topic_name,
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id},
-        serialization_schema=SimpleStringSchema())).name("write_to_kafka")
+        serialization_schema=SimpleStringSchema())).name("write_to_kafka run_get_entity")
 
 
     env.execute("get_atlas_entity")

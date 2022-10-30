@@ -97,11 +97,14 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
                 retry = retry + 1
 
 
-class GetResult(FlatMapFunction):
+class GetResultSyncronizeAppSearch(FlatMapFunction):
+     cnt = 0
 
     def flat_map(self, input_list):
         for element in input_list:
             logging.info(element)
+            self.cnt = self.cnt+1
+            logging.info(f"event count GetResultSyncronizeAppSearch: {self.cnt}")
             yield element
 
 
@@ -135,17 +138,17 @@ def synchronize_app_search():
                                                   "value.deserializer": "org.apache.kafka.common.serialization.StringDeserializer"},
                                       deserialization_schema=SimpleStringSchema()).set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
-    data_stream = env.add_source(kafka_source).name("consuming determined change events")
+    data_stream = env.add_source(kafka_source).name("consuming determined change events _sync_appsearch")
 
     data_stream = data_stream.map(SynchronizeAppsearch(), Types.LIST(element_type_info = Types.STRING())).name("synchronize appsearch").filter(lambda notif: notif)
 
-    data_stream = data_stream.flat_map(GetResult(), Types.STRING()).name("parse change")
+    data_stream = data_stream.flat_map(GetResultSyncronizeAppSearch(), Types.STRING()).name("parse change _sync_appsearch")
 
     #data_stream.print()
 
     data_stream.add_sink(FlinkKafkaProducer(topic = sink_topic_name,
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_sync_appsearch2"},
-        serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink")
+        serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink sync_appsearch")
 
 
     env.execute("synchronize app search")
