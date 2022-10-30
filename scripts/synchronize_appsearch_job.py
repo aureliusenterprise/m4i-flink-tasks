@@ -101,7 +101,7 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
 
 
 class GetResultSyncronizeAppSearch(FlatMapFunction):
-     cnt = 0
+    cnt = 0
 
     def flat_map(self, input_list):
         for element in input_list:
