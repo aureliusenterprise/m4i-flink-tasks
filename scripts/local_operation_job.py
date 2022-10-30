@@ -39,6 +39,7 @@ class LocalOperation(MapFunction, LocalOperationLocal):
     bootstrap_server_port = None
     producer = None
     dead_lettter_box_topic = None
+    cnt = 0
 
     def open(self, runtime_context: RuntimeContext):
         m4i_store.load({**config, **credentials})
@@ -61,6 +62,9 @@ class LocalOperation(MapFunction, LocalOperationLocal):
 
 
     def map(self, kafka_notification: str):
+        self.cnt = self.cnt + 1
+        logging.info(f"recevied events LocalOperation: {self.cnt}")
+
         try:
             res = self.map_local(kafka_notification)
             return res

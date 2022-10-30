@@ -47,6 +47,7 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
     bootstrap_server_port=None
     dead_lettter_box_topic = None
     producer = None
+    cnt = 0
 
     def open(self, runtime_context: RuntimeContext):
         config_store.load({**config, **credentials})
@@ -70,6 +71,8 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
 
 
     def map(self, kafka_notification: str):
+        self.cnt = self.cnt + 1
+        logging.info(f"recevied events SynchronizeAppsearch: {self.cnt}")
         try:
             res = (self.map_local(kafka_notification))
             logging.info("received result: "+repr(res))

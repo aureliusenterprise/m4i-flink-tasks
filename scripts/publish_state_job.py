@@ -31,6 +31,7 @@ from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 class PublishState(MapFunction,PublishStateLocal):
     bootstrap_server_hostname=None
     bootstrap_server_port=None
+    cnt = 0
 
     def open(self, runtime_context: RuntimeContext):
         config_store.load({**config, **credentials})
@@ -53,6 +54,9 @@ class PublishState(MapFunction,PublishStateLocal):
 
 
     def map(self, kafka_notification: str):
+        self.cnt = self.cnt + 1
+        logging.info(f"recevied events PublishState: {self.cnt}")
+
         try:
             res = self.map_local(kafka_notification)
             logging.info("received result: "+repr(res))

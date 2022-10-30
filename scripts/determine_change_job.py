@@ -195,6 +195,7 @@ deleted_relationships = {}
 class DetermineChange(MapFunction,DetermineChangeLocal):
     bootstrap_server_hostname=None
     bootstrap_server_port=None
+    cnt = 0
 
     def open(self, runtime_context: RuntimeContext):
         store.load({**config, **credentials})
@@ -215,11 +216,9 @@ class DetermineChange(MapFunction,DetermineChangeLocal):
                 )
         return self.producer
 
-    # def map_local(self, kafka_notification: str):
-    #     kafka_notification_json = json.loads(kafka_notification)
-    #     return kafka_notification_json
-
     def map(self, kafka_notification: str):
+        self.cnt = self.cnt + 1
+        logging.info(f"recevied events DetermineChange: {self.cnt}")
         try:
             res = self.map_local(kafka_notification)
             logging.info("received result: "+repr(res))

@@ -27,8 +27,8 @@ class GetEntity(MapFunction,GetEntityLocal):
     bootstrap_server_port=None
     producer = None
     store = None
-    cnt = 0
-
+    cnt_res = 0
+    cnt_rec = 0
 
     def open(self, runtime_context: RuntimeContext):
         store.load({**config, **credentials})
@@ -52,11 +52,14 @@ class GetEntity(MapFunction,GetEntityLocal):
 
 
     def map(self, kafka_notification: str):
+        self.cnt_rec = self.cnt_rec + 1
+        logging.info(f"recevied events SynchronizeAppsearch: {self.cnt_rec}")
+
         try:
             res = self.map_local(kafka_notification)
             logging.info("received result: "+repr(res))
-            self.cnt = self.cnt+1
-            logging.info(f"event count GetEntity: {self.cnt}")
+            self.cnt_res = self.cnt_res+1
+            logging.info(f"event count GetEntity: {self.cnt_res}")
             return res
         except Exception as e:
             logging.error("Exception during processing:")
