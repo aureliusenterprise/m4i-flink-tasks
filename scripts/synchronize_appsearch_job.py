@@ -117,7 +117,6 @@ def synchronize_app_search():
     env = StreamExecutionEnvironment.get_execution_environment()
     # set_env(env)
     env.set_parallelism(1)
-    env.enableCheckpointing();
 
     path = os.path.dirname(__file__)
 
