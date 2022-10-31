@@ -6,6 +6,13 @@ from core_operation import (ComputeDqScoresProcessor, DeletePrefixFromList,
                             UpdateLocalAttributeProcessor, WorkflowEngine)
 
 
+def test__CreateLocalEntityProcessor(store):
+
+    entity_doc = CreateLocalEntityProcessor(name = "create entity", entity_type="m4i_data_domain", entity_guid = "test_guid", entity_name="test_entity_name",  entity_qualifiedname="test_entity_qualifiedname")
+
+    expected_doc = '{"id": "test_guid", "sourcetype": "Business", "name": "create entity", "guid": "test_guid", "typename": "m4i_data_domain", "referenceablequalifiedname": "test_entity_qualifiedname", "m4isourcetype": ["m4i_data_domain"], "supertypenames": ["m4i_data_domain", "m4i_referenceable", "Referenceable"], "dqscore_accuracy": 0.0, "dqscore_timeliness": 0.0, "dqscoresum_accuracy": 0.0, "dqscore_validity": 0.0, "dqscore_completeness": 0.0, "dqscoresum_validity": 0.0, "dqscorecnt_overall": 0.0, "dqscorecnt_timeliness": 0.0, "dqscoresum_timeliness": 0.0, "dqscoresum_completeness": 0.0, "dqscore_uniqueness": 0.0, "dqscorecnt_completeness": 0.0, "dqscoresum_uniqueness": 0.0, "dqscore_overall": 0.0, "dqscorecnt_uniqueness": 0.0, "businessruleid": 0.0, "dqscoresum_overall": 0.0, "dqscorecnt_accuracy": 0.0, "dqscorecnt_validity": 0.0, "parentguid": null, "entityname": null, "definition": null, "email": null, "deriveddataownerguid": null, "deriveddomainleadguid": null, "deriveddatastewardguid": null, "derivedfield": [], "deriveddataattribute": [], "deriveddataentity": [], "qualityguid_completeness": [], "deriveddataentityguid": [], "derivedsystem": [], "qualityguid_timeliness": [], "deriveddataset": [], "derivedsystemguid": [], "breadcrumbname": [], "breadcrumbguid": [], "deriveddataattributeguid": [], "deriveddatasetnames": [], "derivedperson": [], "derivedfieldguid": [], "derivedentityguids": [], "deriveddatasetguids": [], "deriveddatasetguid": [], "classificationstext": [], "qualityguid_uniqueness": [], "derivedpersonguid": [], "qualityguid_accuracy": [], "derivedcollection": [], "deriveddatadomainguid": [], "derivedcollectionguid": [], "qualityguid_validity": [], "deriveddatadomain": [], "derivedentitynames": [], "breadcrumbtype": []}'
+    assert(json.loads(expected_doc) == entity_doc) 
+
 def test__specify_local_update():
     op = UpdateLocalAttributeProcessor(name="update data entity with value hallo",
                                         key="entity",
