@@ -92,8 +92,8 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
             retry = 0
             while retry <2:
                 try:
-                    producer = self.get_deadletter()
-                    producer.send(topic=self.dead_lettter_box_topic, value=event.to_json())
+                    producer_ = self.get_deadletter()
+                    producer_.send(topic=self.dead_lettter_box_topic, value=event.to_json())
                     return
                 except Exception as e2:
                     logging.error("error dumping data into deadletter topic "+repr(e2))
@@ -139,7 +139,14 @@ def synchronize_app_search():
                                                   'group.id': kafka_consumer_group_id+"_sync_appsearch",
                                                   "key.deserializer": "org.apache.kafka.common.serialization.StringDeserializer",
                                                   "value.deserializer": "org.apache.kafka.common.serialization.StringDeserializer"},
-                                      deserialization_schema=SimpleStringSchema()).set_commit_offsets_on_checkpoints(True).set_start_from_latest()
+                                      deserialization_schema=SimpleStringSchema())
+    if kafka_source==None:
+        logging.warning("kafka source is empty")
+        logging.warning(f"bootstrap_servers: {bootstrap_server_hostname}:{bootstrap_server_port}")
+        logging.warning(f"group.id: {kafka_consumer_group_id}")
+        logging.warning(f"topcis: {source_topic_name}")
+        raise Exception("kafka source is empty")
+    kafka_source.set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
     data_stream = env.add_source(kafka_source).name("consuming determined change events _sync_appsearch")
 
