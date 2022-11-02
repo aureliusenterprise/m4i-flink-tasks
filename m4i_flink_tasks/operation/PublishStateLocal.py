@@ -19,6 +19,7 @@ class ElasticPersistingException(Exception):
 class PublishStateLocal(object):
     elastic = None
     elastic_search_index = None
+    config_store = None
     doc_id = 0
 
     def get_doc_id(self):
@@ -27,7 +28,7 @@ class PublishStateLocal(object):
 
     def open_local(self, config, credentials, config_store):
         self.config_store = config_store
-        self.config_store.load({**config, **credentials})
+       # self.config_store.load({**config, **credentials})
         self.elastic_search_index = self.config_store.get("elastic.search.index")
         self.elastic = make_elastic_connection()
 

@@ -29,7 +29,7 @@ from m4i_atlas_core import AtlasChangeMessage, EntityAuditAction, get_entity_by_
 from pyflink.datastream.functions import FlatMapFunction
 import copy
 
-m4i_store = m4i_ConfigStore.get_instance()
+store = m4i_ConfigStore.get_instance()
 
 
 class LocalOperation(MapFunction, LocalOperationLocal):
@@ -39,13 +39,14 @@ class LocalOperation(MapFunction, LocalOperationLocal):
     bootstrap_server_port = None
     producer = None
     dead_lettter_box_topic = None
+    store = None
     cnt = 0
 
     def open(self, runtime_context: RuntimeContext):
-        m4i_store.load({**config, **credentials})
-        self.open_local(config, credentials, m4i_store)
-        self.bootstrap_server_hostname, self.bootstrap_server_port =  m4i_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
-        self.dead_lettter_box_topic = m4i_store.get("exception.events.topic.name")
+        store.load({**config, **credentials})
+        self.open_local(config, credentials, store)
+        self.bootstrap_server_hostname, self.bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
+        self.dead_lettter_box_topic = store.get("exception.events.topic.name")
 
 
     def get_producer(self):
@@ -88,7 +89,6 @@ class LocalOperation(MapFunction, LocalOperationLocal):
                     logging.error(f"Problems sending a deadletter message : {str(e)}")
                     retry = retry+1
                     self.producer = None
-
 # end of class LocalOperation
 
 
@@ -103,7 +103,7 @@ class GetResultLocalOperation(FlatMapFunction):
 
 
 
-def local_operation():
+def run_local_operation_job():
     env = StreamExecutionEnvironment.get_execution_environment()
     env.set_parallelism(1)
 
@@ -143,12 +143,9 @@ def local_operation():
 
     data_stream = data_stream.flat_map(GetResultLocalOperation(), Types.STRING()).name("process operation local_operation")
 
-    #data_stream.print()
-
     data_stream.add_sink(FlinkKafkaProducer(topic = sink_topic_name,
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_local_operation_job2"},
         serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink local_operation")
-
 
     env.execute("local_operation")
 
@@ -157,6 +154,4 @@ if __name__ == '__main__':
     logging.basicConfig(stream=sys.stdout,
                         level=logging.INFO, format="%(message)s")
 
-
-
-    local_operation()
+    run_local_operation_job()

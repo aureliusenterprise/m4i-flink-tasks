@@ -39,7 +39,8 @@ import jsonpickle
 import uuid
 import datetime
 
-
+class FailedSendingDeadLetterMessage(Exception):
+    pass
 
 
 class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
@@ -47,6 +48,7 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
     bootstrap_server_port=None
     dead_lettter_box_topic = None
     producer = None
+    config_store = None
     cnt = 0
 
     def open(self, runtime_context: RuntimeContext):
@@ -98,6 +100,7 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
                 except Exception as e2:
                     logging.error("error dumping data into deadletter topic "+repr(e2))
                 retry = retry + 1
+            raise FailedSendingDeadLetterMessage("failed sending message with content "+repr(e2))
 
 
 class GetResultSyncronizeAppSearch(FlatMapFunction):
@@ -112,7 +115,7 @@ class GetResultSyncronizeAppSearch(FlatMapFunction):
 
 
 
-def synchronize_app_search():
+def run_synchronize_app_search_job():
 
     env = StreamExecutionEnvironment.get_execution_environment()
     # set_env(env)
@@ -124,7 +127,6 @@ def synchronize_app_search():
     kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
     kafka_client = f"file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
 
-
     env.add_jars(kafka_jar, kafka_client)
 
     bootstrap_server_hostname = config.get("kafka.bootstrap.server.hostname")
@@ -132,7 +134,6 @@ def synchronize_app_search():
     source_topic_name = config.get("determined.events.topic.name")
     sink_topic_name = config.get("sync_elastic.events.topic.name")
     kafka_consumer_group_id = config.get("kafka.consumer.group.id")
-
 
     kafka_source = FlinkKafkaConsumer(topics = source_topic_name,
                                       properties={'bootstrap.servers':  f"{bootstrap_server_hostname}:{bootstrap_server_port}",
@@ -154,12 +155,9 @@ def synchronize_app_search():
 
     data_stream = data_stream.flat_map(GetResultSyncronizeAppSearch(), Types.STRING()).name("parse change _sync_appsearch")
 
-    #data_stream.print()
-
     data_stream.add_sink(FlinkKafkaProducer(topic = sink_topic_name,
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_sync_appsearch2"},
         serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink sync_appsearch")
-
 
     env.execute("synchronize app search")
 
@@ -169,7 +167,5 @@ if __name__ == '__main__':
     logging.basicConfig(stream=sys.stdout,
                         level=logging.INFO, format="%(message)s")
 
-
-
-    synchronize_app_search()
+    run_synchronize_app_search_job()
 

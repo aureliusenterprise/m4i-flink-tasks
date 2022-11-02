@@ -20,6 +20,10 @@ class SourceEntityTypeException(Exception):
     pass
 # end of class SourceEntityTypeException
 
+class NotFoundEntityException(Exception):
+    pass
+# end of class NotFoundEntityException
+
 class GetEntityLocal(object):
     access_token = None
 
@@ -86,5 +90,5 @@ class GetEntityLocal(object):
                 logging.error(str(e))
                 self.access_token = None
             retry = retry+1
-        raise Exception(f"Failed to lookup entity for kafka notification {kafka_notification}")
+        raise NotFoundEntityException(f"Failed to lookup entity for kafka notification {kafka_notification}")
 # end of class GetEntityLocal

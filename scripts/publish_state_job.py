@@ -1,6 +1,10 @@
 import json
 import logging
 import sys
+import os
+import time
+import traceback
+
 
 from m4i_atlas_core import ConfigStore, Entity
 
@@ -13,10 +17,6 @@ from m4i_flink_tasks.synchronize_app_search import make_elastic_connection
 
 config_store = ConfigStore.get_instance()
 
-import os
-import time
-import traceback
-
 from kafka import KafkaProducer
 from pyflink.common.serialization import (JsonRowSerializationSchema,
                                           SimpleStringSchema)
@@ -27,18 +27,18 @@ from pyflink.datastream.functions import MapFunction, RuntimeContext
 
 from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 
-
 class PublishState(MapFunction,PublishStateLocal):
     bootstrap_server_hostname=None
     bootstrap_server_port=None
+    dead_lettter_box_topic = "deadletterbox"
     producer = None
+    config_store = None
     cnt = 0
 
     def open(self, runtime_context: RuntimeContext):
         config_store.load({**config, **credentials})
         self.bootstrap_server_hostname, self.bootstrap_server_port =  config_store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
         self.dead_lettter_box_topic = config_store.get("exception.events.topic.name")
-
         self.open_local(config, credentials, config_store)
 
     def get_deadletter(self):
@@ -75,7 +75,7 @@ class PublishState(MapFunction,PublishStateLocal):
             logging.error(repr(event))
 
             retry = 0
-            while retry <2:
+            while retry < 2:
                 try:
                     producer_ = self.get_deadletter()
                     producer_.send(topic=self.dead_lettter_box_topic, value=event.to_json())
@@ -119,14 +119,8 @@ def run_publish_state_job():
         raise Exception("kafka source is empty")
     kafka_source.set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
-
     data_stream = env.add_source(kafka_source).name("publish state source")
-
     data_stream = data_stream.map(PublishState()).name("my_mapping publish_state")
-
-    #data_stream.print()
-
-
     env.execute("publish_state_to_elastic_search")
 
 

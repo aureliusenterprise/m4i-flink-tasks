@@ -228,7 +228,7 @@ class DetermineChangeLocal():
 
     def map_local(self, kafka_notification: str):
         logging.warning(repr(kafka_notification))
-
+        logging.info(type(kafka_notification))
         kafka_notification_json = json.loads(kafka_notification)
         msg_creation_time = kafka_notification_json.get("kafka_notification").get("msgCreationTime")
 
