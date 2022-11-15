@@ -48,9 +48,9 @@ class GetEntityLocal(object):
                 access__token = self.get_access_token()
                 logging.info(f"access tokenL: {access__token}")
                 asyncio.run(get_entity_audit.cache.clear())
-                entity_audit =  asyncio.run(get_entity_audit(entity_guid = entity_guid, access_token = access__token))
+                entity_audit =  asyncio.run(get_entity_audit_events(entity_guid = entity_guid, access_token = access__token))
+                logging.info(entity_audit)
                 if entity_audit:
-                    logging.info(entity_audit)
                     # atlas_entiy = Entity.from_json(re.search(r"{.*}", entity_audit.details).group(0))
                     # logging.info(atlas_entiy.to_json())
                     # logging.info(atlas_entiy.relationship_attributes)
