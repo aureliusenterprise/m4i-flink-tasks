@@ -112,7 +112,7 @@ class GetEntityLocal(object):
 
             if kafka_notification_obj.message.operation_type in [EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE]:
                 entity_guid = kafka_notification_obj.message.entity.guid
-                entity_type = kafka_notification_obj.message.entity.typeName
+                entity_type = kafka_notification_obj.message.entity.type_name
                 asyncio.run(get_entity_by_guid.cache.clear())
                 event_entity = asyncio.run(get_entity_by_guid(guid=entity_guid, ignore_relationships=False, access_token=access_token_))
                 # event_entity =  get_entity_by_guid(guid=entity_guid, ignore_relationships=False)
@@ -126,7 +126,7 @@ class GetEntityLocal(object):
                 audit_json = self.get_audit(entity_guid)
                 supertypes = self.get_super_types_names()
             elif kafka_notification_obj.message.operation_type == EntityAuditAction.ENTITY_DELETE:
-                entity_type = kafka_notification_obj.message.entity.typeName
+                entity_type = kafka_notification_obj.message.entity.type_name
                 kafka_notification_json = json.loads(kafka_notification_obj.to_json())
                 #logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}}))
                 entity_json = {}
