@@ -9,7 +9,7 @@ from typing import Callable, Dict, List, Optional, Union
 from m4i_atlas_core import (AtlasChangeMessage, EntityAuditAction,
                             get_entity_by_guid, get_keycloak_token)
 from m4i_atlas_core import get_entity_audit
-
+from m4i_atlas_core import (ConfigStore, Entity, EntityDef, get_type_def)
 #from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 #store = ConfigStore.get_instance()
 
