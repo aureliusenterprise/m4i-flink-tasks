@@ -145,6 +145,7 @@ class GetEntityLocal(object):
             elif kafka_notification_obj.message.operation_type == EntityAuditAction.ENTITY_DELETE:
                 entity_type = kafka_notification_obj.message.entity.type_name
                 kafka_notification_json = json.loads(kafka_notification_obj.to_json())
+                entity_ts = kafka_notification_obj.message.event_time
                 #logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}}))
                 entity_json = {}
                 audit_json = {}
@@ -153,10 +154,11 @@ class GetEntityLocal(object):
             else:
                 logging.warning("message with an unexpected message operation type")
                 raise WrongOperationTypeException(f"message with an unexpected message operation type received from Atlas")
-            logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json}))
+            #logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json}))
             return json.dumps({"kafka_notification" : kafka_notification_json,
                                 "atlas_entity" : entity_json,
                                 "msg_creation_time": msg_creation_time,
+                                "event_time": entity_ts,
                                 "atlas_entity_audit": audit_json,
                                 "supertypes": supertypes})
         # END func

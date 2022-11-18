@@ -22,6 +22,50 @@ class PublishStateLocal(object):
     config_store = None
     doc_id = 0
 
+    def get_previous_atlas_entity(self, entity_guid, event_time):
+        query = {
+            "bool": {
+                "filter": [
+                {
+                    "match": {
+                    "body.guid.keyword": entity_guid
+                    }
+                },
+                {
+                    "range": {
+                    "eventTime": {
+                        "lt": event_time
+                    }
+                    }
+                }
+                ]
+            }
+        }
+
+        sort = {
+            "eventTime": {"numeric_type" : "long", "order": "desc"}
+        }
+
+        retry = 0
+        while retry<3:
+            try:
+                # there is still potential to improve by using search_templayes instead of index search
+                result = self.elastic.search(index = self.elastic_search_index, query = query, sort = sort, size = 1)
+
+                if result["hits"]["total"]["value"] >= 1:
+                    return result["hits"]["hits"][0]["_source"]["body"]
+                if result["hits"]["total"]["value"] == 0:
+                    return None
+            except Exception as e:
+                logging.warning("failed to retrieve document")
+                logging.warning(str(e))
+                try:
+                    self.elastic = make_elastic_connection()
+                except:
+                    pass
+            retry = retry + 1
+        raise ElasticPreviouseStateRetrieveException(f"Failed to retrieve perviouse state for guid {entity_guid}")
+
     def get_doc_id(self):
         self.doc_id = self.doc_id + 1
         return self.doc_id
@@ -35,8 +79,10 @@ class PublishStateLocal(object):
     def map_local(self, kafka_notification: str):
         kafka_notification_json = json.loads(kafka_notification)
 
-        if "kafka_notification" not in kafka_notification_json.keys() or "atlas_entity" not in kafka_notification_json.keys():
-            raise EventParsingException("Kafka event does not match the predefined structure: {\"kafka_notification\" : {}, \"atlas_entity\" : {}}")
+        if "kafka_notification" not in kafka_notification_json.keys() or "atlas_entity" not in kafka_notification_json.keys() \
+            or "msg_creation_time" not in kafka_notification_json.keys() or "atlas_entity_audit" not in kafka_notification_json.keys() \
+            or "supertypes" not in kafka_notification_json.keys() or "event_time" not in kafka_notification_json.keys() :
+            raise EventParsingException("Kafka event does not match the predefined structure: {\"kafka_notification\" : {}, \"atlas_entity\" : {}, \"msg_creation_time\":8887123, \"event_time\":8887123, \"atlas_entity_audit\":{}, \"supertypes\":[] }")
 
         if not kafka_notification_json.get("kafka_notification"):
             logging.warning(kafka_notification)
@@ -48,6 +94,12 @@ class PublishStateLocal(object):
             logging.warning("No atlas entity.")
             return kafka_notification
 
+        if not kafka_notification_json.get("atlas_entity"):
+            logging.warning(kafka_notification)
+            logging.warning("No atlas entity.")
+            return kafka_notification
+
+        event_time = kafka_notification_json["kafka_notification"].get("eventTime")
         msg_creation_time = kafka_notification_json["kafka_notification"].get("msgCreationTime")
 
         atlas_entity_json = kafka_notification_json["atlas_entity"]
@@ -55,12 +107,13 @@ class PublishStateLocal(object):
         logging.warning(atlas_entity)
 
         atlas_entity = Entity.from_json(atlas_entity)
+        entity_guid = kafka_notification_json["kafka_notification"]["message"]["entity"]["guid"]
 
         # turns out update_time for an import of data into atlas is the same for all events. Does not work for us!
         # doc_id = "{}_{}".format(atlas_entity.guid, atlas_entity.update_time)
 
-        doc_id_ = "{}_{}".format(atlas_entity.guid, msg_creation_time)
-        doc = json.loads(json.dumps({"msgCreationTime": msg_creation_time, "body": atlas_entity_json }))
+        doc_id_ = "{}_{}".format(entity_guid, msg_creation_time)
+        doc = json.loads(json.dumps({"msgCreationTime": msg_creation_time, "eventTime": event_time, "body": atlas_entity_json }))
 
         logging.info(kafka_notification)
         retry = 0
@@ -86,7 +139,9 @@ class PublishStateLocal(object):
         if not success:
             raise ElasticPersistingException(f"Storing state with doc_id {doc_id_} failed 3 times")
 
-        return kafka_notification
+
+        kafka_notification_json['previouse_version'] = self.get_previous_atlas_entity(entity_guid, event_time)
+        return json.dumps(kafka_notification_json)
 
 # end of class PublishStateLocal
 

@@ -4,19 +4,19 @@ import asyncio
 import re
 import pandas as pd
 from copy import copy
-from m4i_flink_tasks.synchronize_app_search import make_elastic_connection
+# from m4i_flink_tasks.synchronize_app_search import make_elastic_connection
 from m4i_flink_tasks import EntityMessage
 from m4i_atlas_core import Entity, AtlasChangeMessage, EntityAuditAction
-from m4i_atlas_core import get_keycloak_token
-from m4i_atlas_core import get_entity_audit
+# from m4i_atlas_core import get_keycloak_token
+# from m4i_atlas_core import get_entity_audit
 
 class AtlasAuditRetrieveException(Exception):
     pass
 # end of class AtlasAuditRetrieveException
 
-class ElasticPreviouseStateRetrieveException(Exception):
-    pass
-# end of class ElasticPreviouseStateRetrieveException
+# class ElasticPreviouseStateRetrieveException(Exception):
+#     pass
+# # end of class ElasticPreviouseStateRetrieveException
 
 class EventParsingException2(Exception):
     pass
@@ -33,23 +33,23 @@ class UnknownEventTypeException(Exception):
 
 
 class DetermineChangeLocal():
-    elastic_search_index = None
-    elastic = None
-    access_token = None
+    # elastic_search_index = None
+    # elastic = None
+    # access_token = None
 
     def open_local(self, config, credentials, store):
         self.store = store
         self.store.load({**config, **credentials})
-        self.elastic_search_index = store.get("elastic.search.index")
-        self.elastic = make_elastic_connection()
+        # self.elastic_search_index = store.get("elastic.search.index")
+        # self.elastic = make_elastic_connection()
 
-    def get_access_token(self):
-        if self.access_token==None:
-            try:
-                self.access_token = get_keycloak_token()
-            except:
-                pass
-        return self.access_token
+    # def get_access_token(self):
+    #     if self.access_token==None:
+    #         try:
+    #             self.access_token = get_keycloak_token()
+    #         except:
+    #             pass
+    #     return self.access_token
 
     def delete_list_values_from_dict(self,input_dict: dict):
         dict_keys = copy(list(input_dict.keys()))
@@ -70,31 +70,31 @@ class DetermineChangeLocal():
         attributes = pd.json_normalize(atlas_entity[column].tolist())
         return attributes
 
-    def is_direct_change(self,entity_guid: str) -> bool:
+    def is_direct_change(self,entity_audit) -> bool:
         """This function determines whether the kafka notification belong to a direct entity change or an indirect change."""
-        retry = 0
-        while retry < 3:
-            try:
-                access__token = self.get_access_token()
-                logging.info(f"access tokenL: {access__token}")
-                asyncio.run(get_entity_audit.cache.clear())
-                entity_audit =  asyncio.run(get_entity_audit(entity_guid = entity_guid, access_token = access__token))
-                if entity_audit:
-                    logging.info(entity_audit)
-                    atlas_entiy = Entity.from_json(re.search(r"{.*}", entity_audit.details).group(0))
-                    logging.info(atlas_entiy.to_json())
-                    logging.info(atlas_entiy.relationship_attributes)
-                    logging.info(f"derived atlas_entity relationship attributes : {atlas_entiy.relationship_attributes!=None}")
-                    return atlas_entiy.relationship_attributes != None
-                else:
-                    logging.info("was not able to determine audit trail")
-                    return True
-            except Exception as e:
-                logging.error("failed to retrieve entity audit from atlas - retry")
-                logging.error(str(e))
-                self.access_token = None
-                retry = retry+1
-        raise AtlasAuditRetrieveException(f"Failed to lookup entity audit for entity guid {entity_guid}")
+        # retry = 0
+        # while retry < 3:
+        #     try:
+        #         access__token = self.get_access_token()
+        #         logging.info(f"access tokenL: {access__token}")
+        #         asyncio.run(get_entity_audit.cache.clear())
+        #         entity_audit =  asyncio.run(get_entity_audit(entity_guid = entity_guid, access_token = access__token))
+        if entity_audit and "{}" != entity_audit:
+            logging.info(entity_audit)
+            atlas_entiy = Entity.from_json(re.search(r"{.*}", entity_audit.details).group(0))
+            logging.info(atlas_entiy.to_json())
+            logging.info(atlas_entiy.relationship_attributes)
+            logging.info(f"derived atlas_entity relationship attributes : {atlas_entiy.relationship_attributes!=None}")
+            return atlas_entiy.relationship_attributes != None
+        else:
+            logging.info("was not able to determine audit trail")
+            return True
+        #     except Exception as e:
+        #         logging.error("failed to retrieve entity audit from atlas - retry")
+        #         logging.error(str(e))
+        #         self.access_token = None
+        #         retry = retry+1
+        # raise AtlasAuditRetrieveException(f"Failed to lookup entity audit for entity guid {entity_guid}")
 
     def get_added_relationships(self, current_entity, previous_entity):
         comparison = current_entity.iloc[0].eq(previous_entity.iloc[0])
@@ -181,50 +181,50 @@ class DetermineChangeLocal():
 
 
 
-    def get_previous_atlas_entity(self, entity_guid, msg_creation_time):
+    # def get_previous_atlas_entity(self, entity_guid, msg_creation_time):
 
-        query = {
-            "bool": {
-                "filter": [
-                {
-                    "match": {
-                    "body.guid.keyword": entity_guid
-                    }
-                },
-                {
-                    "range": {
-                    "msgCreationTime": {
-                        "lt": msg_creation_time
-                    }
-                    }
-                }
-                ]
-            }
-        }
+    #     query = {
+    #         "bool": {
+    #             "filter": [
+    #             {
+    #                 "match": {
+    #                 "body.guid.keyword": entity_guid
+    #                 }
+    #             },
+    #             {
+    #                 "range": {
+    #                 "msgCreationTime": {
+    #                     "lt": msg_creation_time
+    #                 }
+    #                 }
+    #             }
+    #             ]
+    #         }
+    #     }
 
-        sort = {
-            "msgCreationTime": {"numeric_type" : "long", "order": "desc"}
-        }
+    #     sort = {
+    #         "msgCreationTime": {"numeric_type" : "long", "order": "desc"}
+    #     }
 
-        retry = 0
-        while retry<3:
-            try:
-                # there is still potential to improve by using search_templayes instead of index search
-                result = self.elastic.search(index = self.elastic_search_index, query = query, sort = sort, size = 1)
+    #     retry = 0
+    #     while retry<3:
+    #         try:
+    #             # there is still potential to improve by using search_templayes instead of index search
+    #             result = self.elastic.search(index = self.elastic_search_index, query = query, sort = sort, size = 1)
 
-                if result["hits"]["total"]["value"] >= 1:
-                    return result["hits"]["hits"][0]["_source"]["body"]
-                if result["hits"]["total"]["value"] == 0:
-                    return None
-            except Exception as e:
-                logging.warning("failed to retrieve document")
-                logging.warning(str(e))
-                try:
-                    self.elastic = make_elastic_connection()
-                except:
-                    pass
-            retry = retry + 1
-        raise ElasticPreviouseStateRetrieveException(f"Failed to retrieve perviouse state for guid {entity_guid}")
+    #             if result["hits"]["total"]["value"] >= 1:
+    #                 return result["hits"]["hits"][0]["_source"]["body"]
+    #             if result["hits"]["total"]["value"] == 0:
+    #                 return None
+    #         except Exception as e:
+    #             logging.warning("failed to retrieve document")
+    #             logging.warning(str(e))
+    #             try:
+    #                 self.elastic = make_elastic_connection()
+    #             except:
+    #                 pass
+    #         retry = retry + 1
+    #     raise ElasticPreviouseStateRetrieveException(f"Failed to retrieve perviouse state for guid {entity_guid}")
 
     def map_local(self, kafka_notification: str):
         logging.warning(repr(kafka_notification))
@@ -234,7 +234,6 @@ class DetermineChangeLocal():
 
         	    # check whether notification or entity is missing
         if not kafka_notification_json.get("kafka_notification") or (not kafka_notification_json.get("atlas_entity") and kafka_notification_json.get("atlas_entity")!={}):
-
             logging.warning("The Kafka notification received could not be handled due to unexpected notification structure.")
             guid = kafka_notification_json.get("guid","not available")
             raise EventParsingException2(f"event with GUID {guid} does not have a kafka notification and or an atlas entity attribute.")
@@ -245,13 +244,19 @@ class DetermineChangeLocal():
         atlas_entity_json = kafka_notification_json["atlas_entity"]
         atlas_entity_parsed = Entity.from_json(json.dumps(atlas_entity_json))
 
+        entity_audit = None
+        if "atlas_entity_audit" in kafka_notification_json.keys():
+            entity_audit = kafka_notification_json["atlas_entity_audit"]
+
         	# DELETE operation
         if atlas_kafka_notification.message.operation_type == EntityAuditAction.ENTITY_DELETE:
             logging.warning("The Kafka notification received belongs to an entity delete audit.")
 
             entity_guid = kafka_notification_json["kafka_notification"]["message"]["entity"]["guid"]
 
-            atlas_entity_json = self.get_previous_atlas_entity(entity_guid, msg_creation_time)
+            atlas_entity_json = None
+            if "previouse_version" in kafka_notification_json.keys():
+                atlas_entity_json = kafka_notification_json["previouse_version"] # self.get_previous_atlas_entity(entity_guid, msg_creation_time)
             atlas_entity_parsed = Entity.from_json(json.dumps(atlas_entity_json))
 
             atlas_entity_json["attributes"] = self.delete_list_values_from_dict(atlas_entity_json["attributes"])
@@ -310,7 +315,10 @@ class DetermineChangeLocal():
         # UPDATE operation
         if atlas_kafka_notification.message.operation_type == EntityAuditAction.ENTITY_UPDATE:
             logging.warning("The Kafka notification received belongs to an entity update audit.")
-            previous_atlas_entity_json = self.get_previous_atlas_entity(atlas_entity_parsed.guid, msg_creation_time)
+            previous_atlas_entity_json = None
+            if "previouse_version" in kafka_notification_json.keys():
+                previous_atlas_entity_json = kafka_notification_json["previouse_version"]
+            #previous_atlas_entity_json = self.get_previous_atlas_entity(atlas_entity_parsed.guid, msg_creation_time)
             # this is not good.... need a way to handle individual states even if they have the same updatetime
             if previous_atlas_entity_json==None or not previous_atlas_entity_json:
                 logging.warning("The Kafka notification received could not be handled due to missing corresponding entity document in the audit database in elastic search.")
@@ -356,7 +364,7 @@ class DetermineChangeLocal():
                                             old_value = previous_entity_parsed,
                                             new_value = atlas_entity_parsed,
                                             original_event_type = atlas_kafka_notification.message.operation_type,
-                                            direct_change = self.is_direct_change(atlas_entity_parsed.guid),
+                                            direct_change = self.is_direct_change(entity_audit),
                                             event_type = event_type,
 
                                             inserted_attributes = inserted_attributes,
@@ -383,7 +391,7 @@ class DetermineChangeLocal():
                 old_value = previous_entity_parsed,
                 new_value = atlas_entity_parsed,
                 original_event_type = atlas_kafka_notification.message.operation_type,
-                direct_change = self.is_direct_change(atlas_entity_parsed.guid),
+                direct_change = self.is_direct_change(entity_audit),
                 event_type = event_type,
 
                 inserted_attributes = [],

@@ -103,6 +103,7 @@ def run_publish_state_job():
     bootstrap_server_hostname = config.get("kafka.bootstrap.server.hostname")
     bootstrap_server_port = config.get("kafka.bootstrap.server.port")
     source_topic_name = config.get("enriched.events.topic.name")
+    sink_topic_name = source_topi_name+"_SAVED"
     kafka_consumer_group_id = config.get("kafka.consumer.group.id")
 
     kafka_source = FlinkKafkaConsumer(topics = source_topic_name,
@@ -121,6 +122,10 @@ def run_publish_state_job():
 
     data_stream = env.add_source(kafka_source).name("publish state source")
     data_stream = data_stream.map(PublishState()).name("my_mapping publish_state")
+    data_stream.add_sink(FlinkKafkaProducer(topic=sink_topic_name,
+        producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_publish_state_job2"},
+        serialization_schema=SimpleStringSchema())).name("write_to_kafka publish_state_job")
+
     env.execute("publish_state_to_elastic_search")
 
 
