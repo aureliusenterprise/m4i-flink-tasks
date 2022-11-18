@@ -46,7 +46,7 @@ class GetEntityLocal(object):
         while retry < 3:
             try:
                 access__token = self.get_access_token()
-                logging.info(f"access tokenL: {access__token}")
+                #logging.info(f"access tokenL: {access__token}")
                 asyncio.run(get_entity_audit.cache.clear())
                 entity_audit =  asyncio.run(get_entity_audit_events(entity_guid = entity_guid, access_token = access__token))
                 logging.info(entity_audit)
@@ -76,7 +76,7 @@ class GetEntityLocal(object):
             return [entity_def]
 
         responses = [
-            get_super_types(super_type)
+            self.get_super_types(super_type)
             for super_type in entity_def.super_types
         ]
         # responses =  asyncio.gather(*requests)
@@ -113,6 +113,7 @@ class GetEntityLocal(object):
             if kafka_notification_obj.message.operation_type in [EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE]:
                 entity_guid = kafka_notification_obj.message.entity.guid
                 entity_type = kafka_notification_obj.message.entity.type_name
+                entity_ts = kafka_notification_obj.message.event_time
                 asyncio.run(get_entity_by_guid.cache.clear())
                 event_entity = asyncio.run(get_entity_by_guid(guid=entity_guid, ignore_relationships=False, access_token=access_token_))
                 # event_entity =  get_entity_by_guid(guid=entity_guid, ignore_relationships=False)
@@ -123,7 +124,23 @@ class GetEntityLocal(object):
                 logging.warning(repr(event_entity))
                 kafka_notification_json = json.loads(kafka_notification_obj.to_json())
                 entity_json = json.loads(event_entity.to_json())
-                audit_json = self.get_audit(entity_guid)
+                audit_json_arr = self.get_audit(entity_guid)
+                # find the right audit entry
+                logging.warning("entity_ts: "+str(entity_ts))
+                audit_json = {}
+                for ev in audit_json_arr:
+                    ev_details = ev.details[ev.details.find(':')+1:]
+                    #logging.warning(ev_details)
+                    ev_details = json.loads(ev_details)
+                    ts = None
+                    if "updateTime" in ev_details.keys():
+                        ts = ev_details['updateTime']
+                    elif "createTime" in ev_details.keys():
+                        ts = ev_details['createTime']
+                    #logging.warning(ts)
+                    if ts == entity_ts:
+                        audit_json = ev_details
+                logging.warning("step 2: "+str(audit_json))
                 supertypes = self.get_super_types_names(entity_type)
             elif kafka_notification_obj.message.operation_type == EntityAuditAction.ENTITY_DELETE:
                 entity_type = kafka_notification_obj.message.entity.type_name
@@ -148,7 +165,7 @@ class GetEntityLocal(object):
         while retry < 3:
             try:
                 access__token = self.get_access_token()
-                logging.info(f"access tokenL: {access__token}")
+                #logging.info(f"access tokenL: {access__token}")
                 return (get_entity(kafka_notification, access__token))
             except WrongOperationTypeException as e:
                 raise e

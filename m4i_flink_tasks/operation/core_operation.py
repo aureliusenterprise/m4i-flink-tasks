@@ -542,7 +542,7 @@ class Insert_Hierarchical_Relationship(AbstractProcessor):
                 logging.warning(f"no parent entity found corresponding to guid {self.parent_entity_guid}")
                 # raise Exception(f"no parent entity found corresponding to guid {self.parent_entity_guid}. This entity should be created, but is not created.")
                 return input_data
-                
+
             parent_m4isourcetype = parent_entity_document["m4isourcetype"]
             derived_guid, derived_type = get_relevant_hierarchy_entity_fields(parent_m4isourcetype[0])
 
