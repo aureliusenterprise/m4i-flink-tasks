@@ -16,6 +16,10 @@ class ElasticPersistingException(Exception):
     pass
 # end of class ElasticPersistingException
 
+class ElasticPreviouseStateRetrieveException(Exception):
+    pass
+# end of class ElasticPreviouseStateRetrieveException
+
 class PublishStateLocal(object):
     elastic = None
     elastic_search_index = None
@@ -99,8 +103,8 @@ class PublishStateLocal(object):
             logging.warning("No atlas entity.")
             return kafka_notification
 
-        event_time = kafka_notification_json["kafka_notification"].get("eventTime")
-        msg_creation_time = kafka_notification_json["kafka_notification"].get("msgCreationTime")
+        event_time = kafka_notification_json.get("event_time")
+        msg_creation_time = kafka_notification_json.get("msg_creation_time")
 
         atlas_entity_json = kafka_notification_json["atlas_entity"]
         atlas_entity = json.dumps(atlas_entity_json)

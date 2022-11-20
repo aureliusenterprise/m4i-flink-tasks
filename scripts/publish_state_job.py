@@ -103,7 +103,7 @@ def run_publish_state_job():
     bootstrap_server_hostname = config.get("kafka.bootstrap.server.hostname")
     bootstrap_server_port = config.get("kafka.bootstrap.server.port")
     source_topic_name = config.get("enriched.events.topic.name")
-    sink_topic_name = source_topi_name+"_SAVED"
+    sink_topic_name = source_topic_name+"_SAVED"
     kafka_consumer_group_id = config.get("kafka.consumer.group.id")
 
     kafka_source = FlinkKafkaConsumer(topics = source_topic_name,
