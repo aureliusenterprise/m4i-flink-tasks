@@ -121,7 +121,7 @@ def run_publish_state_job():
     kafka_source.set_commit_offsets_on_checkpoints(True).set_start_from_latest()
 
     data_stream = env.add_source(kafka_source).name("publish state source")
-    data_stream = data_stream.map(PublishState()).name("my_mapping publish_state")
+    data_stream = data_stream.map(PublishState(), Types.STRING()).name("publish_state mapping").filter(lambda notif: notif)
     data_stream.add_sink(FlinkKafkaProducer(topic=sink_topic_name,
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_publish_state_job2"},
         serialization_schema=SimpleStringSchema())).name("write_to_kafka publish_state_job")
