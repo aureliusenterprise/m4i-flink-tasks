@@ -24,6 +24,7 @@ from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import (FlinkKafkaConsumer,
                                            FlinkKafkaProducer)
 from pyflink.datastream.functions import MapFunction, RuntimeContext
+from pyflink.common.typeinfo import Types
 
 from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 

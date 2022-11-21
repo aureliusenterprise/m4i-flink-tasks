@@ -5,7 +5,7 @@ import uuid
 from typing import Optional
 
 import jsonpickle
-from elastic_enterprise_search import AppSearch, EnterpriseSearch
+#from elastic_enterprise_search import AppSearch, EnterpriseSearch
 from m4i_atlas_core import Entity, EntityAuditAction
 
 from m4i_flink_tasks import EntityMessage
@@ -29,38 +29,38 @@ from scripts.init.app_search_engine_setup import engines
 
 
 class SynchronizeAppsearchLocal(object):
-    app_search = None
-    elastic_base_endpoint = None
-    elastic_user = None
-    elastic_passwd = None
-    schema_names = None
-    engine_name = None
+    # app_search = None
+    # elastic_base_endpoint = None
+    # elastic_user = None
+    # elastic_passwd = None
+    # schema_names = None
+    # engine_name = None
 
 
-    def open_local(self, config, credentials, config_store):
-        config_store.load({**config, **credentials})
-        (
-            self.elastic_base_endpoint,
-            self.elastic_user,
-            self.elastic_passwd
-        ) = config_store.get_many(
-            "elastic.enterprise.search.endpoint",
-            "elastic.user",
-            "elastic.passwd"
-        )
-        self.app_search = self.get_app_search()
-        #TODO select the engine based on the name rather than the index. The index may change
-        self.schema_names = engines[0]['schema'].keys()
-        self.engine_name = config_store.get("elastic.app.search.engine.name")
-        # "operations.appsearch.engine.name"
+    # def open_local(self, config, credentials, config_store):
+        # config_store.load({**config, **credentials})
+        # (
+        #     self.elastic_base_endpoint,
+        #     self.elastic_user,
+        #     self.elastic_passwd
+        # ) = config_store.get_many(
+        #     "elastic.enterprise.search.endpoint",
+        #     "elastic.user",
+        #     "elastic.passwd"
+        # )
+        # self.app_search = self.get_app_search()
+        # #TODO select the engine based on the name rather than the index. The index may change
+        # self.schema_names = engines[0]['schema'].keys()
+        # self.engine_name = config_store.get("elastic.app.search.engine.name")
+        # # "operations.appsearch.engine.name"
 
-    def get_app_search(self):
-        if self.app_search == None:
-            self.app_search = AppSearch(
-                hosts=self.elastic_base_endpoint,
-                basic_auth=(self.elastic_user, self.elastic_passwd)
-                )
-        return self.app_search
+    # def get_app_search(self):
+    #     if self.app_search == None:
+    #         self.app_search = AppSearch(
+    #             hosts=self.elastic_base_endpoint,
+    #             basic_auth=(self.elastic_user, self.elastic_passwd)
+    #             )
+    #     return self.app_search
 
     def insert_person_relationship(self, input_entity, inserted_relationship, local_operations_dict:dict):
         logging.info("start insert_person_relationship")
@@ -171,6 +171,7 @@ class SynchronizeAppsearchLocal(object):
                 # iterate over all deleted relationships
                 for deleted_relationship in deleted_relationships_:
                     # deleted_relationship = deleted_relationships_[0]
+                    #TODO
                     super_types = get_super_types_names(input_entity.type_name)
                     logging.info(f"super_types {super_types}")
                     m4isourcetype = get_m4i_source_types(super_types)
