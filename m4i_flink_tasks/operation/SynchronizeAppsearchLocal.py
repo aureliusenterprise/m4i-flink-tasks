@@ -37,7 +37,7 @@ class SynchronizeAppsearchLocal(object):
     # engine_name = None
 
 
-    # def open_local(self, config, credentials, config_store):
+    def open_local(self, config, credentials, config_store):
         # config_store.load({**config, **credentials})
         # (
         #     self.elastic_base_endpoint,
