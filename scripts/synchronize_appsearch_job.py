@@ -81,7 +81,7 @@ class SynchronizeAppsearch(MapFunction,SynchronizeAppsearchLocal):
             return res
         except Exception as e:
             logging.error("Exception during processing:")
-            logging.error(repr(e))
+            logging.error((e))
 
             exc_info = sys.exc_info()
             e1 = (''.join(traceback.format_exception(*exc_info)))

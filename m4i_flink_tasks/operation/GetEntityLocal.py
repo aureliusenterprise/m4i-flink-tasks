@@ -108,7 +108,7 @@ class GetEntityLocal(object):
 
             msg_creation_time = kafka_notification_obj.msg_creation_time
 
-            if kafka_notification_obj.message.entity.type_name == 'm4i_source':
+            if kafka_notification_obj.message.operation_type in [EntityAuditAction.ENTITY_DELETE, EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE] and kafka_notification_obj.message.entity.type_name == 'm4i_source':
                     logging.info("This is an entity of type m4i_source ")
                     raise SourceEntityTypeException(f"This is an entity of type m4i_source")
 

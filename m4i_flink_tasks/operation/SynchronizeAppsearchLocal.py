@@ -33,7 +33,7 @@ class SynchronizeAppsearchLocal(object):
     # elastic_base_endpoint = None
     # elastic_user = None
     # elastic_passwd = None
-    # schema_names = None
+    schema_names =
     # engine_name = None
 
 
@@ -50,7 +50,7 @@ class SynchronizeAppsearchLocal(object):
         # )
         # self.app_search = self.get_app_search()
         # #TODO select the engine based on the name rather than the index. The index may change
-        # self.schema_names = engines[0]['schema'].keys()
+        self.schema_names = engines[0]['schema'].keys()
         # self.engine_name = config_store.get("elastic.app.search.engine.name")
         # # "operations.appsearch.engine.name"
 
