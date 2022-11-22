@@ -3,6 +3,7 @@ import asyncio
 import json
 import logging
 from typing import Callable, Dict, List, Optional, Union
+import time
 
 #from config import config
 #from credentials import credentials
@@ -43,7 +44,7 @@ class GetEntityLocal(object):
 
     def get_audit(self, entity_guid: str):
         retry = 0
-        while retry < 3:
+        while retry < 100:
             try:
                 access__token = self.get_access_token()
                 #logging.info(f"access tokenL: {access__token}")
@@ -61,10 +62,11 @@ class GetEntityLocal(object):
                     logging.info("was not able to determine audit trail")
                     return {}
             except Exception as e:
-                logging.error("failed to retrieve entity audit from atlas - retry")
+                logging.error("failed to retrieve entity audit from atlas - retry - retry "+str(retry))
                 logging.error(str(e))
                 self.access_token = None
-                retry = retry+1
+                time.sleep(retry)
+            retry = retry+1
         raise AtlasAuditRetrieveException(f"Failed to lookup entity audit for entity guid {entity_guid}")
 
     def get_super_types(self, input_type: str) -> List[EntityDef]:
@@ -164,7 +166,7 @@ class GetEntityLocal(object):
         # END func
 
         retry = 0
-        while retry < 3:
+        while retry < 100:
             try:
                 access__token = self.get_access_token()
                 #logging.info(f"access tokenL: {access__token}")
@@ -174,9 +176,10 @@ class GetEntityLocal(object):
             except SourceEntityTypeException as e:
                 raise e
             except Exception as e:
-                logging.error("failed to retrieve entity from atlas - retry")
+                logging.error("failed to retrieve entity from atlas - retry "+str(retry))
                 logging.error(str(e))
                 self.access_token = None
+                time.sleep(retry)
             retry = retry+1
         raise NotFoundEntityException(f"Failed to lookup entity for kafka notification {kafka_notification}")
 # end of class GetEntityLocal
