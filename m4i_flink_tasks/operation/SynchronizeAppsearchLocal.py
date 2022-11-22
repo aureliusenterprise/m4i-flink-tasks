@@ -33,7 +33,7 @@ class SynchronizeAppsearchLocal(object):
     # elastic_base_endpoint = None
     # elastic_user = None
     # elastic_passwd = None
-    schema_names =
+    schema_names = None
     # engine_name = None
 
 
