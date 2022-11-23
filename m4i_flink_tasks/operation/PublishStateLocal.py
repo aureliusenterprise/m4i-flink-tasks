@@ -26,7 +26,7 @@ class PublishStateLocal(object):
     config_store = None
     doc_id = 0
 
-    def get_previous_atlas_entity(self, entity_guid, event_time):
+    def get_previous_atlas_entity(self, entity_guid, msg_creation_time):
         query = {
             "bool": {
                 "filter": [
@@ -37,8 +37,8 @@ class PublishStateLocal(object):
                 },
                 {
                     "range": {
-                    "eventTime": {
-                        "lt": event_time
+                    "msgCreationTime": {
+                        "lt": msg_creation_time
                     }
                     }
                 }
@@ -47,7 +47,7 @@ class PublishStateLocal(object):
         }
 
         sort = {
-            "eventTime": {"numeric_type" : "long", "order": "desc"}
+            "msgCreationTime": {"numeric_type" : "long", "order": "desc"}
         }
 
         retry = 0
@@ -144,7 +144,7 @@ class PublishStateLocal(object):
             raise ElasticPersistingException(f"Storing state with doc_id {doc_id_} failed 3 times")
 
 
-        kafka_notification_json['previouse_version'] = self.get_previous_atlas_entity(entity_guid, event_time)
+        kafka_notification_json['previouse_version'] = self.get_previous_atlas_entity(entity_guid, msg_creation_time)
         return json.dumps(kafka_notification_json)
 
 # end of class PublishStateLocal

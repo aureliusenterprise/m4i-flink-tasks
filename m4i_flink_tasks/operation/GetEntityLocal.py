@@ -100,86 +100,86 @@ class GetEntityLocal(object):
 
     def map_local(self, kafka_notification: str):
 
-        def get_entity(kafka_notification, access_token_):
+        logging.info(repr(kafka_notification))
+        kafka_notification_obj = AtlasChangeMessage.from_json(kafka_notification)
+        logging.info(access_token_)
 
-            logging.info(repr(kafka_notification))
-            kafka_notification_obj = AtlasChangeMessage.from_json(kafka_notification)
-            logging.info(access_token_)
+        msg_creation_time = kafka_notification_obj.msg_creation_time
 
-            msg_creation_time = kafka_notification_obj.msg_creation_time
+        if kafka_notification_obj.message.operation_type in [EntityAuditAction.ENTITY_DELETE, EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE] and kafka_notification_obj.message.entity.type_name == 'm4i_source':
+                logging.info("This is an entity of type m4i_source ")
+                raise SourceEntityTypeException(f"This is an entity of type m4i_source")
 
-            if kafka_notification_obj.message.operation_type in [EntityAuditAction.ENTITY_DELETE, EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE] and kafka_notification_obj.message.entity.type_name == 'm4i_source':
-                    logging.info("This is an entity of type m4i_source ")
-                    raise SourceEntityTypeException(f"This is an entity of type m4i_source")
+        if kafka_notification_obj.message.operation_type in [EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE]:
+            entity_guid = kafka_notification_obj.message.entity.guid
+            entity_type = kafka_notification_obj.message.entity.type_name
+            entity_ts = kafka_notification_obj.message.event_time
+            retry = 0
+            event_entity = None
+            while retry < 100 and event_entity==None:
+                try:
+                    access_token_ = self.get_access_token()
+                    asyncio.run(get_entity_by_guid.cache.clear())
+                    event_entity = asyncio.run(get_entity_by_guid(guid=entity_guid, ignore_relationships=False, access_token=access_token_))
+                except Exception as e:
+                    logging.error("failed to retrieve entity from atlas - retry "+str(retry))
+                    logging.error(str(e))
+                    self.access_token = None
+                    time.sleep(retry)
+                retry = retry+1
 
-            if kafka_notification_obj.message.operation_type in [EntityAuditAction.ENTITY_CREATE, EntityAuditAction.ENTITY_UPDATE]:
-                entity_guid = kafka_notification_obj.message.entity.guid
-                entity_type = kafka_notification_obj.message.entity.type_name
-                entity_ts = kafka_notification_obj.message.event_time
-                asyncio.run(get_entity_by_guid.cache.clear())
-                event_entity = asyncio.run(get_entity_by_guid(guid=entity_guid, ignore_relationships=False, access_token=access_token_))
-                # event_entity =  get_entity_by_guid(guid=entity_guid, ignore_relationships=False)
-                if not event_entity:
-                    raise Exception(f"No entity could be retreived from Atlas with guid {entity_guid}")
+            # event_entity =  get_entity_by_guid(guid=entity_guid, ignore_relationships=False)
+            if not event_entity:
+                logging.warning(f"No entity could be retreived from Atlas with guid {entity_guid}")
+                raise NotFoundEntityException(f"No entity could be retreived from Atlas with guid {entity_guid}")
 
-                logging.warning(repr(kafka_notification_obj))
-                logging.warning(repr(event_entity))
-                kafka_notification_json = json.loads(kafka_notification_obj.to_json())
-                entity_json = json.loads(event_entity.to_json())
-                audit_json_arr = self.get_audit(entity_guid)
-                # find the right audit entry
-                logging.warning("entity_ts: "+str(entity_ts))
-                audit_json = {}
-                for ev in audit_json_arr:
-                    ev_details = ev.details[ev.details.find(':')+1:]
-                    #logging.warning(ev_details)
-                    ev_details = json.loads(ev_details)
-                    ts = None
-                    if "updateTime" in ev_details.keys():
-                        ts = ev_details['updateTime']
-                    elif "createTime" in ev_details.keys():
-                        ts = ev_details['createTime']
-                    #logging.warning(ts)
-                    if ts == entity_ts:
-                        audit_json = ev_details
-                logging.warning("step 2: "+str(audit_json))
-                supertypes = self.get_super_types_names(entity_type)
-            elif kafka_notification_obj.message.operation_type == EntityAuditAction.ENTITY_DELETE:
-                entity_type = kafka_notification_obj.message.entity.type_name
-                kafka_notification_json = json.loads(kafka_notification_obj.to_json())
-                entity_ts = kafka_notification_obj.message.event_time
-                #logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}}))
-                entity_json = {}
-                audit_json = {}
-                supertypes = self.get_super_types_names(entity_type)
-                #return json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}, "msg_creation_time": msg_creation_time})
-            else:
-                logging.warning("message with an unexpected message operation type")
-                raise WrongOperationTypeException(f"message with an unexpected message operation type received from Atlas")
-            #logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json}))
-            return json.dumps({"kafka_notification" : kafka_notification_json,
-                                "atlas_entity" : entity_json,
-                                "msg_creation_time": msg_creation_time,
-                                "event_time": entity_ts,
-                                "atlas_entity_audit": audit_json,
-                                "supertypes": supertypes})
-        # END func
+            logging.warning(repr(kafka_notification_obj))
+            logging.warning(repr(event_entity))
+            kafka_notification_json = json.loads(kafka_notification_obj.to_json())
+            entity_json = json.loads(event_entity.to_json())
+            audit_json_arr = self.get_audit(entity_guid)
+            # find the right audit entry
+            logging.warning("entity_ts: "+str(entity_ts))
+            audit_json = {}
+            for ev in audit_json_arr:
+                ev_details = ev.details[ev.details.find(':')+1:]
+                #logging.warning(ev_details)
+                ev_details = json.loads(ev_details)
+                ts = None
+                if "updateTime" in ev_details.keys():
+                    ts = ev_details['updateTime']
+                elif "createTime" in ev_details.keys():
+                    ts = ev_details['createTime']
+                #logging.warning(ts)
+                if ts == entity_ts:
+                    audit_json = ev_details
+            logging.warning("step 2: "+str(audit_json))
+            supertypes = self.get_super_types_names(entity_type)
+        elif kafka_notification_obj.message.operation_type == EntityAuditAction.ENTITY_DELETE:
+            entity_type = kafka_notification_obj.message.entity.type_name
+            kafka_notification_json = json.loads(kafka_notification_obj.to_json())
+            entity_ts = kafka_notification_obj.message.event_time
+            #logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}}))
+            entity_json = {}
+            audit_json = {}
+            supertypes = self.get_super_types_names(entity_type)
+            #return json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : {}, "msg_creation_time": msg_creation_time})
+        else:
+            logging.warning("message with an unexpected message operation type")
+            raise WrongOperationTypeException(f"message with an unexpected message operation type received from Atlas")
+        #logging.warning(json.dumps({"kafka_notification" : kafka_notification_json, "atlas_entity" : entity_json}))
+        return json.dumps({"kafka_notification" : kafka_notification_json,
+                            "atlas_entity" : entity_json,
+                            "msg_creation_time": msg_creation_time,
+                            "event_time": entity_ts,
+                            "atlas_entity_audit": audit_json,
+                            "supertypes": supertypes})
+    # END func
 
-        retry = 0
-        while retry < 100:
-            try:
-                access__token = self.get_access_token()
-                #logging.info(f"access tokenL: {access__token}")
-                return (get_entity(kafka_notification, access__token))
-            except WrongOperationTypeException as e:
-                raise e
-            except SourceEntityTypeException as e:
-                raise e
-            except Exception as e:
-                logging.error("failed to retrieve entity from atlas - retry "+str(retry))
-                logging.error(str(e))
-                self.access_token = None
-                time.sleep(retry)
-            retry = retry+1
-        raise NotFoundEntityException(f"Failed to lookup entity for kafka notification {kafka_notification}")
+            # retry = 0
+            # while retry < 100:
+            #     try:
+            #         access__token = self.get_access_token()
+            #         #logging.info(f"access tokenL: {access__token}")
+            #         return (get_entity(kafka_notification, access__token))
 # end of class GetEntityLocal
