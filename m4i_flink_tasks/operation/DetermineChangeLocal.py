@@ -84,8 +84,8 @@ class DetermineChangeLocal():
             # atlas_entiy = Entity.from_json(re.search(r"{.*}", entity_audit['details'].group(0))
             # logging.info(atlas_entiy.to_json())
             # logging.info(atlas_entiy.relationship_attributes)
-            logging.info(f"derived atlas_entity relationship attributes : {atlas_entiy.relationship_attributes!=None}")
-            return "relationship_attributes" in atlas_entiy.keys()
+            logging.info(f"derived atlas_entity relationship attributes : {'relationship_attributes' in entity_audit.keys()}")
+            return "relationship_attributes" in entity_audit.keys()
         else:
             logging.info("was not able to determine audit trail")
             return True
