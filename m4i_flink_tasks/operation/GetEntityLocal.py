@@ -102,7 +102,7 @@ class GetEntityLocal(object):
 
         logging.info(repr(kafka_notification))
         kafka_notification_obj = AtlasChangeMessage.from_json(kafka_notification)
-        logging.info(access_token_)
+        #logging.info(access_token_)
 
         msg_creation_time = kafka_notification_obj.msg_creation_time
 
