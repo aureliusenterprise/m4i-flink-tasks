@@ -59,7 +59,7 @@ class GetEntity(MapFunction,GetEntityLocal):
             res = self.map_local(kafka_notification)
             logging.info("received result: "+repr(res))
             self.cnt_res = self.cnt_res+1
-            logging.info(f"event count GetEntity: {self.cnt_res}")
+            logging.info(f"submitted event count GetEntity: {self.cnt_res}")
             return res
         except Exception as e:
             logging.error("Exception during processing:")

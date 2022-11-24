@@ -110,7 +110,7 @@ class GetResultSyncronizeAppSearch(FlatMapFunction):
         for element in input_list:
             logging.info(element)
             self.cnt = self.cnt+1
-            logging.info(f"event count GetResultSyncronizeAppSearch: {self.cnt}")
+            logging.info(f"submitted event count GetResultSyncronizeAppSearch: {self.cnt}")
             yield element
 
 

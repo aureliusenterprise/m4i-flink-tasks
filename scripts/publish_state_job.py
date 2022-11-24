@@ -62,6 +62,8 @@ class PublishState(MapFunction,PublishStateLocal):
         try:
             res = self.map_local(kafka_notification)
             logging.info("received result: "+repr(res))
+            self.cnt_res = self.cnt_res+1
+            logging.info(f"submitted event count PublishState: {self.cnt_res}")
             return res
         except Exception as e:
             logging.error("Exception during processing:")

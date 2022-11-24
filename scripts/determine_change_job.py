@@ -104,7 +104,7 @@ class GetResultDetermineChange(FlatMapFunction):
     def flat_map(self, input_list):
         for element in input_list:
             self.cnt = self.cnt+1
-            logging.info(f"event count GetResultDetermineChange: {self.cnt}")
+            logging.info(f"submitted event count GetResultDetermineChange: {self.cnt}")
             yield element
 
 
