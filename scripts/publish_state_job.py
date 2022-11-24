@@ -35,6 +35,7 @@ class PublishState(MapFunction,PublishStateLocal):
     producer = None
     config_store = None
     cnt = 0
+    cnt_res = 0
 
     def open(self, runtime_context: RuntimeContext):
         config_store.load({**config, **credentials})
