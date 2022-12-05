@@ -1,4 +1,14 @@
 from setuptools import find_packages, setup
+importy os
+
+M4I_FLINK_ATLAS_CORE_BRANCH = os.getenv('M4I_FLINK_ATLAS_CORE_BRANCH')
+M4I_FLINK_ATLAS_CORE_TAG = os.getenv('M4I_FLINK_ATLAS_CORE_TAG')
+atlas_core_link = "m4i-atlas-core @ git+https://github.com/aureliusenterprise/m4i_atlas_core.git"
+if M4I_FLINK_ATLAS_CORE_BRANCH:
+    atlas_core_link = atlas_core_flink+"@"+M4I_FLINK_ATLAS_CORE_BRANCH
+atlas_core_link = atlas_core_flink+"#egg=m4i-atlas-core"
+if M4I_FLINK_ATLAS_CORE_TAG:
+    atlas_core_link = atlas_core_flink+"-"+M4I_FLINK_ATLAS_CORE_TAG
 
 setup(
     name="m4i_flink_tasks",
@@ -12,7 +22,8 @@ setup(
         "elasticsearch==8.3.0",
         "elastic_enterprise_search==8.3.0",
         "elastic-app-search",
-        "m4i-atlas-core @ git+https://github.com/aureliusenterprise/m4i_atlas_core.git#egg=m4i-atlas-core",
+        atlas_core_link,
+        #"m4i-atlas-core @ git+https://github.com/aureliusenterprise/m4i_atlas_core.git#egg=m4i-atlas-core",
         #"m4i-data-management @ git+https://github.com/wombach/m4i-data-management.git#egg=m4i-data-management",
         # "fastavro",
         # "jsonschema",
