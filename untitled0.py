@@ -116,9 +116,9 @@ config_store.load({**config, **credentials})
 
 access__token = get_keycloak_token()
 # data domain
-entity_audit =  asyncio.run(get_entity_audit(entity_guid = "85222630-dccb-4509-b106-57806bf99b58", access_token = access__token))
+entity_audit =  asyncio.run(get_entity_audit(entity_guid = "e3b4f3e8-86cf-4ad1-8163-9b472243a8aa", access_token = access__token))
 # data entity
-entity_audit2 =  asyncio.run(get_entity_audit(entity_guid = "56dce48a-1bea-49c3-95a7-58083c6d2208", access_token = access__token))
+entity_audit2 =  asyncio.run(get_entity_audit(entity_guid = "99a10a2e-55a8-4d4d-b1e0-779be349a31c", access_token = access__token))
 
 #%%
 kafka_notification = """

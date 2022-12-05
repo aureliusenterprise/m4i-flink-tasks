@@ -109,7 +109,7 @@ class GetResultDetermineChange(FlatMapFunction):
 
 
 
-def run_determine_change_job():
+def run_determine_change_job(output_path):
     env = StreamExecutionEnvironment.get_execution_environment()
     env.set_parallelism(1)
 
@@ -118,6 +118,7 @@ def run_determine_change_job():
     # download JARs
     kafka_jar = "file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
     kafka_client = "file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
+    file_sink = "file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
 
     env.add_jars(kafka_jar, kafka_client)
 
@@ -151,11 +152,33 @@ def run_determine_change_job():
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_determine_change_job2"},
         serialization_schema=SimpleStringSchema())).name("write_to_kafka_sink determine_change")
 
+    # define the sink
+    if output_path is not None:
+        data_stream.add_sink(
+            sink=FileSink.for_row_format(
+                base_path=output_path,
+                encoder=Encoder.simple_string_encoder())
+            .with_output_file_config(
+                OutputFileConfig.builder()
+                .with_part_prefix("determine_change_result_")
+                .with_part_suffix(".ext")
+                .build())
+            .with_rolling_policy(RollingPolicy.default_rolling_policy())
+            .build()
+        )
+
     env.execute("determine_change")
 
 
 if __name__ == '__main__':
     logging.basicConfig(stream=sys.stdout,
                         level=logging.INFO, format="%(message)s")
-
-    run_determine_change_job()
+    print(sys.argv)
+    debug = False
+    if len(sys.argv)>1:
+        debug = 'debug' in sys.argv[1:]
+    print(f"debug: {debug}")
+    output_path = None
+    if debug:
+        output_path = '/tmp/'
+    run_determine_change_job(output_path)
