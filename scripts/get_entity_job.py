@@ -74,7 +74,7 @@ class GetEntity(MapFunction,GetEntityLocal):
             logging.error(repr(event))
 
             retry = 0
-            while retry < 2:
+            while retry < 10:
                 try:
                     producer_ = self.get_deadletter()
                     producer_.send(topic=self.dead_lettter_box_topic, value=event.to_json())

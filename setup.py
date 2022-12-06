@@ -1,5 +1,5 @@
 from setuptools import find_packages, setup
-importy os
+import os
 
 M4I_FLINK_ATLAS_CORE_BRANCH = os.getenv('M4I_FLINK_ATLAS_CORE_BRANCH')
 M4I_FLINK_ATLAS_CORE_TAG = os.getenv('M4I_FLINK_ATLAS_CORE_TAG')

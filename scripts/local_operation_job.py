@@ -80,7 +80,7 @@ class LocalOperation(MapFunction, LocalOperationLocal):
             event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=kafka_notification, job="local_operation", description = (e1),
                                         exception_class = type(e).__name__, remark= None)
             retry = 0
-            while retry<3:
+            while retry<10:
                 try:
                     producer_ = self.get_producer()
                     producer_.send(topic = self.dead_lettter_box_topic, value=event.to_json())

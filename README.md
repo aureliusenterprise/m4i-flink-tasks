@@ -42,3 +42,32 @@ Creating additional users in keycloak
 =====================================
 examples of using the keycloak part
 https://github.com/marcospereirampj/python-keycloak/blob/master/README.md
+
+Debugging flink tasks
+======================
+
+extract the content of the kafka topics into files
+
+```
+python dump_kafka_topic.py ATLAS_ENTITIES > dump_atlas.log
+python dump_kafka_topic.py DEAD_LETTER_BOX > dump_dead_letter.log
+python dump_kafka_topic.py ENRICHED_ENTITIES > dump_enriched.log
+python dump_kafka_topic.py ENRICHED_ENTITIES_SAVED > dump_enriched_save.log
+python dump_kafka_topic.py DETERMINED_CHANGE > dump_determined_change.log
+```
+
+then read in the files you can copy them on the local machine with
+
+```
+kubectl cp anwo/flink-jobmanager-64cd955bdd-flc6f:/opt/flink/py_libs/m4i-flink-tasks/scripts/dump_atlas.log ../dump_atlas.log
+kubectl cp anwo/flink-jobmanager-64cd955bdd-flc6f:/opt/flink/py_libs/m4i-flink-tasks/scripts/dump_determined_change.log ../dump_determined_change.log
+kubectl cp anwo/flink-jobmanager-64cd955bdd-flc6f:/opt/flink/py_libs/m4i-flink-tasks/scripts/dump_dead_letter.log ../dump_dead_letter.log
+kubectl cp anwo/flink-jobmanager-64cd955bdd-flc6f:/opt/flink/py_libs/m4i-flink-tasks/scripts/dump_enriched.log ../dump_enriched.log
+kubectl cp anwo/flink-jobmanager-64cd955bdd-flc6f:/opt/flink/py_libs/m4i-flink-tasks/scripts/dump_enriched_save.log ../dump_enriched_save.log
+```
+
+alternatively you can analyse the dumps with
+```
+python compare_dump_files.py
+```
+on the kubernetes machine.

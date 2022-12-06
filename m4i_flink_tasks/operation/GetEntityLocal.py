@@ -98,6 +98,7 @@ class GetEntityLocal(object):
         logging.info(f"supertypenames: {super_types}")
         return  [super_type.name for super_type in super_types]
 
+
     def map_local(self, kafka_notification: str):
 
         logging.info(repr(kafka_notification))
