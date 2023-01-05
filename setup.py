@@ -3,7 +3,7 @@ import os
 
 M4I_FLINK_ATLAS_CORE_BRANCH = os.getenv('M4I_FLINK_ATLAS_CORE_BRANCH')
 M4I_FLINK_ATLAS_CORE_TAG = os.getenv('M4I_FLINK_ATLAS_CORE_TAG')
-atlas_core_link = "m4i-atlas-core @ git+https://github.com/aureliusenterprise/m4i_atlas_core.git"
+atlas_core_flink = "m4i-atlas-core @ git+https://github.com/aureliusenterprise/m4i_atlas_core.git"
 if M4I_FLINK_ATLAS_CORE_BRANCH:
     atlas_core_link = atlas_core_flink+"@"+M4I_FLINK_ATLAS_CORE_BRANCH
 atlas_core_link = atlas_core_flink+"#egg=m4i-atlas-core"
