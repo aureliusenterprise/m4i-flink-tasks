@@ -1,67 +1,90 @@
 import logging
 import os
-
 import sys
 import time
 import traceback
 
-from config import config
-from credentials import credentials
 from kafka import KafkaProducer
 from m4i_atlas_core import ConfigStore
-
-from pyflink import FlatMapFunction
-from pyflink.common.serialization import SimpleStringSchema
+from pyflink.common.serialization import Encoder, SimpleStringSchema
 from pyflink.common.typeinfo import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.datastream.connectors import (
-    FlinkKafkaConsumer,
-    FlinkKafkaProducer
-)
-from pyflink.datastream.functions import MapFunction, RuntimeContext
+from pyflink.datastream.connectors.file_system import (FileSink,
+                                                       OutputFileConfig,
+                                                       RollingPolicy)
+from pyflink.datastream.connectors.kafka import (FlinkKafkaConsumer,
+                                                 FlinkKafkaProducer)
+from pyflink.datastream.functions import FlatMapFunction, MapFunction
 
 from m4i_flink_tasks import DeadLetterBoxMesage
 from m4i_flink_tasks.operation.DetermineChangeLocal import DetermineChangeLocal
-from m4i_flink_tasks.synchronize_app_search import make_elastic_connection
 
 store = ConfigStore.get_instance()
 
-# inserted_attributes = []
-# changed_attributes = []
-# deleted_attributes = []
 
-# inserted_relationships = {}
-# changed_relationships = {}
-# deleted_relationships = {}
+def retry(func: Retryable, retries: int = 1, *args, **kwargs):
+    for _ in range(retries):
+        try:
+            func(*args, **kwargs)
+            break
+        except Exception as e:
+            logging.error(f"error in {func.__name__}: {repr(e)}")
 
 
 class DetermineChange(MapFunction, DetermineChangeLocal):
-    bootstrap_server_hostname = None
-    bootstrap_server_port = None
-    dead_lettter_box_topic = "deadletterbox"
-    store = None
-    cnt = 0
-    producer = None
 
-    def open(self, runtime_context: RuntimeContext):
-        store.load({**config, **credentials})
-        self.bootstrap_server_hostname, self.bootstrap_server_port = store.get_many(
-            "kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
-        self.dead_lettter_box_topic = store.get("exception.events.topic.name")
+    def __init__(self):
+        bootstrap_server_hostname, bootstrap_server_port = store.get_many(
+            "kafka.bootstrap.server.hostname",
+            "kafka.bootstrap.server.port",
+            all_required=True
+        )
 
-        self.open_local(config, credentials, store)
+        self.kafka_producer = KafkaProducer(
+            bootstrap_servers=f"{bootstrap_server_hostname}:{bootstrap_server_port}",
+            value_serializer=str.encode,
+            request_timeout_ms=1000,
+            api_version=(2, 0, 2),
+            retries=1,
+            linger_ms=1000
+        )
 
-    def get_deadletter(self):
-        if self.producer == None:
-            self.producer = KafkaProducer(
-                bootstrap_servers=f"{self.bootstrap_server_hostname}:{self.bootstrap_server_port}",
-                value_serializer=str.encode,
-                request_timeout_ms=1000,
-                api_version=(2, 0, 2),
-                retries=1,
-                linger_ms=1000
-            )
-        return self.producer
+        self.dead_lettter_box_topic = store.get(
+            "exception.events.topic.name",
+            default="deadletterbox"
+        )
+    # END __init__
+
+    def send_deadletter_message(self, event: DeadLetterBoxMesage):
+        self.kafka_producer.send(
+            topic=self.dead_lettter_box_topic,
+            value=event.to_json()
+        )
+
+    def handle_error(self, e: Exception, kafka_notification: str):
+        logging.error(f"Exception during processing: {repr(e)}")
+
+        exc_info = sys.exc_info()
+        formatted_exception = ''.join(traceback.format_exception(*exc_info))
+
+        event = DeadLetterBoxMesage(
+            timestamp=time.time(),
+            original_notification=kafka_notification,
+            job="determine_change",
+            description=formatted_exception,
+            exception_class=type(e).__name__,
+            remark=None
+        )
+
+        logging.error(f"this goes into dead letter box: {repr(event)}")
+
+        for _ in range(2):
+            try:
+                self.send_deadletter_message(event)
+                break
+            except Exception as e2:
+                logging.error(
+                    f"error dumping data into deadletter topic: {repr(e2)}")
 
     def map(self, kafka_notification: str):
         self.cnt = self.cnt + 1
@@ -116,7 +139,6 @@ def run_determine_change_job(output_path):
     # download JARs
     kafka_jar = "file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
     kafka_client = "file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
-    file_sink = "file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
 
     env.add_jars(kafka_jar, kafka_client)
 
@@ -159,14 +181,15 @@ def run_determine_change_job(output_path):
     # define the sink
     if output_path is not None:
         data_stream.add_sink(
-            sink=FileSink.for_row_format(
+            sink_func=FileSink.for_row_format(
                 base_path=output_path,
                 encoder=Encoder.simple_string_encoder())
             .with_output_file_config(
                 OutputFileConfig.builder()
                 .with_part_prefix("determine_change_result_")
                 .with_part_suffix(".ext")
-                .build())
+                .build()
+            )
             .with_rolling_policy(RollingPolicy.default_rolling_policy())
             .build()
         )
@@ -177,12 +200,18 @@ def run_determine_change_job(output_path):
 if __name__ == '__main__':
     logging.basicConfig(stream=sys.stdout,
                         level=logging.INFO, format="%(message)s")
-    print(sys.argv)
+    logging.debug(sys.argv)
+
     debug = False
     if len(sys.argv) > 1:
         debug = 'debug' in sys.argv[1:]
-    print(f"debug: {debug}")
+
+    logging.debug(f"debug: {debug}")
+
     output_path = None
+
     if debug:
         output_path = '/tmp/'
+
     run_determine_change_job(output_path)
+# END MAIN
