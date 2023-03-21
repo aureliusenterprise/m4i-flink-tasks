@@ -1,12 +1,10 @@
-from typing import Optional
-
-from m4i_atlas_core import AtlasChangeMessage
+from m4i_atlas_core import AtlasChangeMessage, RelationshipAttribute
 
 from ......model import EntityMessageType
 from .handle_create_operation import handle_create_operation
 
 
-def create_mock_change_message(entity: Optional[dict]):
+def create_mock_change_message(entity: dict):
     change_message = {
         "msg_compression_kind": "none",
         "msg_split_idx": 0,
@@ -69,8 +67,16 @@ def test_handle_create_operation_relationships_only():
         "type_name": "SampleEntity",
         "relationship_attributes": {
             "relation1": [
-                {"guid": "12345", "type_name": "RelatedEntity"},
-                {"guid": "23456", "type_name": "RelatedEntity"}
+                {
+                    "guid": "12345",
+                    "relationship_guid": "12345",
+                    "type_name": "RelatedEntity"
+                },
+                {
+                    "guid": "23456",
+                    "relationship_guid": "23456",
+                    "type_name": "RelatedEntity"
+                }
             ]
         }
     }
@@ -84,8 +90,16 @@ def test_handle_create_operation_relationships_only():
     assert messages[0].inserted_attributes == []
     assert messages[0].inserted_relationships == {
         "relation1": [
-            {"guid": "12345", "type_name": "RelatedEntity"},
-            {"guid": "23456", "type_name": "RelatedEntity"}
+            RelationshipAttribute.from_dict({
+                "guid": "12345",
+                "relationship_guid": "12345",
+                "type_name": "RelatedEntity"
+            }),
+            RelationshipAttribute.from_dict({
+                "guid": "23456",
+                "relationship_guid": "23456",
+                "type_name": "RelatedEntity"
+            })
         ]
     }
 
@@ -96,8 +110,16 @@ def test_handle_create_operation_both_attributes_relationships():
         "attributes": {"attr1": "test", "attr2": "value"},
         "relationship_attributes": {
             "relation1": [
-                {"guid": "12345", "type_name": "RelatedEntity"},
-                {"guid": "23456", "type_name": "RelatedEntity"}
+                {
+                    "guid": "12345",
+                    "relationship_guid": "12345",
+                    "type_name": "RelatedEntity"
+                },
+                {
+                    "guid": "23456",
+                    "relationship_guid": "23456",
+                    "type_name": "RelatedEntity"
+                }
             ]
         }
     }
@@ -111,7 +133,15 @@ def test_handle_create_operation_both_attributes_relationships():
     assert messages[0].inserted_attributes == ["attr1", "attr2"]
     assert messages[0].inserted_relationships == {
         "relation1": [
-            {"guid": "12345", "type_name": "RelatedEntity"},
-            {"guid": "23456", "type_name": "RelatedEntity"}
+            RelationshipAttribute.from_dict({
+                "guid": "12345",
+                "relationship_guid": "12345",
+                "type_name": "RelatedEntity"
+            }),
+            RelationshipAttribute.from_dict({
+                "guid": "23456",
+                "relationship_guid": "23456",
+                "type_name": "RelatedEntity"
+            })
         ]
     }

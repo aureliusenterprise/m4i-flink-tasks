@@ -82,7 +82,7 @@ def get_relationships_diff(a: Entity, b: Entity) -> Dict[str, List[RelationshipA
     }
 
     return {
-        [attribute]: [
+        attribute: [
             relationship
             for relationship in relationships
             if relationship.guid not in a_relationships
