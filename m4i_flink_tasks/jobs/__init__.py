@@ -7,7 +7,8 @@ from kafka import KafkaProducer
 from m4i_atlas_core import ConfigStore, retry_decorator
 from pyflink.common.serialization import Encoder, SimpleStringSchema
 from pyflink.common.typeinfo import Types
-from pyflink.datastream import StreamExecutionEnvironment, DataStream
+from pyflink.datastream import (DataStream, SinkFunction, SourceFunction,
+                                StreamExecutionEnvironment)
 from pyflink.datastream.connectors.file_system import (FileSink,
                                                        OutputFileConfig,
                                                        RollingPolicy)
@@ -150,25 +151,18 @@ def create_kafka_sink():
 
 
 def create_file_sink():
-
-    output_file_config = (
-        OutputFileConfig.builder()
-        .with_part_prefix("determine_change_result_")
-        .with_part_suffix(".ext")
-        .build()
-    )
-
     sink = (
         FileSink.for_row_format(
             base_path=output_path,
             encoder=Encoder.simple_string_encoder()
         )
         .with_output_file_config(
-            output_file_config
+            OutputFileConfig.builder()
+            .with_part_prefix("determine_change_result_")
+            .with_part_suffix(".ext")
+            .build()
         )
-        .with_rolling_policy(
-            RollingPolicy.default_rolling_policy()
-        )
+        .with_rolling_policy(RollingPolicy.default_rolling_policy())
         .build()
     )
 
@@ -178,19 +172,18 @@ def create_file_sink():
 
 class DetermineChangePipeline:
 
-    def __init__(self, changes_stream: DataStream):
+    def __init__(self, stream: DataStream):
         self.changes = (
-            changes_stream
-            .map(DetermineChange(), Types.LIST(Types.STRING()))
-            .name("parse change determine_change")
-
+            stream
+            .map(DetermineChange(), Types.LIST(element_type_info=Types.STRING()))
+            .name("determine changes")
         )
 
         self.parsed_changes = (
             self.changes
-            .filter(bool)
+            .filter(lambda notif: notif)
             .flat_map(GetResultDetermineChange(), Types.STRING())
-            .name("parse change determine_change")
+            .name("parse changes")
         )
     # END __init__
 
@@ -212,14 +205,35 @@ def create_stream_execution_environment():
 # END create_stream_execution_environment
 
 
+class DetermineChangeJob:
+    def __init__(self, event_source: SourceFunction = None, event_sink: SinkFunction = None):
+        self.env = create_stream_execution_environment()
+
+        self.source = (
+            self.env
+            .add_source(event_source)
+            .name("changes_source")
+        )
+
+        pipeline = DetermineChangePipeline(self.source).parsed_changes.add_sink()
+
+        self.sink = (
+            pipeline.parsed_changes
+            .add_sink(event_sink)
+            .name("output changes")
+        )
+    # END __init__
+# END DetermineChangeJob
+
+
 def create_determine_change_job(output_path: str):
 
     env = create_stream_execution_environment()
+
     kafka_source = create_kafka_source()
+    kafka_sink = create_kafka_sink()
 
-    input_stream = env.add_source(kafka_source).name("change events")
-
-    pipeline = DetermineChangePipeline(input_stream)
+    stream = DetermineChangePipeline(env, kafka_source)
 
     # If output_path is None, sink to Kafka. Else, sink to file.
     if output_path is None:
@@ -227,7 +241,7 @@ def create_determine_change_job(output_path: str):
         kafka_sink = create_kafka_sink()
 
         (
-            pipeline.parsed_changes
+            stream.parsed_changes
             .add_sink(kafka_sink)
             .name("write_to_kafka_sink determine_change")
         )
@@ -235,7 +249,7 @@ def create_determine_change_job(output_path: str):
         file_sink = create_file_sink()
 
         (
-            pipeline.parsed_changes
+            stream.parsed_changes
             .add_sink(sink_func=file_sink)
             .name("write_to_file_sink determine_change")
         )
@@ -243,28 +257,3 @@ def create_determine_change_job(output_path: str):
 
     return env
 # END create_determine_change_job
-
-
-if __name__ == '__main__':
-    logging.basicConfig(
-        stream=sys.stdout,
-        level=logging.INFO,
-        format="%(message)s"
-    )
-    logging.debug(sys.argv)
-
-    debug = False
-    if len(sys.argv) > 1:
-        debug = 'debug' in sys.argv[1:]
-
-    logging.debug(f"debug: {debug}")
-
-    output_path = None
-
-    if debug:
-        output_path = '/tmp/'
-
-    job = create_determine_change_job(output_path)
-
-    job.execute("determine_change")
-# END MAIN
