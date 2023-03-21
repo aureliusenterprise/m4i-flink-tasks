@@ -56,7 +56,7 @@ def handle_attribute_changes(change_message: AtlasChangeMessage, previous: Entit
 # END handle_attribute_changes
 
 
-def get_relationships_diff(a: Entity, b: Entity) -> Dict[List[RelationshipAttribute]]:
+def get_relationships_diff(a: Entity, b: Entity) -> Dict[str, List[RelationshipAttribute]]:
     """
     Get the difference in relationships between two Entity objects.
 

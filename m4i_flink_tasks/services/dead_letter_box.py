@@ -3,7 +3,7 @@ import time
 import traceback
 
 from kafka import KafkaProducer
-from m4i_atlas_core import ConfigStore, retry_decorator
+from m4i_atlas_core import ConfigStore
 
 from ..model import DeadLetterBoxMesage
 
@@ -50,7 +50,6 @@ class DeadLetterBoxService:
         self.send(event)
     # END handle_error
 
-    @retry_decorator(retries=2)
     def send(self, event: DeadLetterBoxMesage):
         self.kafka_producer.send(
             topic=self.dead_lettter_box_topic,

@@ -4,7 +4,7 @@ import time
 import traceback
 
 from kafka import KafkaProducer
-from m4i_atlas_core import ConfigStore, retry_decorator
+from m4i_atlas_core import ConfigStore
 from pyflink.common.serialization import Encoder, SimpleStringSchema
 from pyflink.common.typeinfo import Types
 from pyflink.datastream import StreamExecutionEnvironment, DataStream
@@ -45,7 +45,6 @@ class DetermineChange(MapFunction, DetermineChangeLocal):
         )
     # END __init__
 
-    @retry_decorator(retries=2)
     def send_deadletter_message(self, event: DeadLetterBoxMesage):
         self.kafka_producer.send(
             topic=self.dead_lettter_box_topic,
