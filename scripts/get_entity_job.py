@@ -11,14 +11,17 @@ from credentials import credentials
 from m4i_atlas_core import ConfigStore
 from m4i_flink_tasks.operation.GetEntityLocal import GetEntityLocal
 
-from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
-store = ConfigStore.get_instance()
-
 from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
 from pyflink.datastream.functions import MapFunction, RuntimeContext
 from pyflink.common.typeinfo import Types
+from pyflink.datastream.output_tag import OutputTag
+
+from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
+
+store = ConfigStore.get_instance()
+output_tag = OutputTag("deadletter", Types.STRING())
 
 
 class GetEntity(MapFunction,GetEntityLocal):
@@ -30,24 +33,24 @@ class GetEntity(MapFunction,GetEntityLocal):
     cnt_res = 0
     cnt_rec = 0
 
-    def open(self, runtime_context: RuntimeContext):
-        store.load({**config, **credentials})
+    # def open(self, runtime_context: RuntimeContext):
+    #     store.load({**config, **credentials})
 
-        self.bootstrap_server_hostname, self.bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
-        self.dead_lettter_box_topic = store.get("exception.events.topic.name")
+    #     self.bootstrap_server_hostname, self.bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
+    #     self.dead_lettter_box_topic = store.get("exception.events.topic.name")
 
 
-    def get_deadletter(self):
-        if self.producer==None:
-            self.producer = KafkaProducer(
-                    bootstrap_servers=  f"{self.bootstrap_server_hostname}:{self.bootstrap_server_port}",
-                    value_serializer=str.encode,
-                    request_timeout_ms = 1000,
-                    api_version = (2,0,2),
-                    retries = 1,
-                    linger_ms = 1000
-                )
-        return self.producer
+    # def get_deadletter(self):
+    #     if self.producer==None:
+    #         self.producer = KafkaProducer(
+    #                 bootstrap_servers=  f"{self.bootstrap_server_hostname}:{self.bootstrap_server_port}",
+    #                 value_serializer=str.encode,
+    #                 request_timeout_ms = 1000,
+    #                 api_version = (2,0,2),
+    #                 retries = 1,
+    #                 linger_ms = 1000
+    #             )
+    #     return self.producer
 
 
 
@@ -72,16 +75,17 @@ class GetEntity(MapFunction,GetEntityLocal):
                                         exception_class = type(e).__name__, remark= None)
             logging.error("this goes into dead letter box: ")
             logging.error(repr(event))
+            yield output_tag, event.to_json()
 
-            retry = 0
-            while retry < 10:
-                try:
-                    producer_ = self.get_deadletter()
-                    producer_.send(topic=self.dead_lettter_box_topic, value=event.to_json())
-                    return
-                except Exception as e2:
-                    logging.error("error dumping data into deadletter topic "+repr(e2))
-                    retry = retry + 1
+            # retry = 0
+            # while retry < 10:
+            #     try:
+            #         producer_ = self.get_deadletter()
+            #         producer_.send(topic=self.dead_lettter_box_topic, value=event.to_json())
+            #         return
+            #     except Exception as e2:
+            #         logging.error("error dumping data into deadletter topic "+repr(e2))
+            #         retry = retry + 1
 
 
 def run_get_entity_job():
@@ -92,7 +96,8 @@ def run_get_entity_job():
     path = os.path.dirname(__file__)
 
     # download JARs
-    kafka_jar = "file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
+    # kafka_jar = "file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
+    kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.16.0.jar"
     kafka_client = "file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
 
     env.add_jars(kafka_jar, kafka_client)
@@ -101,6 +106,7 @@ def run_get_entity_job():
     bootstrap_server_port = config.get("kafka.bootstrap.server.port")
     source_topic_name = config.get("atlas.audit.events.topic.name")
     sink_topic_name = config.get("enriched.events.topic.name")
+    dead_lettter_box_topic = store.get("exception.events.topic.name")
     kafka_consumer_group_id = config.get("kafka.consumer.group.id")
 
     kafka_source = FlinkKafkaConsumer(topics=source_topic_name,
@@ -120,6 +126,11 @@ def run_get_entity_job():
     data_stream = env.add_source(kafka_source).name("consuming atlas events run_get_entity")
 
     data_stream = data_stream.map(GetEntity(), Types.STRING()).name("retrieve entity from atlas run_get_entity").filter(lambda notif: notif)
+
+    deadletter_stream = data_stream.get_side_output(output_tag)
+    deadletter_stream.add_sink(FlinkKafkaProducer(topic=dead_lettter_box_topic,
+        producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_get_entity_job_deadletter"},
+        serialization_schema=SimpleStringSchema())).name("write_to_deadletter")
 
     data_stream.add_sink(FlinkKafkaProducer(topic=sink_topic_name,
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_get_entity_job2"},
