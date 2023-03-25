@@ -23,6 +23,7 @@ from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 store = ConfigStore.get_instance()
 output_tag = OutputTag("deadletter", Types.STRING())
 store.set("output_tag", output_tag)
+logging.info(f"output_tag : {output_tag}")
 store.load({**config, **credentials})
 
 class GetEntity(MapFunction,GetEntityLocal):
@@ -30,7 +31,7 @@ class GetEntity(MapFunction,GetEntityLocal):
     bootstrap_server_port=None
     #dead_lettter_box_topic = "deadletterbox"
     producer = None
-    store = None
+    store = ConigStore.get_instance()
     output_tag = None
     cnt_res = 0
     cnt_rec = 0
@@ -80,6 +81,7 @@ class GetEntity(MapFunction,GetEntityLocal):
                                         exception_class = type(e).__name__, remark= None)
             logging.error("this goes into dead letter box: ")
             logging.error(repr(event))
+            logging.info(f"output_tag : {self.output_tag}")
             yield self.output_tag, event.to_json()
 
             # retry = 0
@@ -138,6 +140,7 @@ def run_get_entity_job():
 
     data_stream = data_stream.map(GetEntity(), Types.STRING()).name("retrieve entity from atlas run_get_entity").filter(lambda notif: notif)
 
+    logging.info(f"output_tag : {output_tag}")
     deadletter_stream = data_stream.get_side_output(output_tag)
     deadletter_stream.add_sink(FlinkKafkaProducer(topic=dead_letter_box_topic,
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_get_entity_job_deadletter"},
