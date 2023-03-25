@@ -27,17 +27,17 @@ output_tag = OutputTag("deadletter", Types.STRING())
 class GetEntity(MapFunction,GetEntityLocal):
     bootstrap_server_hostname=None
     bootstrap_server_port=None
-    dead_lettter_box_topic = "deadletterbox"
+    #dead_lettter_box_topic = "deadletterbox"
     producer = None
     store = None
     cnt_res = 0
     cnt_rec = 0
 
-    # def open(self, runtime_context: RuntimeContext):
-    #     store.load({**config, **credentials})
+    def open(self, runtime_context: RuntimeContext):
+        store.load({**config, **credentials})
 
-    #     self.bootstrap_server_hostname, self.bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
-    #     self.dead_lettter_box_topic = store.get("exception.events.topic.name")
+        self.bootstrap_server_hostname, self.bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
+        #self.dead_lettter_box_topic = store.get("exception.events.topic.name")
 
 
     # def get_deadletter(self):
@@ -97,7 +97,7 @@ def run_get_entity_job():
 
     # download JARs
     # kafka_jar = "file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
-    kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.16.0.jar"
+    kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.16.1.jar"
     kafka_client = "file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
 
     env.add_jars(kafka_jar, kafka_client)
@@ -127,10 +127,10 @@ def run_get_entity_job():
 
     data_stream = data_stream.map(GetEntity(), Types.STRING()).name("retrieve entity from atlas run_get_entity").filter(lambda notif: notif)
 
-    deadletter_stream = data_stream.get_side_output(output_tag)
-    deadletter_stream.add_sink(FlinkKafkaProducer(topic=dead_lettter_box_topic,
-        producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_get_entity_job_deadletter"},
-        serialization_schema=SimpleStringSchema())).name("write_to_deadletter")
+    #deadletter_stream = data_stream.get_side_output(output_tag)
+    #deadletter_stream.add_sink(FlinkKafkaProducer(topic=dead_lettter_box_topic,
+    #    producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_get_entity_job_deadletter"},
+    #    serialization_schema=SimpleStringSchema())).name("write_to_deadletter")
 
     data_stream.add_sink(FlinkKafkaProducer(topic=sink_topic_name,
         producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_get_entity_job2"},

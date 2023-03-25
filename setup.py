@@ -32,6 +32,8 @@ setup(
         "python-keycloak",
         "kafka-python==2.0.2",
         "jsonpickle",
+        "pylzma",
+        "python-xz",
         # "requests",
         # "typing_extensions",
         # "deepdiff",
