@@ -27,7 +27,7 @@ class PublishState(MapFunction):
 
         self.elastic = elastic
         self.index_name = index_name
-    # END __init__()
+    # END __init__
 
     def map(self, value: str) -> str:
         """
