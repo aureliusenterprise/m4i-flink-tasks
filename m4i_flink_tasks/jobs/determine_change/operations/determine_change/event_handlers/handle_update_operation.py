@@ -1,11 +1,12 @@
 from typing import Dict, List, Optional
 
-from m4i_atlas_core import AtlasChangeMessage, Entity, RelationshipAttribute
+from m4i_atlas_core import Entity, RelationshipAttribute
 
-from ......model import EntityMessage, EntityMessageType
+from ......model import (AtlasChangeMessageWithPreviousVersion, EntityMessage,
+                         EntityMessageType)
 
 
-def handle_attribute_changes(change_message: AtlasChangeMessage, previous: Entity, current: Entity) -> Optional[EntityMessage]:
+def handle_attribute_changes(change_message: AtlasChangeMessageWithPreviousVersion, previous: Entity, current: Entity) -> Optional[EntityMessage]:
     """
     Process attribute changes between two entity versions and generate an EntityMessage if changes are found.
 
@@ -93,7 +94,7 @@ def get_relationships_diff(a: Entity, b: Entity) -> Dict[str, List[RelationshipA
 # END get_relationships_diff
 
 
-def handle_relationship_changes(change_message: AtlasChangeMessage, previous: Entity, current: Entity) -> Optional[EntityMessage]:
+def handle_relationship_changes(change_message: AtlasChangeMessageWithPreviousVersion, previous: Entity, current: Entity) -> Optional[EntityMessage]:
     """
     Process relationship changes between two entity versions and generate an EntityMessage if changes are found.
 
@@ -138,7 +139,7 @@ def handle_relationship_changes(change_message: AtlasChangeMessage, previous: En
 # END handle_relationship_changes
 
 
-def handle_update_operation(change_message: AtlasChangeMessage) -> List[EntityMessage]:
+def handle_update_operation(change_message: AtlasChangeMessageWithPreviousVersion) -> List[EntityMessage]:
     """
     Handles an update operation by processing attribute and relationship changes between two entity versions,
     and returns a list of EntityMessages corresponding to the changes found.
@@ -151,7 +152,7 @@ def handle_update_operation(change_message: AtlasChangeMessage) -> List[EntityMe
     """
 
     entity = change_message.message.entity
-    previous_entity = change_message.previouse_version
+    previous_entity = change_message.previous_version
 
     messages: List[EntityMessage] = []
 

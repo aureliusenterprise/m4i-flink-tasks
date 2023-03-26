@@ -1,10 +1,11 @@
-from m4i_atlas_core import AtlasChangeMessage, RelationshipAttribute
+from m4i_atlas_core import RelationshipAttribute
 
-from ......model import EntityMessageType
+from ......model import (AtlasChangeMessageWithPreviousVersion,
+                         EntityMessageType)
 from .handle_update_operation import handle_update_operation
 
 
-def create_mock_change_message(previous: dict, current: dict):
+def create_mock_change_message(previous: dict, current: dict) -> AtlasChangeMessageWithPreviousVersion:
     change_message = {
         "msg_compression_kind": "none",
         "msg_split_idx": 0,
@@ -22,10 +23,10 @@ def create_mock_change_message(previous: dict, current: dict):
             "version_parts": [1, 0]
         },
         "msg_source_ip": "192.168.1.1",
-        "previouse_version": previous
+        "previous_version": previous
     }
 
-    return AtlasChangeMessage.from_dict(change_message)
+    return AtlasChangeMessageWithPreviousVersion.from_dict(change_message)
 # END create_mock_change_message
 
 

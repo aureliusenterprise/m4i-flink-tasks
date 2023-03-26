@@ -1,8 +1,8 @@
 from typing import List
 
-from m4i_atlas_core import AtlasChangeMessage
 from pyflink.datastream.functions import MapFunction
 
+from .....model import AtlasChangeMessageWithPreviousVersion
 from .....services import DeadLetterBoxService
 from .event_handlers import EVENT_HANDLERS
 
@@ -21,7 +21,8 @@ def handle_determine_change(kafka_notification: str) -> List[str]:
         NotImplementedError: If the operation_type in the AtlasChangeMessage is not found in the EVENT_HANDLERS dictionary.
     """
 
-    change_message = AtlasChangeMessage.from_json(kafka_notification)
+    change_message = AtlasChangeMessageWithPreviousVersion.from_json(
+        kafka_notification)
 
     operation_type = change_message.message.operation_type
 

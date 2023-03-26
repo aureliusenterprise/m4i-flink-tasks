@@ -1,11 +1,10 @@
 from typing import List
 
-from m4i_atlas_core import AtlasChangeMessage
+from ......model import (AtlasChangeMessageWithPreviousVersion, EntityMessage,
+                         EntityMessageType)
 
-from ......model import EntityMessage, EntityMessageType
 
-
-def handle_create_operation(change_message: AtlasChangeMessage) -> List[EntityMessage]:
+def handle_create_operation(change_message: AtlasChangeMessageWithPreviousVersion) -> List[EntityMessage]:
     """
     Process the create operation for an entity and generate an EntityMessage.
 

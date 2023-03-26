@@ -1,3 +1,8 @@
+from pyflink.common.typeinfo import Types
+from pyflink.datastream.functions import MapFunction, RuntimeContext
+from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
+from pyflink.datastream import StreamExecutionEnvironment
+from pyflink.common.serialization import SimpleStringSchema
 import logging
 import sys
 import os
@@ -14,16 +19,10 @@ from m4i_flink_tasks.operation.GetEntityLocal import GetEntityLocal
 from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 store = ConfigStore.get_instance()
 
-from pyflink.common.serialization import SimpleStringSchema
-from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
-from pyflink.datastream.functions import MapFunction, RuntimeContext
-from pyflink.common.typeinfo import Types
 
-
-class GetEntity(MapFunction,GetEntityLocal):
-    bootstrap_server_hostname=None
-    bootstrap_server_port=None
+class GetEntity(MapFunction, GetEntityLocal):
+    bootstrap_server_hostname = None
+    bootstrap_server_port = None
     dead_lettter_box_topic = "deadletterbox"
     producer = None
     store = None
@@ -33,23 +32,21 @@ class GetEntity(MapFunction,GetEntityLocal):
     def open(self, runtime_context: RuntimeContext):
         store.load({**config, **credentials})
 
-        self.bootstrap_server_hostname, self.bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
+        self.bootstrap_server_hostname, self.bootstrap_server_port = store.get_many(
+            "kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
         self.dead_lettter_box_topic = store.get("exception.events.topic.name")
 
-
     def get_deadletter(self):
-        if self.producer==None:
+        if self.producer == None:
             self.producer = KafkaProducer(
-                    bootstrap_servers=  f"{self.bootstrap_server_hostname}:{self.bootstrap_server_port}",
-                    value_serializer=str.encode,
-                    request_timeout_ms = 1000,
-                    api_version = (2,0,2),
-                    retries = 1,
-                    linger_ms = 1000
-                )
+                bootstrap_servers=f"{self.bootstrap_server_hostname}:{self.bootstrap_server_port}",
+                value_serializer=str.encode,
+                request_timeout_ms=1000,
+                api_version=(2, 0, 2),
+                retries=1,
+                linger_ms=1000
+            )
         return self.producer
-
-
 
     def map(self, kafka_notification: str):
         self.cnt_rec = self.cnt_rec + 1
@@ -68,8 +65,8 @@ class GetEntity(MapFunction,GetEntityLocal):
             exc_info = sys.exc_info()
             e1 = (''.join(traceback.format_exception(*exc_info)))
 
-            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=repr(kafka_notification), job="get_entity", description = (e1),
-                                        exception_class = type(e).__name__, remark= None)
+            event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=repr(kafka_notification), job="get_entity", description=(e1),
+                                        exception_class=type(e).__name__, remark=None)
             logging.error("this goes into dead letter box: ")
             logging.error(repr(event))
 
@@ -77,16 +74,18 @@ class GetEntity(MapFunction,GetEntityLocal):
             while retry < 2:
                 try:
                     producer_ = self.get_deadletter()
-                    producer_.send(topic=self.dead_lettter_box_topic, value=event.to_json())
+                    producer_.send(
+                        topic=self.dead_lettter_box_topic, value=event.to_json())
                     return
                 except Exception as e2:
-                    logging.error("error dumping data into deadletter topic "+repr(e2))
+                    logging.error(
+                        "error dumping data into deadletter topic "+repr(e2))
                     retry = retry + 1
 
 
 def run_get_entity_job():
     env = StreamExecutionEnvironment.get_execution_environment()
-    #set_env(env)
+    # set_env(env)
     env.set_parallelism(1)
 
     path = os.path.dirname(__file__)
@@ -109,21 +108,26 @@ def run_get_entity_job():
                                                   "key.deserializer": "org.apache.kafka.common.serialization.StringDeserializer",
                                                   "value.deserializer": "org.apache.kafka.common.serialization.StringDeserializer"},
                                       deserialization_schema=SimpleStringSchema())
-    if kafka_source==None:
+    if kafka_source == None:
         logging.warning("kafka source is empty")
-        logging.warning(f"bootstrap_servers: {bootstrap_server_hostname}:{bootstrap_server_port}")
+        logging.warning(
+            f"bootstrap_servers: {bootstrap_server_hostname}:{bootstrap_server_port}")
         logging.warning(f"group.id: {kafka_consumer_group_id}")
         logging.warning(f"topcis: {source_topic_name}")
         raise Exception("kafka source is empty")
-    kafka_source.set_commit_offsets_on_checkpoints(True).set_start_from_latest()
+    kafka_source.set_commit_offsets_on_checkpoints(
+        True).set_start_from_latest()
 
-    data_stream = env.add_source(kafka_source).name("consuming atlas events run_get_entity")
+    data_stream = env.add_source(kafka_source).name(
+        "consuming atlas events run_get_entity")
 
-    data_stream = data_stream.map(GetEntity(), Types.STRING()).name("retrieve entity from atlas run_get_entity").filter(lambda notif: notif)
+    data_stream = data_stream.map(GetEntity(), Types.STRING()).name(
+        "retrieve entity from atlas run_get_entity").filter(lambda notif: notif)
 
     data_stream.add_sink(FlinkKafkaProducer(topic=sink_topic_name,
-        producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}","max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_get_entity_job2"},
-        serialization_schema=SimpleStringSchema())).name("write_to_kafka run_get_entity")
+                                            producer_config={"bootstrap.servers": f"{bootstrap_server_hostname}:{bootstrap_server_port}",
+                                                             "max.request.size": "14999999", 'group.id': kafka_consumer_group_id+"_get_entity_job2"},
+                                            serialization_schema=SimpleStringSchema())).name("write_to_kafka run_get_entity")
 
     env.execute("get_atlas_entity")
 

@@ -22,6 +22,7 @@ setup(
         "dev": [
             "mock",
             "pytest",
+            "pytest-asyncio",
             "pytest-cov"
         ]
     }
