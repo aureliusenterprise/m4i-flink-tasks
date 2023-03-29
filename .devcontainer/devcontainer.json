@@ -31,21 +31,22 @@
 
             // Add the IDs of extensions you want installed when the container is created.
             "extensions": [
-                "EditorConfig.EditorConfig",
-                "ms-python.python",
-                "ms-python.vscode-pylance",
-                "ms-python.pylint",
-                "ms-python.isort",
-                "ms-azuretools.vscode-docker",
-                "eamodio.gitlens",
-                "DavidAnson.vscode-markdownlint",
-                "yzhang.markdown-all-in-one"
-            ]
+				"EditorConfig.EditorConfig",
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-python.pylint",
+				"ms-python.isort",
+				"ms-azuretools.vscode-docker",
+				"eamodio.gitlens",
+				"DavidAnson.vscode-markdownlint",
+				"yzhang.markdown-all-in-one",
+				"redhat.vscode-yaml"
+			]
         }
     },
 
     // Use 'forwardPorts' to make a list of ports inside the container available locally.
-    // "forwardPorts": [],
+    "forwardPorts": [8080],
 
     // Use 'postCreateCommand' to run commands after the container is created.
     "postCreateCommand": "bash ./.devcontainer/postcreate.sh",
