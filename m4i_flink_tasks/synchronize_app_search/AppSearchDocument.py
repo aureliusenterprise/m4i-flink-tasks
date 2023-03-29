@@ -1,21 +1,23 @@
 
 from dataclasses import dataclass, field
-from dataclasses_json import DataClassJsonMixin, LetterCase, dataclass_json
 from typing import List, Optional
 
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 
+
+@dataclass_json()
 @dataclass
 class AppSearchDocument(DataClassJsonMixin):
     id: str
     sourcetype: str
     name: str
     guid: str
-    
-    typename: str
-    referenceablequalifiedname:str
 
-    m4isourcetype: List[str]
-    supertypenames: List[str]
+    typename: str
+    referenceablequalifiedname: str
+
+    m4isourcetype: List[str] = field(default_factory=list)
+    supertypenames: List[str] = field(default_factory=list)
 
     dqscore_accuracy: float = field(default_factory=float)
     dqscore_timeliness: float = field(default_factory=float)
@@ -37,14 +39,14 @@ class AppSearchDocument(DataClassJsonMixin):
     dqscorecnt_accuracy: float = field(default_factory=float)
     dqscorecnt_validity: float = field(default_factory=float)
 
-    parentguid: Optional[str] =  None
-    entityname : Optional[str] =  None
-    definition: Optional[str] =  None
-    email: Optional[str] =  None
-    deriveddataownerguid: Optional[str] =  None
-    deriveddomainleadguid: Optional[str] =  None
-    deriveddatastewardguid: Optional[str] =  None
-    
+    parentguid: Optional[str] = None
+    entityname: Optional[str] = None
+    definition: Optional[str] = None
+    email: Optional[str] = None
+    deriveddataownerguid: Optional[str] = None
+    deriveddomainleadguid: Optional[str] = None
+    deriveddatastewardguid: Optional[str] = None
+
     derivedfield: List[str] = field(default_factory=list)
     deriveddataattribute: List[str] = field(default_factory=list)
     deriveddataentity: List[str] = field(default_factory=list)
@@ -63,7 +65,7 @@ class AppSearchDocument(DataClassJsonMixin):
     derivedentityguids: List[str] = field(default_factory=list)
     deriveddatasetguids: List[str] = field(default_factory=list)
     deriveddatasetguid: List[str] = field(default_factory=list)
-    classificationstext: List[str] = field(default_factory=list) 
+    classificationstext: List[str] = field(default_factory=list)
     qualityguid_uniqueness: List[str] = field(default_factory=list)
     derivedpersonguid: List[str] = field(default_factory=list)
     qualityguid_accuracy: List[str] = field(default_factory=list)
@@ -74,4 +76,3 @@ class AppSearchDocument(DataClassJsonMixin):
     deriveddatadomain: List[str] = field(default_factory=list)
     derivedentitynames: List[str] = field(default_factory=list)
     breadcrumbtype: List[str] = field(default_factory=list)
-    

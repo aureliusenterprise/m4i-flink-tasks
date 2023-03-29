@@ -24,14 +24,10 @@ logger = logging.getLogger(__name__)
 config_store = ConfigStore.get_instance()
 update_attributes = [definition, email]
 
-# engine_name = config_store.get("elastic.app.search.engine.name")
-# logging.warning(engine_name)
-
 updated_docs: Dict[str, dict] = dict()
 breadcrumb_dict: Dict[str, list] = dict()
 derived_entity_dict: Dict[str, list] = dict()
 docs_dict: Dict[str, dict] = dict()
-
 
 
 def get_super_types(input_type: str) -> List[EntityDef]:
@@ -46,7 +42,6 @@ def get_super_types(input_type: str) -> List[EntityDef]:
         get_super_types(super_type)
         for super_type in entity_def.super_types
     ]
-    # responses =  asyncio.gather(*requests)
 
     super_types = [
         super_type
@@ -139,18 +134,6 @@ def is_parent_child_relationship(input_document : dict, relationship_key :str, i
 
     return False
 
-# def is_attribute_field_relationship(doc, inserted_relationship):
-#     """This function determines whether the relationship is an attribute field relationship."""
-#     super_types =  get_super_types(inserted_relationship["typeName"])
-#     target_entity_source_types = get_source_types(
-#         super_types + [inserted_relationship["typeName"]])
-#     if field in (target_entity_source_types) and data_attribute in doc["m4isourcetype"]:
-#         return True
-#     if data_attribute in (target_entity_source_types) and field in doc["m4isourcetype"]:
-#         return True
-#     return False
-
-
 
 def is_parent_child_relationship(input_type : str, relationship_key :str, input_relationship : dict):
     """This function determines whether the entity belonging to the input entity type and the entity corresponding to the end point of the relationship are a parent child pair."""
@@ -185,20 +168,12 @@ def is_attribute_field_relationship(input_type : str, input_relationship : dict)
     return False
 
 
-# def get_attribute_field_guid(input_document : dict, input_relationship : dict):
-#     """This function returns respectively the guid of a data attribute and a field."""
-#     if data_attribute in input_document["m4isourcetype"]:
-#         return input_document[guid], input_relationship[guid]
-#     else:
-#         return input_relationship[guid], input_document[guid]
-
 def get_attribute_field_guid(input_entity : Entity, input_relationship : dict):
     """This function returns respectively the guid of a data attribute and a field."""
     super_types =  get_super_types_names(input_entity.type_name)
     source_entity_source_types = get_m4i_source_types(super_types)
 
     super_types =  get_super_types_names(input_relationship["typeName"])
-    target_entity_source_types = get_m4i_source_types(super_types)
 
     if data_attribute in source_entity_source_types:
         return input_entity.guid, input_relationship[guid]
@@ -232,32 +207,6 @@ def delete_derived_entity_attribute_field_fields(data_attribute_document: dict, 
     field_document["deriveddataattribute"] = []
 
     return data_attribute_document, field_document
-
-# async def get_parent_child_entity_guid(input_document, key, input_relationship):
-#     """This function determines the hierarchy between the input entities and rerturns the guids ordered: parent_guid, child_guid"""
-#     super_types =  get_super_types_names(input_relationship["typeName"])
-#     target_entity_source_types = get_m4i_source_types(super_types)
-
-#     target_entity_guid = input_relationship[guid]
-#     input_entity_guid = input_document[guid]
-
-#     if set(target_entity_source_types) == set(input_document["m4isourcetype"]):
-#         if key.startswith("child"):
-#             return input_entity_guid, target_entity_guid
-#         if key.startswith("parent"):
-#             return target_entity_guid, input_entity_guid
-#         else:
-#             logging.warning("The parent and child entity could not be determined of a relatonship that is classified as a parent-child relationship.")
-
-#     for current_entity_source_type in input_document["m4isourcetype"]:
-#         for target_entity_source_type in target_entity_source_types:
-#             if hierarchy_mapping.get(current_entity_source_type) == target_entity_source_type:
-#                 return target_entity_guid, input_entity_guid
-
-#             if hierarchy_mapping.get(target_entity_source_type) == current_entity_source_type:
-#                 return input_entity_guid, target_entity_guid
-
-#     logging.warning("The parent and child entity could not be determined of a relatonship that is classified as a parent-child relationship.")
 
 
 def get_parent_child_entity_guid(input_entity_guid, input_entity_typename, key, input_relationship):
@@ -310,7 +259,6 @@ def insert_prefix_to_breadcrumbs_of_child_entities(input_document : dict, child_
 
 def update_name_in_breadcrumbs(new_input_entity_name: str, input_document : dict, app_search : AppSearch, updated_documents : List[dict]) -> List[dict]:
     """This function synchronizes updated name of an entity in all breadcrumbs inheriting from this entity."""
-    document_entity_name = input_document[name]
     document_entity_guid = input_document[guid]
 
     engine_name = config_store.get("elastic.app.search.engine.name")
@@ -343,11 +291,8 @@ def update_name_in_breadcrumbs(new_input_entity_name: str, input_document : dict
         if breadcrumb_guid in retrieved_document.keys() and document_entity_guid in retrieved_document[breadcrumb_guid]:
             if breadcrumb_name in retrieved_document.keys():
                 index = retrieved_document[breadcrumb_guid].index(document_entity_guid)
-                logging.warning("updating breadcrumb name")
                 retrieved_document[breadcrumb_name][index] = new_input_entity_name
-                logging.warning("updating documents returned by function: update_name_in_breadcrumbs")
                 updated_documents[retrieved_document[guid]] = retrieved_document
-                logging.warning(json.dumps(retrieved_document))
 
 
     return updated_documents
@@ -869,7 +814,8 @@ def create_document(input_entity : Entity) -> dict:
     The output document has the standard fields that could be infered directly from the entity message filled in.
     The dq scores are all equal to zero"""
     super_types =  get_super_types_names(input_entity.type_name)
-    app_search_document = AppSearchDocument(id=input_entity.guid,
+    app_search_document = AppSearchDocument(
+        id=input_entity.guid,
         guid = input_entity.guid,
         sourcetype = get_source_type(super_types),
         referenceablequalifiedname = input_entity.attributes.unmapped_attributes["qualifiedName"],

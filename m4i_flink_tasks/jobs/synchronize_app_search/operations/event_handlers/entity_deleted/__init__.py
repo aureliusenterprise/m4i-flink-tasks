@@ -1,0 +1,1 @@
+from .entity_deleted import handle_entity_deleted

@@ -86,7 +86,10 @@ class PublishState(MapFunction):
         }
 
         sort = {
-            "msgCreationTime": {"numeric_type": "long", "order": "desc"}
+            "msgCreationTime": {
+                "numeric_type": "long",
+                "order": "desc"
+            }
         }
 
         result = self.elastic.search(

@@ -11,14 +11,14 @@ import json
 from m4i_flink_tasks.synchronize_app_search.elastic import (
     get_child_entity_guids, make_elastic_app_search_connect)
 
-from m4i_flink_tasks.operation import Delete_Hierarchical_Relationship, Insert_Hierarchical_Relationship
+from m4i_flink_tasks.operation import DeleteHierarchicalRelationship, InsertHierarchicalRelationship
 from m4i_flink_tasks.operation.core_operation import Sequence
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass
 class OperationChange(DataClassJsonMixin):
     propagate: bool
     propagate_down: bool
-    
+
     operation: dict
 
     def transform(self, input_data, app_search, entity_guid, app_search_engine_name) -> Dict:
@@ -33,25 +33,25 @@ class OperationChange(DataClassJsonMixin):
                 for step in seq.steps:
                     translated_seq = step.transform(input_data, app_search)
 
-                    if isinstance(translated_seq, Delete_Hierarchical_Relationship):
-                        id_ = translated_seq.child_entity_guid
-                        if id_ not in operation_dict.keys():
-                            operation_dict[id_] = [translated_seq]
-                        else:
-                            operation_dict[id_].append(translated_seq)     
-
-                    elif isinstance(translated_seq, Insert_Hierarchical_Relationship):
+                    if isinstance(translated_seq, DeleteHierarchicalRelationship):
                         id_ = translated_seq.child_entity_guid
                         if id_ not in operation_dict.keys():
                             operation_dict[id_] = [translated_seq]
                         else:
                             operation_dict[id_].append(translated_seq)
-                    
+
+                    elif isinstance(translated_seq, InsertHierarchicalRelationship):
+                        id_ = translated_seq.child_entity_guid
+                        if id_ not in operation_dict.keys():
+                            operation_dict[id_] = [translated_seq]
+                        else:
+                            operation_dict[id_].append(translated_seq)
+
                     else:
                         retry = 0
                         while retry<3 and propagate_ids==None:
                             try:
-                                
+
                                 propagate_ids = get_child_entity_guids(entity_guid=entity_guid,
                                                             app_search=app_search,
                                                             engine_name=app_search_engine_name)
@@ -69,12 +69,12 @@ class OperationChange(DataClassJsonMixin):
                             if id_ not in operation_dict.keys():
                                 operation_dict[id_] = [translated_seq]
                             else:
-                                operation_dict[id_].append(translated_seq)  
+                                operation_dict[id_].append(translated_seq)
 
                 for id_ in operation_dict.keys():
-                    
+
                     seq = Sequence(name="propagated downwards operation transformed", steps = operation_dict[id_])
-                    spec = jsonpickle.encode(seq) 
+                    spec = jsonpickle.encode(seq)
                     oc = OperationChange(propagate=True, propagate_down=True, operation = json.loads(spec))
 
                     result[id_] = [oc]
@@ -85,18 +85,18 @@ class OperationChange(DataClassJsonMixin):
                 if isinstance(breadcrumbguid,list) and len(breadcrumbguid)>0:
                     propagate_ids = [breadcrumbguid[-1]]
         # end of if change.propagate
-        return result        
+        return result
 
 
 
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass
-class OperationEvent(DataClassJsonMixin): 
+class OperationEvent(DataClassJsonMixin):
     id: str
     creation_time: int
     entity_guid: str
-    
+
     changes: List[OperationChange]
 
 # import uuid
@@ -105,7 +105,7 @@ class OperationEvent(DataClassJsonMixin):
 # oc = OperationChange(propagate=True, propagate_down=True, operation = {"hello": "workld"})
 # ocj = oc.to_json()
 
-# oe = OperationEvent(id=str(uuid.uuid4()), 
+# oe = OperationEvent(id=str(uuid.uuid4()),
 #                     creation_time=int(datetime.datetime.now().timestamp()*1000),
 #                     entity_guid="d56db187-2627-41a6-8698-f74d4b76227e",
 #                     changes=[oc])
