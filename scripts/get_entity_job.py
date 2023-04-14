@@ -14,19 +14,20 @@ from m4i_flink_tasks.operation.GetEntityLocal import GetEntityLocal
 from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import FlinkKafkaConsumer, FlinkKafkaProducer
-from pyflink.datastream.functions import MapFunction, RuntimeContext
+from pyflink.datastream.functions import RuntimeContext
 from pyflink.common.typeinfo import Types
 from pyflink.datastream.output_tag import OutputTag
+from pyflink.datastream.functions import ProcessFunction
 
 from m4i_flink_tasks.DeadLetterBoxMessage import DeadLetterBoxMesage
 
 store = ConfigStore.get_instance()
+store.load({**config, **credentials})
 output_tag = OutputTag("deadletter", Types.STRING())
 store.set("output_tag", output_tag)
 logging.info(f"output_tag : {output_tag}")
-store.load({**config, **credentials})
 
-class GetEntity(MapFunction,GetEntityLocal):
+class GetEntity(ProcessFunction,GetEntityLocal):
     bootstrap_server_hostname=None
     bootstrap_server_port=None
     #dead_lettter_box_topic = "deadletterbox"
@@ -36,31 +37,8 @@ class GetEntity(MapFunction,GetEntityLocal):
     cnt_res = 0
     cnt_rec = 0
 
-    def open(self, runtime_context: RuntimeContext):
-        self.store.load({**config, **credentials})
-        self.output_tag = self.store.get("output_tag")
-        if self.output_tag==None:
-            self.output_tag = OutputTag("deadletter", Types.STRING())
-            self.store.set("output_tag", self.output_tag)
-        self.bootstrap_server_hostname, self.bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
-        #self.dead_lettter_box_topic = store.get("exception.events.topic.name")
 
-
-    # def get_deadletter(self):
-    #     if self.producer==None:
-    #         self.producer = KafkaProducer(
-    #                 bootstrap_servers=  f"{self.bootstrap_server_hostname}:{self.bootstrap_server_port}",
-    #                 value_serializer=str.encode,
-    #                 request_timeout_ms = 1000,
-    #                 api_version = (2,0,2),
-    #                 retries = 1,
-    #                 linger_ms = 1000
-    #             )
-    #     return self.producer
-
-
-
-    def map(self, kafka_notification: str):
+    def process_element(self, value: int, ctx: ProcessFunction.Context):
         self.cnt_rec = self.cnt_rec + 1
         logging.info(f"recevied events GetEntity: {self.cnt_rec}")
 
@@ -84,15 +62,55 @@ class GetEntity(MapFunction,GetEntityLocal):
             logging.info(f"output_tag : {self.output_tag}")
             yield self.output_tag, event.to_json()
 
-            # retry = 0
-            # while retry < 10:
-            #     try:
-            #         producer_ = self.get_deadletter()
-            #         producer_.send(topic=self.dead_lettter_box_topic, value=event.to_json())
-            #         return
-            #     except Exception as e2:
-            #         logging.error("error dumping data into deadletter topic "+repr(e2))
-            #         retry = retry + 1
+        # emit data to regular output
+        yield value
+
+        # emit data to side output
+        yield output_tag, "sideout-" + str(value)
+
+    def __init__(self):
+        self.store.load({**config, **credentials})
+        self.output_tag = self.store.get("output_tag")
+        if self.output_tag==None:
+            self.output_tag = OutputTag("deadletter", Types.STRING())
+            self.store.set("output_tag", self.output_tag)
+        self.bootstrap_server_hostname, self.bootstrap_server_port =  store.get_many("kafka.bootstrap.server.hostname", "kafka.bootstrap.server.port")
+        #self.dead_lettter_box_topic = store.get("exception.events.topic.name")
+
+
+    # def map(self, kafka_notification: str):
+    #     self.cnt_rec = self.cnt_rec + 1
+    #     logging.info(f"recevied events GetEntity: {self.cnt_rec}")
+
+    #     try:
+    #         res = self.map_local(kafka_notification)
+    #         logging.info("received result: "+repr(res))
+    #         self.cnt_res = self.cnt_res+1
+    #         logging.info(f"submitted event count GetEntity: {self.cnt_res}")
+    #         return res
+    #     except Exception as e:
+    #         logging.error("Exception during processing:")
+    #         logging.error(repr(e))
+
+    #         exc_info = sys.exc_info()
+    #         e1 = (''.join(traceback.format_exception(*exc_info)))
+
+    #         event = DeadLetterBoxMesage(timestamp=time.time(), original_notification=repr(kafka_notification), job="get_entity", description = (e1),
+    #                                     exception_class = type(e).__name__, remark= None)
+    #         logging.error("this goes into dead letter box: ")
+    #         logging.error(repr(event))
+    #         logging.info(f"output_tag : {self.output_tag}")
+    #         yield self.output_tag, event.to_json()
+
+    #         # retry = 0
+    #         # while retry < 10:
+    #         #     try:
+    #         #         producer_ = self.get_deadletter()
+    #         #         producer_.send(topic=self.dead_lettter_box_topic, value=event.to_json())
+    #         #         return
+    #         #     except Exception as e2:
+    #         #         logging.error("error dumping data into deadletter topic "+repr(e2))
+    #         #         retry = retry + 1
 
 
 def run_get_entity_job():
@@ -109,7 +127,8 @@ def run_get_entity_job():
 
     # download JARs
     # kafka_jar = "file:///" + path + "/../flink_jars/flink-connector-kafka-1.15.1.jar"
-    kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.16.1.jar"
+    # kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.16.1.jar"
+    kafka_jar = f"file:///" + path + "/../flink_jars/flink-connector-kafka-1.17.0.jar"
     kafka_client = "file:///" + path + "/../flink_jars/kafka-clients-2.2.1.jar"
 
     env.add_jars(kafka_jar, kafka_client)
@@ -138,7 +157,7 @@ def run_get_entity_job():
 
     data_stream = env.add_source(kafka_source).name("consuming atlas events run_get_entity")
 
-    data_stream = data_stream.map(GetEntity(), Types.STRING()).name("retrieve entity from atlas run_get_entity").filter(lambda notif: notif)
+    data_stream = data_stream.process(GetEntity(), Types.STRING()).name("retrieve entity from atlas run_get_entity") #.filter(lambda notif: notif)
 
     logging.info(f"output_tag : {output_tag}")
     deadletter_stream = data_stream.get_side_output(output_tag)
