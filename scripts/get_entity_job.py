@@ -31,7 +31,7 @@ class GetEntity(MapFunction,GetEntityLocal):
     bootstrap_server_port=None
     #dead_lettter_box_topic = "deadletterbox"
     producer = None
-    store = ConigStore.get_instance()
+    store = ConfigStore.get_instance()
     output_tag = None
     cnt_res = 0
     cnt_rec = 0
