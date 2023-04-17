@@ -1,1 +1,3 @@
-from .attribute_audit import handle_attribute_audit
+from .attributes import handle_update_attributes
+from .breadcrumbs import handle_update_breadcrumbs
+from .derived_entities import handle_update_derived_entities

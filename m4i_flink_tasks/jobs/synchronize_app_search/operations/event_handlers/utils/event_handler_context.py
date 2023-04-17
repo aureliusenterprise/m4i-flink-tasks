@@ -19,6 +19,7 @@ class EventHandlerContext(Protocol):
             Elasticsearch: The Elasticsearch client instance that event handlers will use to interact
                            with an Elasticsearch cluster.
         """
+    # END elastic
 
     @property
     def index_name(self) -> str:
@@ -28,3 +29,5 @@ class EventHandlerContext(Protocol):
         Returns:
             str: The name of the Elasticsearch index to be used by event handlers.
         """
+    # END index_name
+# END EventHandlerContext

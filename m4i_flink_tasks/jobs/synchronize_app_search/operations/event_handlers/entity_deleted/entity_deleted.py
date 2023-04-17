@@ -1,7 +1,9 @@
-from ......model import EntityMessage
-from ..event_handler_context import EventHandlerContext
+from typing import List
+
+from ......model import AppSearchDocument, EntityMessage
+from ..utils import EventHandlerContext
 
 
-def handle_entity_deleted(message: EntityMessage, context: EventHandlerContext):
-    pass
+def handle_entity_deleted(message: EntityMessage, context: EventHandlerContext) -> List[AppSearchDocument]:
+    return []
 # END handle_entity_deleted
