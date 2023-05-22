@@ -1,6 +1,6 @@
 import pytest
 
-from .app_search_document import AppSearchDocument
+from ..model import AppSearchDocument
 from .breadcrumb import (Breadcrumb, BreadcrumbLengthMismatchError,
                          BreadcrumbMetadata)
 

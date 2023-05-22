@@ -9,13 +9,8 @@ setup(
     install_requires=[
         "apache-flink",
         "elasticsearch",
-        "elastic_enterprise_search",
-        "elastic-app-search",
-        "jsonpickle",
         "kafka-python",
         "m4i-atlas-core @ git+https://github.com/aureliusenterprise/m4i_atlas_core.git#egg=m4i-atlas-core",
-        "numpy",
-        "pandas",
         "python-keycloak"
     ],
     extras_require={
